@@ -1,0 +1,38 @@
+{
+  "jobs": [
+    {
+      "absolute_url": "https://acme.example/careers?gh_jid=1001",
+      "id": 1001,
+      "title": "Senior Product Manager, Crypto Payments",
+      "location": { "name": "Dubai, United Arab Emirates" },
+      "updated_at": "2026-10-01T09:00:00-04:00",
+      "first_published": "2026-10-01T09:00:00-04:00",
+      "content": "&lt;h2&gt;About the role&lt;/h2&gt;&lt;p&gt;Own our &lt;strong&gt;stablecoin&lt;/strong&gt; payments rails &amp;amp; KYC flows.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Fintech experience&lt;/li&gt;&lt;/ul&gt;",
+      "departments": [{ "id": 1, "name": "Product", "child_ids": [], "parent_id": null }],
+      "offices": [{ "id": 10, "name": "Dubai", "location": "Dubai, UAE", "child_ids": [], "parent_id": null }]
+    },
+    {
+      "absolute_url": "https://acme.example/careers?gh_jid=1002",
+      "id": 1002,
+      "title": "Product Manager",
+      "location": { "name": "SF, NYC, Remote" },
+      "updated_at": "2026-09-01T09:00:00-04:00",
+      "first_published": "2026-09-01T09:00:00-04:00",
+      "content": "&lt;p&gt;Payments.&lt;/p&gt;",
+      "departments": [],
+      "offices": [{ "id": 11, "name": "US", "location": null, "child_ids": [], "parent_id": null }]
+    },
+    {
+      "absolute_url": "https://acme.example/careers?gh_jid=1003",
+      "id": 1003,
+      "title": "Product Marketing Manager",
+      "location": { "name": "Dubai" },
+      "updated_at": "2026-10-02T09:00:00-04:00",
+      "first_published": null,
+      "content": "",
+      "departments": [],
+      "offices": []
+    }
+  ],
+  "meta": { "total": 3 }
+}

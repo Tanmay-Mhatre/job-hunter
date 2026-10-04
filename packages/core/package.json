@@ -1,0 +1,21 @@
+{
+  "name": "@jobhunter/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema.ts",
+    "./diagnose": "./src/diagnose.ts",
+    "./yaml-writer": "./src/yaml-writer.ts",
+    "./text": "./src/text.ts",
+    "./detect": "./src/connectors/index.ts",
+    "./resume-parse": "./src/resume-parse.ts",
+    "./catalog/roles": "./src/catalog/roles.ts",
+    "./catalog/places": "./src/catalog/places.ts"
+  },
+  "dependencies": {
+    "yaml": "^2.8.0",
+    "zod": "^4.1.0"
+  }
+}

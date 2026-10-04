@@ -1,0 +1,907 @@
+import { matchesTerm } from "@jobhunter/core/text";
+import { COUNTRIES, countryTerms, groupPlaces, REGIONS, searchPlaces } from "@jobhunter/core/catalog/places";
+import { allTitles, COMMON_EXCLUDES, ROLE_FAMILIES, SENIORITY, type RoleFamily } from "@jobhunter/core/catalog/roles";
+import { Check, ChevronDown, CircleAlert, CircleCheck, Clock, HelpCircle, LoaderCircle, Minus, Plus, Trash2, X } from "lucide-react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { Combobox, type ComboItem } from "../components/Combobox";
+import { ToggleChips } from "../components/ToggleChips";
+import { Button, Chip, cx, Toggle } from "../components/ui";
+import type { Suggestions } from "../lib/suggest";
+import { checkCompanies, rowId, type CompanyRow, type Draft } from "../lib/setup";
+import { CV_DICTIONARY, KEYWORD_PACKS, REMOTE_EXCLUDE_SUGGESTIONS } from "./presets";
+
+export type StepProps = { draft: Draft; update: (patch: Partial<Draft>) => void; suggest?: Suggestions };
+
+export function Field({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <div>
+        <h3 className="text-sm font-semibold">{label}</h3>
+        {hint && <p className="mt-0.5 text-sm text-muted">{hint}</p>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function PickButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cx(
+        "inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-sm font-medium transition-colors",
+        active ? "border-accent bg-accent-soft text-accent" : "border-line bg-surface hover:bg-surface-2",
+      )}
+    >
+      {active && <Check className="size-4" />}
+      {children}
+    </button>
+  );
+}
+
+const union = (a: string[], b: string[]) => [...a, ...b.filter((x) => !a.includes(x))];
+const hasAll = (a: string[], b: string[]) => b.every((x) => a.includes(x));
+
+// ---------- 2. Roles ----------
+
+const TITLE_INDEX = allTitles();
+const RESUME_LABEL = (s?: Suggestions) => (s?.source === "ai" ? "From your master resume" : "From your resume");
+const FAMILY_DEFAULT_TITLES = 6;
+
+/** What a family starts with: titles from the resume that belong to it, else its most common ones. */
+function familyDefaults(f: RoleFamily, suggest?: Suggestions) {
+  const fromResume = (suggest?.titles ?? []).filter((t) => f.titles.includes(t));
+  return {
+    // Resume matches first, topped up with the family's most common titles.
+    include: union(fromResume, f.titles).slice(0, Math.max(FAMILY_DEFAULT_TITLES, fromResume.length)),
+    exclude: union(f.exclude, union(suggest?.exclude ?? [], ["intern", "junior"])),
+  };
+}
+
+function Section({ n, title, hint, action, children }: { n: number; title: string; hint?: ReactNode; action?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-start gap-x-2.5 gap-y-2">
+        <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent">{n}</span>
+        <div className="min-w-[14rem] flex-1">
+          <h3 className="text-sm font-semibold">{title}</h3>
+          {hint && <p className="mt-0.5 text-sm text-muted">{hint}</p>}
+        </div>
+        {action}
+      </div>
+      <div className="sm:pl-8">{children}</div>
+    </section>
+  );
+}
+
+export function RolesStep({ draft, update, suggest }: StepProps) {
+  const fam = ROLE_FAMILIES.find((f) => f.id === draft.family);
+  const [choosing, setChoosing] = useState(!fam);
+  const [query, setQuery] = useState("");
+  const [undo, setUndo] = useState<{ family?: string; include: string[]; exclude: string[]; to: string } | null>(null);
+
+  const famTitles = fam?.titles ?? [];
+  const extras = draft.include.filter((t) => !famTitles.includes(t));
+  const otherOptions = union((suggest?.titles ?? []).filter((t) => !famTitles.includes(t)), extras);
+  const q = query.trim().toLowerCase();
+  const families = ROLE_FAMILIES.filter((f) => !q || f.label.toLowerCase().includes(q) || f.titles.some((t) => t.includes(q)));
+  const suggestedFamily = !fam && suggest?.titles.length ? ROLE_FAMILIES.find((f) => f.titles.some((t) => suggest.titles.includes(t)))?.id : undefined;
+
+  const pickFamily = (id: string) => {
+    setChoosing(false);
+    setQuery("");
+    if (id === draft.family) return;
+    const next = ROLE_FAMILIES.find((f) => f.id === id)!;
+    const d = familyDefaults(next, suggest);
+    if (draft.include.length || draft.exclude.length) setUndo({ family: draft.family, include: draft.include, exclude: draft.exclude, to: next.label });
+    else setUndo(null);
+    update({ family: id, include: d.include, exclude: d.exclude });
+  };
+
+  const search = useCallback(
+    (text: string): ComboItem[] => {
+      const s = text.trim().toLowerCase();
+      return TITLE_INDEX.filter((t) => t.title.includes(s) || t.families.some((f) => f.toLowerCase().includes(s)))
+        .filter((t) => !draft.include.includes(t.title))
+        // Title starts with it, then contains it, then only its family matches.
+        .sort((a, b) => {
+          const rank = (t: string) => (t.startsWith(s) ? 0 : matchesTerm(t, s) ? 1 : t.includes(s) ? 2 : 3);
+          return rank(a.title) - rank(b.title) || a.title.length - b.title.length;
+        })
+        .slice(0, 30)
+        .map((t) => ({ key: t.title, label: t.title, hint: t.families.join(" · ") }));
+    },
+    [draft.include],
+  );
+
+  return (
+    <div className="space-y-8">
+      <Section
+        n={1}
+        title="Job family"
+        hint={fam && !choosing ? undefined : "Pick the kind of role you want. Its job titles appear next, ready to select."}
+        action={
+          fam && !choosing ? (
+            <Button size="sm" onClick={() => setChoosing(true)}>
+              Change
+            </Button>
+          ) : undefined
+        }
+      >
+        {fam && !choosing ? (
+          <div className="flex items-center gap-2 rounded-xl border border-accent bg-accent-soft/40 px-3 py-2.5">
+            <Check className="size-4 text-accent" />
+            <span className="font-semibold">{fam.label}</span>
+            <span className="text-sm text-muted">· {fam.titles.length} titles</span>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Filter families, e.g. product, risk, sales…"
+              aria-label="Filter job families"
+              className="h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm outline-none placeholder:text-muted focus:border-accent"
+            />
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {families.map((f) => {
+                const active = f.id === draft.family;
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => pickFamily(f.id)}
+                    className={cx(
+                      "flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition-colors",
+                      active ? "border-accent bg-accent-soft/50" : "border-line hover:bg-surface-2",
+                    )}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold">{f.label}</span>
+                      <span className="block text-xs text-muted">
+                        {f.titles.length} titles{f.id === suggestedFamily ? " · matches your resume" : ""}
+                      </span>
+                    </span>
+                    {active && <Check className="size-4 shrink-0 text-accent" />}
+                  </button>
+                );
+              })}
+              {families.length === 0 && <p className="text-sm text-muted">No family matches “{query}”. Use the title search in the next section instead.</p>}
+            </div>
+            {fam && (
+              <button type="button" className="text-sm font-medium text-muted hover:text-fg" onClick={() => setChoosing(false)}>
+                Keep {fam.label}
+              </button>
+            )}
+          </div>
+        )}
+        {undo && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-surface-2 px-3 py-2 text-sm">
+            <span className="flex-1 text-muted">Switched to {undo.to}: titles and exclusions were reset to its defaults.</span>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                update({ family: undo.family, include: undo.include, exclude: undo.exclude });
+                setUndo(null);
+              }}
+            >
+              Undo
+            </Button>
+          </div>
+        )}
+      </Section>
+
+      <Section
+        n={2}
+        title={fam ? `Titles in ${fam.label}` : "Job titles"}
+        hint="A job is shown only if its title contains one of the selected titles. Click to select or deselect."
+        action={
+          fam ? (
+            <div className="flex shrink-0 gap-1">
+              <Button size="sm" variant="ghost" onClick={() => update({ include: union(fam.titles, extras) })} disabled={hasAll(draft.include, fam.titles)}>
+                Select all
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => update({ include: extras })} disabled={!draft.include.some((t) => famTitles.includes(t))}>
+                Clear
+              </Button>
+            </div>
+          ) : undefined
+        }
+      >
+        <div className="space-y-4">
+          {fam ? (
+            <ToggleChips
+              label={`Titles in ${fam.label}`}
+              options={fam.titles}
+              selected={draft.include.filter((t) => famTitles.includes(t))}
+              onChange={(next) => update({ include: [...next, ...extras] })}
+            />
+          ) : (
+            !draft.include.length && <p className="text-sm text-muted">Pick a job family above, or search for titles below.</p>
+          )}
+          {otherOptions.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-xs font-medium text-muted">{fam ? "Other titles" : "Your titles"}{suggest?.titles.length ? ` (incl. ${RESUME_LABEL(suggest).toLowerCase()})` : ""}</p>
+              <ToggleChips
+                label="Other titles"
+                options={otherOptions}
+                selected={extras}
+                onChange={(next) => update({ include: [...draft.include.filter((t) => famTitles.includes(t)), ...next] })}
+              />
+            </div>
+          )}
+          <div>
+            <p className="mb-1.5 text-xs font-medium text-muted">Add a title from any family</p>
+            <Combobox
+              label="Search job titles"
+              placeholder={`Search ${TITLE_INDEX.length}+ titles, or type your own…`}
+              search={search}
+              onPick={(i) => update({ include: union(draft.include, [i.key]) })}
+              onFreeText={(t) => update({ include: union(draft.include, [t]) })}
+            />
+          </div>
+        </div>
+      </Section>
+
+      <Section n={3} title="Never show me" hint="Hide jobs whose title contains any of these.">
+        <ToggleChips
+          label="Titles to hide"
+          tone="bad"
+          options={union(union(fam?.exclude ?? [], suggest?.exclude ?? []), COMMON_EXCLUDES)}
+          selected={draft.exclude}
+          onChange={(exclude) => update({ exclude })}
+          addPlaceholder="Add another…"
+        />
+      </Section>
+
+      <Section n={4} title="Seniority you want (+10 points)" hint="Titles with these words rank higher. Kept when you change family.">
+        <ToggleChips
+          label="Seniority words"
+          tone="plain"
+          options={union(suggest?.seniority ?? [], SENIORITY)}
+          selected={draft.seniority}
+          onChange={(seniority) => update({ seniority })}
+          addPlaceholder="Add another…"
+        />
+      </Section>
+    </div>
+  );
+}
+
+// ---------- 3. Locations ----------
+
+const POPULAR_COUNTRIES = [
+  "united arab emirates",
+  "saudi arabia",
+  "qatar",
+  "united kingdom",
+  "united states",
+  "india",
+  "singapore",
+  "germany",
+  "netherlands",
+  "canada",
+  "australia",
+];
+const QUICK_REGIONS = ["emea", "mena", "gcc", "europe", "apac", "americas", "worldwide"];
+const countryByName = new Map(COUNTRIES.map((c) => [c.name, c]));
+const regionByName = new Map(REGIONS.map((r) => [r.name, r]));
+const SMALL_WORDS = new Set(["and", "of", "the", "la", "de", "es", "au", "al"]);
+const titleCase = (s: string) =>
+  s
+    .split(" ")
+    .map((w, i) => (i > 0 && SMALL_WORDS.has(w) ? w : w.replace(/^\p{L}/u, (ch) => ch.toUpperCase())))
+    .join(" ");
+const regionLabel = (name: string) => (name.length <= 5 ? name.toUpperCase() : titleCase(name));
+
+function placeItems(q: string, opts: { regions: boolean; remote: boolean }): ComboItem[] {
+  return searchPlaces(q, 14)
+    .filter((h) => opts.regions || h.kind !== "region")
+    .map((h): ComboItem => {
+      if (h.kind === "country") {
+        const extra = h.country.aliases.length ? ` (${h.country.aliases.slice(0, 2).join(", ")})` : "";
+        return {
+          key: `country:${h.country.name}`,
+          label: opts.remote ? `Remote in ${titleCase(h.country.name)}` : titleCase(h.country.name) + extra,
+          hint: opts.remote ? "country" : `country · ${h.country.cities.length} cities: ${h.country.cities.slice(0, 3).join(", ")}…`,
+        };
+      }
+      if (h.kind === "city") return { key: `city:${h.city}`, label: titleCase(h.city), hint: `city · ${titleCase(h.country.name)}` };
+      return { key: `region:${h.region.name}`, label: regionLabel(h.region.name), hint: h.region.hint };
+    });
+}
+
+/** Terms a picked item adds: a country brings its aliases (and cities, for offices). */
+function termsFor(key: string, withCities: boolean): string[] {
+  const kind = key.slice(0, key.indexOf(":"));
+  const name = key.slice(key.indexOf(":") + 1);
+  if (kind === "country") {
+    const c = countryByName.get(name);
+    return c ? countryTerms(c, withCities) : [name];
+  }
+  if (kind === "region") {
+    const r = regionByName.get(name);
+    return r ? [r.name, ...r.aliases] : [name];
+  }
+  return [name];
+}
+
+/** Every term a country or region could have added, so turning it off removes all of them. */
+function allTermsFor(key: string): string[] {
+  return termsFor(key, true);
+}
+
+/**
+ * Selected places shown as one chip per country/region (not one per city or alias).
+ * × removes the whole group; clicking a group lets you deselect single cities or names.
+ */
+function GroupedPlaces({ terms, onChange, label, remote }: { terms: string[]; onChange: (t: string[]) => void; label: string; remote?: boolean }) {
+  const [open, setOpen] = useState<string | null>(null);
+  const groups = groupPlaces(terms);
+  if (!groups.length) return <p className="text-sm text-muted">Nothing selected yet.</p>;
+  const openGroup = groups.find((g) => g.key === open);
+  return (
+    <div className="space-y-2">
+      <div role="list" aria-label={label} className="flex flex-wrap gap-1.5">
+        {groups.map((g) => {
+          // Only cities picked (not the country itself): name the cities, e.g. "Riyadh · Saudi Arabia".
+          const citiesOnly = g.kind === "country" && !g.terms.includes(g.name) && g.terms.length <= 2;
+          const name =
+            g.kind === "region"
+              ? regionLabel(g.name)
+              : citiesOnly
+                ? `${g.terms.map(titleCase).join(", ")} · ${titleCase(g.name)}`
+                : g.kind === "country"
+                  ? remote
+                    ? `Remote in ${titleCase(g.name)}`
+                    : titleCase(g.name)
+                  : g.name === "remote"
+                    ? "Any remote role"
+                    : titleCase(g.name);
+          const expandable = g.options.length > 1;
+          return (
+            <span
+              key={g.key}
+              role="listitem"
+              className={cx(
+                "inline-flex h-8 items-center rounded-lg border text-sm font-medium",
+                open === g.key ? "border-accent bg-accent-soft text-accent" : "border-accent/50 bg-accent-soft/60 text-accent",
+              )}
+            >
+              <button
+                type="button"
+                disabled={!expandable}
+                onClick={() => setOpen(open === g.key ? null : g.key)}
+                aria-expanded={expandable ? open === g.key : undefined}
+                className="flex h-full items-center gap-1 pl-2.5 pr-1 disabled:cursor-default"
+                title={g.terms.join(", ")}
+              >
+                {name}
+                {expandable && !citiesOnly && <span className="text-xs font-normal opacity-75">· {g.terms.length}/{g.options.length}</span>}
+                {expandable && <ChevronDown className={cx("size-3.5 transition-transform", open === g.key && "rotate-180")} />}
+              </button>
+              <button
+                type="button"
+                aria-label={`Remove ${name}`}
+                onClick={() => {
+                  onChange(terms.filter((t) => !g.terms.includes(t)));
+                  if (open === g.key) setOpen(null);
+                }}
+                className="flex h-full items-center rounded-r-lg px-1.5 opacity-70 hover:opacity-100"
+              >
+                <X className="size-3.5" />
+              </button>
+            </span>
+          );
+        })}
+      </div>
+      {openGroup && (
+        <div className="rounded-xl border border-line bg-surface-2/40 p-3">
+          <p className="mb-2 text-xs text-muted">
+            Words matched for <b className="text-fg">{titleCase(openGroup.name)}</b>. Deselect any you don't want.
+          </p>
+          <ToggleChips
+            size="sm"
+            label={`Terms for ${openGroup.name}`}
+            options={openGroup.options}
+            selected={openGroup.terms}
+            format={titleCase}
+            onChange={(next) => onChange([...terms.filter((t) => !openGroup.options.includes(t)), ...next])}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function LocationsStep({ draft, update, suggest }: StepProps) {
+  const [withCities, setWithCities] = useState(true);
+  const officeSearch = useCallback((q: string) => placeItems(q, { regions: false, remote: false }), []);
+  const remoteSearch = useCallback((q: string) => placeItems(q, { regions: true, remote: true }), []);
+  const officeGroups = new Set(groupPlaces(draft.places).map((g) => g.key));
+  const remoteGroups = new Set(groupPlaces(draft.remoteOk).map((g) => g.key));
+
+  /** Quick toggle: on adds the group's terms, off removes every term the group could have added. */
+  const toggleGroup = (list: "places" | "remoteOk", key: string, add: string[]) => {
+    const current = draft[list];
+    const isOn = (list === "places" ? officeGroups : remoteGroups).has(key) || (key.startsWith("term:") && current.includes(key.slice(5)));
+    const all = key.startsWith("term:") ? [key.slice(5)] : allTermsFor(key);
+    update({ [list]: isOn ? current.filter((t) => !all.includes(t)) : union(current, add) } as Partial<Draft>);
+  };
+
+  return (
+    <div className="space-y-8">
+      <Field label="Where can you work from an office?" hint="Search any country or city in the world. A country adds its name, short names and main cities.">
+        <Combobox
+          label="Search places"
+          placeholder="Type a city or country, e.g. Dubai, Kenya, São Paulo…"
+          search={officeSearch}
+          onPick={(i) => update({ places: union(draft.places, termsFor(i.key, withCities)) })}
+          onFreeText={(t) => update({ places: union(draft.places, [t]) })}
+        />
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 text-xs font-medium text-muted">Popular:</span>
+          {POPULAR_COUNTRIES.map((name) => {
+            const key = `country:${name}`;
+            const active = officeGroups.has(key);
+            return (
+              <button
+                key={name}
+                type="button"
+                aria-pressed={active}
+                onClick={() => toggleGroup("places", key, countryTerms(countryByName.get(name)!, withCities))}
+                className={cx(
+                  "inline-flex h-7 items-center gap-1 rounded-lg border px-2 text-xs font-medium",
+                  active ? "border-accent bg-accent-soft text-accent" : "border-dashed border-line text-muted hover:border-accent hover:text-fg",
+                )}
+              >
+                {active ? <Check className="size-3" /> : <Plus className="size-3" />}
+                {titleCase(name)}
+              </button>
+            );
+          })}
+        </div>
+        <Toggle checked={withCities} onChange={setWithCities}>
+          When I pick a country, also add its main cities
+        </Toggle>
+        {suggest?.places.length ? (
+          <div>
+            <p className="mb-1.5 text-xs font-medium text-muted">{RESUME_LABEL(suggest)}</p>
+            <ToggleChips
+              size="sm"
+              label="Places from your resume"
+              options={suggest.places}
+              selected={draft.places.filter((p) => suggest.places.includes(p))}
+              format={titleCase}
+              onChange={(next) => update({ places: [...draft.places.filter((p) => !suggest.places.includes(p)), ...next] })}
+            />
+          </div>
+        ) : null}
+        <div className="rounded-xl border border-line p-3">
+          <p className="mb-2 text-xs font-medium text-muted">Selected (click a country to pick its cities)</p>
+          <GroupedPlaces label="Selected places" terms={draft.places} onChange={(places) => update({ places })} />
+        </div>
+      </Field>
+
+      <Field label="Open to remote roles?">
+        <div className="flex gap-2">
+          <PickButton active={!draft.remote} onClick={() => update({ remote: false })}>
+            No, on-site or hybrid only
+          </PickButton>
+          <PickButton
+            active={draft.remote}
+            onClick={() => update({ remote: true, remoteExclude: draft.remoteExclude.length ? draft.remoteExclude : ["us", "usa", "united states", "canada"] })}
+          >
+            Yes
+          </PickButton>
+        </div>
+      </Field>
+
+      {draft.remote && (
+        <>
+          <Field label="Remote in which regions or countries?" hint="Remote jobs must mention one of these in their location, e.g. “Remote – EMEA” or “Remote, Germany”.">
+            <Combobox
+              label="Search remote regions"
+              placeholder="Type a region or country, e.g. EMEA, Europe, Germany…"
+              search={remoteSearch}
+              onPick={(i) => update({ remoteOk: union(draft.remoteOk, termsFor(i.key, false)) })}
+              onFreeText={(t) => update({ remoteOk: union(draft.remoteOk, [t]) })}
+            />
+            <div className="flex flex-wrap gap-1.5">
+              {[...QUICK_REGIONS.map((r) => ({ key: `region:${r}`, label: regionLabel(r), add: termsFor(`region:${r}`, false) })), { key: "term:remote", label: "Any remote role", add: ["remote"] }].map((g) => {
+                const active = g.key === "term:remote" ? draft.remoteOk.includes("remote") : remoteGroups.has(g.key);
+                return (
+                  <PickButton key={g.key} active={active} onClick={() => toggleGroup("remoteOk", g.key, g.add)}>
+                    {g.label}
+                  </PickButton>
+                );
+              })}
+            </div>
+            {suggest?.remoteRegions.length ? (
+              <div>
+                <p className="mb-1.5 text-xs font-medium text-muted">{RESUME_LABEL(suggest)}</p>
+                <ToggleChips
+                  size="sm"
+                  label="Remote regions from your resume"
+                  options={suggest.remoteRegions}
+                  selected={draft.remoteOk.filter((p) => suggest.remoteRegions.includes(p))}
+                  format={regionLabel}
+                  onChange={(next) => update({ remoteOk: [...draft.remoteOk.filter((p) => !suggest.remoteRegions.includes(p)), ...next] })}
+                />
+              </div>
+            ) : null}
+            <div className="rounded-xl border border-line p-3">
+              <p className="mb-2 text-xs font-medium text-muted">Selected</p>
+              <GroupedPlaces label="Selected remote regions" remote terms={draft.remoteOk} onChange={(remoteOk) => update({ remoteOk })} />
+            </div>
+          </Field>
+          <Field label="…but not remote roles limited to" hint="Skip remote jobs only open to people in these places, e.g. “Remote (US)”.">
+            <ToggleChips
+              label="Remote regions to skip"
+              tone="bad"
+              options={REMOTE_EXCLUDE_SUGGESTIONS}
+              selected={draft.remoteExclude}
+              onChange={(remoteExclude) => update({ remoteExclude })}
+              addPlaceholder="Add another…"
+            />
+          </Field>
+        </>
+      )}
+      {!draft.remote && draft.remoteOk.length > 0 && (
+        <p className="text-xs text-muted">Your remote regions are kept and come back if you switch remote on again.</p>
+      )}
+    </div>
+  );
+}
+
+// ---------- 4. Topics ----------
+
+export function KeywordsStep({ draft, update, suggest, resumeText = "" }: StepProps & { resumeText?: string }) {
+  const [cv, setCv] = useState("");
+  const [showCv, setShowCv] = useState(false);
+  const entries = Object.entries(draft.keywords).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const fromPaste = useMemo(
+    () =>
+      cv.trim().length < 40
+        ? []
+        : Object.entries(CV_DICTIONARY)
+            .filter(([k]) => matchesTerm(cv, k))
+            .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])),
+    [cv],
+  );
+  // With a saved resume, suggestions are ready without pasting anything.
+  const found = fromPaste.length ? fromPaste : (suggest?.keywords ?? []);
+  const foundWeight = new Map(found);
+  const setWeight = (k: string, w: number) => {
+    const next = { ...draft.keywords };
+    if (w <= 0) delete next[k];
+    else next[k] = Math.min(5, w);
+    update({ keywords: next });
+  };
+  const addMany = (kw: Record<string, number>) => update({ keywords: { ...kw, ...draft.keywords } });
+  const packActive = (p: (typeof KEYWORD_PACKS)[number]) => Object.keys(p.keywords).every((k) => k in draft.keywords);
+
+  const togglePack = (p: (typeof KEYWORD_PACKS)[number]) => {
+    if (!packActive(p)) return addMany(p.keywords);
+    // Keep words that another selected pack also needs (e.g. "payments" is in Fintech and Payments).
+    const keep = new Set(KEYWORD_PACKS.filter((o) => o.id !== p.id && packActive(o)).flatMap((o) => Object.keys(o.keywords)));
+    const next = { ...draft.keywords };
+    for (const k of Object.keys(p.keywords)) if (!keep.has(k)) delete next[k];
+    update({ keywords: next });
+  };
+
+  return (
+    <div className="space-y-8">
+      <Field label="Pick the areas you care about" hint="Each adds topic words. Jobs that mention them rank higher. Click again to remove.">
+        <div className="flex flex-wrap gap-2">
+          {KEYWORD_PACKS.map((p) => (
+            <PickButton key={p.id} active={packActive(p)} onClick={() => togglePack(p)}>
+              {p.label}
+            </PickButton>
+          ))}
+        </div>
+      </Field>
+
+      <div className="rounded-xl border border-dashed border-line p-4">
+        {found.length > 0 ? (
+          <div>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-sm">
+                <span className="font-semibold text-accent">{fromPaste.length ? "Found in the text you pasted" : RESUME_LABEL(suggest)}</span>
+                <span className="text-muted">: click to add or remove</span>
+              </p>
+              <Button size="sm" variant="ghost" onClick={() => addMany(Object.fromEntries(found))} disabled={found.every(([k]) => k in draft.keywords)}>
+                Add all
+              </Button>
+            </div>
+            <ToggleChips
+              size="sm"
+              label="Suggested topics"
+              options={found.map(([k]) => k)}
+              selected={found.map(([k]) => k).filter((k) => k in draft.keywords)}
+              onChange={(next) => {
+                const kw = { ...draft.keywords };
+                for (const [k] of found) {
+                  if (next.includes(k) && !(k in kw)) kw[k] = foundWeight.get(k) ?? 3;
+                  if (!next.includes(k) && k in kw) delete kw[k];
+                }
+                update({ keywords: kw });
+              }}
+            />
+          </div>
+        ) : !showCv ? (
+          <button type="button" onClick={() => setShowCv(true)} className="text-left text-sm">
+            <span className="font-semibold text-accent">Suggest keywords from my CV</span>
+            <span className="block text-muted">
+              {resumeText ? "We didn't find known topic words in your resume. Paste other text to try." : "Paste your CV text and we'll pick out topic words. It stays on this computer."}
+            </span>
+          </button>
+        ) : null}
+        {(showCv || fromPaste.length > 0) && (
+          <textarea
+            value={cv}
+            onChange={(e) => setCv(e.target.value)}
+            rows={4}
+            aria-label="Text to find keywords in"
+            placeholder="Paste your CV or LinkedIn summary here…"
+            className="mt-3 w-full resize-y rounded-lg border border-line bg-surface p-2.5 text-sm outline-none placeholder:text-muted focus:border-accent"
+          />
+        )}
+      </div>
+
+      <Field
+        label="Your keywords and how much they matter"
+        hint={
+          <>
+            <b className="text-fg">5</b> = core topic, <b className="text-fg">1</b> = nice to have. Matched as whole words in the title and description.
+          </>
+        }
+      >
+        <AddKeyword onAdd={(k) => setWeight(k, 3)} />
+        {entries.length === 0 ? (
+          <p className="text-sm text-muted">No keywords yet. That's OK: jobs are still found, just not ranked by topic.</p>
+        ) : (
+          <ul className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
+            {entries.map(([k, w]) => (
+              <li key={k} className="flex items-center gap-2 py-1">
+                <span className="min-w-0 flex-1 truncate text-sm">{k}</span>
+                <div className="flex items-center gap-0.5" role="group" aria-label={`${k} weight`}>
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setWeight(k, i)}
+                      aria-label={`Weight ${i}`}
+                      aria-pressed={i === w}
+                      className={cx("h-2.5 w-5 rounded-full transition-colors", i <= w ? "bg-accent" : "bg-surface-2 hover:bg-line")}
+                    />
+                  ))}
+                </div>
+                <button type="button" onClick={() => setWeight(k, 0)} aria-label={`Remove ${k}`} className="rounded p-1 text-muted hover:text-bad">
+                  <Minus className="size-3.5" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Field>
+    </div>
+  );
+}
+
+function AddKeyword({ onAdd }: { onAdd: (k: string) => void }) {
+  const [text, setText] = useState("");
+  const submit = () => {
+    const k = text.trim().toLowerCase();
+    if (k) onAdd(k);
+    setText("");
+  };
+  return (
+    <div className="flex gap-2">
+      <input
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), submit())}
+        placeholder="Add a keyword, e.g. tokenization"
+        aria-label="Add a keyword"
+        className="h-9 min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 text-sm outline-none placeholder:text-muted focus:border-accent"
+      />
+      <Button onClick={submit} disabled={!text.trim()}>
+        <Plus className="size-4" /> Add
+      </Button>
+    </div>
+  );
+}
+
+// ---------- Companies (Companies tab and Settings; not part of setup) ----------
+
+const ATS_LABEL: Record<string, string> = {
+  greenhouse: "Greenhouse",
+  lever: "Lever",
+  ashby: "Ashby",
+  workday: "Workday",
+  smartrecruiters: "SmartRecruiters",
+  workable: "Workable",
+  recruitee: "Recruitee",
+  personio: "Personio",
+  bamboohr: "BambooHR",
+  breezy: "Breezy HR",
+};
+
+export function CompaniesStep({ draft, update }: StepProps) {
+  const [text, setText] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
+  const checking = draft.companies.some((r) => r.state === "checking");
+
+  const check = async () => {
+    const urls = [...new Set(text.split(/[\n\s,]+/).map((s) => s.trim()).filter(Boolean))];
+    if (!urls.length) return;
+    setError(null);
+    const pending: CompanyRow[] = urls.map((input) => ({ id: rowId(), input, state: "checking", status: "unknown", name: "" }));
+    let rows = [...draft.companies, ...pending];
+    update({ companies: rows });
+    setText("");
+    try {
+      const results = await checkCompanies(urls);
+      rows = rows.map((r) => {
+        const i = pending.findIndex((p) => p.id === r.id);
+        const res = i >= 0 ? results[i] : undefined;
+        return res ? { ...r, ...res, state: res.status, name: res.name ?? "" } : r;
+      });
+      update({ companies: rows });
+    } catch (err) {
+      setError((err as Error).message);
+      update({ companies: rows.filter((r) => r.state !== "checking") });
+    }
+  };
+
+  const setRow = (id: string, patch: Partial<CompanyRow>) => update({ companies: draft.companies.map((r) => (r.id === id ? { ...r, ...patch } : r)) });
+  const working = draft.companies.filter((r) => r.state === "ok" || r.state === "saved").length;
+
+  return (
+    <div className="space-y-6">
+      <Field
+        label="Paste careers page links"
+        hint={
+          <>
+            One per line. We recognise Greenhouse, Lever, Ashby and SmartRecruiters today, with Workday, Workable and more coming soon.{" "}
+            <button type="button" className="inline-flex items-center gap-0.5 font-medium text-accent" onClick={() => setShowHelp((v) => !v)}>
+              <HelpCircle className="size-3.5" /> Where do I find this link?
+            </button>
+          </>
+        }
+      >
+        {showHelp && (
+          <div className="rounded-xl bg-surface-2 p-3 text-sm">
+            <p>Open the company's careers page and click any job. If the address looks like one of these, paste the part up to the company name:</p>
+            <ul className="mt-2 space-y-1 font-mono text-xs text-muted">
+              <li>job-boards.greenhouse.io/<b className="text-fg">company</b></li>
+              <li>jobs.lever.co/<b className="text-fg">company</b></li>
+              <li>jobs.ashbyhq.com/<b className="text-fg">company</b></li>
+              <li>careers.smartrecruiters.com/<b className="text-fg">Company</b></li>
+              <li>
+                <b className="text-fg">company</b>.wd3.myworkdayjobs.com/en-US/<b className="text-fg">Site</b> (coming soon)
+              </li>
+              <li>apply.workable.com/<b className="text-fg">company</b> (coming soon)</li>
+            </ul>
+          </div>
+        )}
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === "Enter" && void check()}
+          rows={4}
+          aria-label="Careers page links, one per line"
+          placeholder={"https://jobs.lever.co/company\nhttps://job-boards.greenhouse.io/another"}
+          className="w-full resize-y rounded-xl border border-line bg-surface p-3 font-mono text-sm outline-none placeholder:text-muted focus:border-accent"
+        />
+        <div className="flex items-center gap-3">
+          <Button variant="primary" onClick={() => void check()} disabled={!text.trim() || checking}>
+            {checking ? <LoaderCircle className="size-4 animate-spin" /> : <CircleCheck className="size-4" />}
+            {checking ? "Checking…" : "Check links"}
+          </Button>
+          {error && <span className="text-sm text-bad">{error}</span>}
+        </div>
+      </Field>
+
+      {draft.companies.length > 0 && (
+        <div>
+          <h3 className="mb-2 text-sm font-semibold">
+            Your companies <span className="tabular font-normal text-muted">· {working} working</span>
+          </h3>
+          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line">
+            {draft.companies.map((r) => (
+              <CompanyRowView key={r.id} row={r} onName={(name) => setRow(r.id, { name })} onRemove={() => update({ companies: draft.companies.filter((x) => x.id !== r.id) })} />
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CompanyRowView({ row, onName, onRemove }: { row: CompanyRow; onName: (n: string) => void; onRemove: () => void }) {
+  const icon =
+    row.state === "checking" ? (
+      <LoaderCircle className="size-5 animate-spin text-muted" />
+    ) : row.state === "ok" || row.state === "saved" ? (
+      <CircleCheck className="size-5 text-accent" />
+    ) : row.state === "soon" ? (
+      <Clock className="size-5 text-warn" />
+    ) : (
+      <CircleAlert className="size-5 text-bad" />
+    );
+  const detail =
+    row.state === "checking"
+      ? "Checking…"
+      : row.state === "ok"
+        ? `${ATS_LABEL[row.ats!] ?? row.ats} · ${row.jobs ?? 0} open jobs${row.sampleTitles?.length ? ` · e.g. ${row.sampleTitles.slice(0, 2).join(", ")}` : ""}`
+        : row.state === "saved"
+          ? `${ATS_LABEL[row.ats!] ?? row.ats} · saved`
+          : row.state === "soon"
+            ? row.error ?? `${ATS_LABEL[row.ats!] ?? row.ats} support is coming soon. We'll keep it and it will start working then.`
+            : row.error ?? "Couldn't check this link.";
+
+  return (
+    <li className="flex items-start gap-3 bg-surface px-3 py-2.5">
+      <span className="mt-1.5 shrink-0">{icon}</span>
+      <div className="min-w-0 flex-1">
+        {row.state === "checking" || row.state === "unknown" || row.state === "error" ? (
+          <p className="truncate font-mono text-sm">{row.input}</p>
+        ) : (
+          <input
+            value={row.name}
+            onChange={(e) => onName(e.target.value)}
+            aria-label="Company name"
+            className="h-8 w-full max-w-72 rounded-md border border-transparent bg-transparent px-1.5 -ml-1.5 text-sm font-semibold outline-none hover:border-line focus:border-accent"
+          />
+        )}
+        <p className={cx("mt-0.5 text-xs", row.state === "error" || row.state === "unknown" ? "text-bad" : "text-muted")}>{detail}</p>
+        {(row.state === "error" || row.state === "unknown") && <p className="truncate text-[11px] text-muted">Not added. Fix the link and paste it again.</p>}
+      </div>
+      {row.state === "soon" && <Chip tone="warn">soon</Chip>}
+      <button type="button" onClick={onRemove} aria-label={`Remove ${row.name || row.input}`} className="mt-1 rounded p-1 text-muted hover:text-bad">
+        <Trash2 className="size-4" />
+      </button>
+    </li>
+  );
+}
+
+// ---------- threshold (Review and Settings) ----------
+
+export const THRESHOLDS = [
+  { value: 70, label: "Strong matches only", hint: "Title, place and several of your topics line up" },
+  { value: 55, label: "Good and strong", hint: "Right role and place, some topic overlap" },
+  { value: 40, label: "Everything that fits", hint: "Right role and place, topics optional" },
+];
+
+export function ThresholdPicker({ draft, update }: StepProps) {
+  const custom = !THRESHOLDS.some((t) => t.value === draft.minScore);
+  return (
+    <div className="grid gap-2 sm:grid-cols-3">
+      {THRESHOLDS.map((t) => (
+        <button
+          key={t.value}
+          type="button"
+          onClick={() => update({ minScore: t.value })}
+          aria-pressed={draft.minScore === t.value}
+          className={cx(
+            "rounded-xl border p-3 text-left transition-colors",
+            draft.minScore === t.value ? "border-accent bg-accent-soft/50" : "border-line hover:bg-surface-2",
+          )}
+        >
+          <span className="block text-sm font-semibold">
+            {t.label} <span className="tabular font-normal text-muted">({t.value}+)</span>
+          </span>
+          <span className="mt-0.5 block text-xs text-muted">{t.hint}</span>
+        </button>
+      ))}
+      {custom && <p className="text-xs text-muted sm:col-span-3">Custom threshold from your config: {draft.minScore}+</p>}
+    </div>
+  );
+}

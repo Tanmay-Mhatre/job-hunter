@@ -1,0 +1,38 @@
+{
+  "apiVersion": "1",
+  "jobs": [
+    {
+      "id": "34413f8d-0000-4bbc-8ade-eb309a0e2245",
+      "title": " Group Product Manager, AI ",
+      "department": "Product",
+      "team": "Platform",
+      "employmentType": "FullTime",
+      "location": "London",
+      "secondaryLocations": [{ "location": "Remote (EMEA)", "address": { "postalAddress": { "addressCountry": "UK" } } }],
+      "publishedAt": "2026-09-30T12:00:00.000+00:00",
+      "isListed": true,
+      "isRemote": true,
+      "workplaceType": "Remote",
+      "address": { "postalAddress": { "addressCountry": "United Kingdom", "addressLocality": "London" } },
+      "jobUrl": "https://jobs.ashbyhq.com/acme/34413f8d-0000-4bbc-8ade-eb309a0e2245",
+      "applyUrl": "https://jobs.ashbyhq.com/acme/34413f8d-0000-4bbc-8ade-eb309a0e2245/application",
+      "descriptionPlain": "Build AI agents for payments operations.",
+      "descriptionHtml": "<p>Build AI agents for payments operations.</p>",
+      "compensation": {
+        "compensationTierSummary": "£120K – £150K • Offers Equity",
+        "summaryComponents": [
+          { "compensationType": "EquityPercentage", "interval": "NONE", "currencyCode": null, "minValue": null, "maxValue": null },
+          { "compensationType": "Salary", "interval": "1 YEAR", "currencyCode": "GBP", "minValue": 120000, "maxValue": 150000 }
+        ]
+      }
+    },
+    {
+      "id": "hidden-0000",
+      "title": "Secret Role",
+      "location": "Dubai",
+      "isListed": false,
+      "jobUrl": "https://jobs.ashbyhq.com/acme/hidden-0000",
+      "descriptionPlain": ""
+    }
+  ]
+}

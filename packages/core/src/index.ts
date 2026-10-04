@@ -1,0 +1,18 @@
+export * from "./schema";
+export * from "./config";
+export * from "./http";
+export * from "./score";
+export * from "./run";
+export * from "./diff";
+export * from "./store";
+export * from "./setup";
+export * from "./diagnose";
+export * from "./yaml-writer";
+export * from "./resume";
+export * from "./suggest";
+export * from "./resume-parse";
+export * from "./catalog/roles";
+export * from "./catalog/places";
+export { htmlToText, inferWorkplace, matchesTerm, termRegex } from "./text";
+export { connectors, getConnector, detectCompany, guessName, type DetectResult } from "./connectors";
+export type { Connector, Ctx, DetectedCompany } from "./connectors";

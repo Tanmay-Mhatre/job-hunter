@@ -1,0 +1,73 @@
+import { describe, expect, it } from "vitest";
+import { parseConfig } from "../src/config";
+import { runRadar } from "../src/run";
+import { fakeHttp, fixture, json } from "./helpers";
+
+const config = parseConfig(`
+profile:
+  titles: { include: ["product manager", "head of product"], exclude: ["product marketing"] }
+  seniority_boost: ["senior", "head", "group"]
+  locations: { include: ["dubai", "abu dhabi"], remote_ok: ["emea"], remote_exclude: ["us"] }
+  keywords: { crypto: 5, exchange: 4, payments: 3, tokenization: 5 }
+companies:
+  - { name: "GH Co", ats: greenhouse, slug: "ghco" }
+  - { name: "Lever Co", ats: lever, slug: "leverco" }
+  - { name: "Broken Co", ats: ashby, slug: "broken" }
+  - { name: "Bank Co", ats: workday, slug: "bank", shard: "wd3", site: "External" }
+  - { name: "Off Co", ats: lever, slug: "off", enabled: false }
+`);
+
+const now = new Date("2026-10-03T12:00:00Z");
+
+function routes(url: string) {
+  if (url.includes("greenhouse")) return json(fixture("greenhouse.json"));
+  if (url.includes("lever.co/v0/postings/leverco")) return json(fixture("lever.json"));
+  return json({ error: "not found" }, 404);
+}
+
+describe("runRadar", () => {
+  it("collects scored jobs and per-company health; one failure never stops the run", async () => {
+    const { http, calls } = fakeHttp(routes);
+    const result = await runRadar(config, { http, now });
+
+    expect(calls.some((u) => u.includes("/off"))).toBe(false); // disabled company skipped
+    expect(result.health.map((h) => [h.company, h.ok, h.jobsFound, h.matches])).toEqual([
+      ["GH Co", true, 3, 1],
+      ["Lever Co", true, 2, 1],
+      ["Broken Co", false, 0, 0],
+      ["Bank Co", false, 0, 0],
+    ]);
+    expect(result.health[2]!.error).toMatch(/board not found \(404\): check the slug "broken"/);
+    expect(result.health[3]).toMatchObject({ error: "workday support is coming soon", unsupported: true });
+
+    expect(result.jobs).toHaveLength(5);
+    const top = result.jobs[0]!;
+    expect(top.title).toBe("Head of Product, Exchange");
+    expect(top).toMatchObject({ status: "open", firstSeen: now.toISOString(), lastSeen: now.toISOString() });
+    expect(top.why).toEqual({ title: 30, location: 20, keywords: ["crypto", "tokenization", "exchange"], keywordPoints: 14, freshness: 10 });
+    expect(top.score).toBe(74);
+    // Sorted by score, gated jobs last with score 0.
+    expect(result.jobs.map((j) => j.score)).toEqual([...result.jobs.map((j) => j.score)].sort((a, b) => b - a));
+    expect(result.jobs.at(-1)!.score).toBe(0);
+  });
+
+  it("can run a single company by name or slug", async () => {
+    const { http, calls } = fakeHttp(routes);
+    const result = await runRadar(config, { http, now, only: ["LEVERCO"] });
+    expect(result.health.map((h) => h.company)).toEqual(["Lever Co"]);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("runs nothing when there are no companies yet", async () => {
+    const { http, calls } = fakeHttp(routes);
+    const empty = parseConfig(`
+profile:
+  titles: { include: ["product manager"] }
+  locations: { include: ["dubai"] }
+`);
+    expect(empty.companies).toEqual([]);
+    const result = await runRadar(empty, { http, now });
+    expect(result).toMatchObject({ jobs: [], health: [], partial: false });
+    expect(calls).toHaveLength(0);
+  });
+});

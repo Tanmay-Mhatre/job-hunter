@@ -1,0 +1,34 @@
+[
+  {
+    "id": "6ed76ce8-0000-4b60-b120-403538bd66cd",
+    "text": "Head of Product, Exchange",
+    "createdAt": 1790900000000,
+    "country": "AE",
+    "workplaceType": "hybrid",
+    "categories": {
+      "commitment": "Full-time",
+      "department": "Product",
+      "team": "Exchange",
+      "location": "Abu Dhabi",
+      "allLocations": ["Abu Dhabi", "Dubai"]
+    },
+    "descriptionPlain": "Lead product for our crypto exchange.",
+    "description": "<div>Lead product for our crypto exchange.</div>",
+    "lists": [{ "text": "What you'll do", "content": "<li>Ship tokenization features</li><li>Work with compliance</li>" }],
+    "additionalPlain": "We are an equal opportunity employer.",
+    "salaryRange": { "min": 40000, "max": 55000, "currency": "AED", "interval": "per-month-salary" },
+    "hostedUrl": "https://jobs.lever.co/acme/6ed76ce8-0000-4b60-b120-403538bd66cd",
+    "applyUrl": "https://jobs.lever.co/acme/6ed76ce8-0000-4b60-b120-403538bd66cd/apply"
+  },
+  {
+    "id": "7aa00000-1111-2222-3333-444455556666",
+    "text": "Software Engineer",
+    "createdAt": 1790900000000,
+    "country": null,
+    "workplaceType": "unspecified",
+    "categories": { "location": "Remote - EMEA", "allLocations": [] },
+    "descriptionPlain": "Build things.",
+    "lists": [],
+    "hostedUrl": "https://jobs.lever.co/acme/7aa00000-1111-2222-3333-444455556666"
+  }
+]

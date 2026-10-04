@@ -1,0 +1,22 @@
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+.env
+.env.*
+
+# Your real config lives here when developing locally (the template ships jobhunter.config.yaml as an example)
+jobhunter.config.local.yaml
+# Your master resume (saved by setup). Personal: never commit it.
+profile/
+
+# Local run output
+out/
+
+# Run history written by `jobhunter run` (published on the data branch in phase 1)
+data/
+
+# Downloaded source datasets for the company catalogue (large; rebuilt by scripts)
+scripts/catalog/raw/
+scripts/catalog/out/

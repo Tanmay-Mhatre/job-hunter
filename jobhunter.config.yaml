@@ -1,0 +1,54 @@
+# Job Hunter config: the only file you need to edit.
+# Secrets (Telegram token, etc.) never go here; they go in GitHub Actions secrets.
+#
+# Developing locally? Copy this file to jobhunter.config.local.yaml (gitignored) and edit that one.
+# Check it with:  pnpm jobhunter validate
+
+profile:
+  name: "Senior PM, UAE"
+
+  titles:
+    # A job's title must contain one of these (whole words, case-insensitive)...
+    include: ["product manager", "head of product", "product lead", "group product", "director of product"]
+    # ...and none of these.
+    exclude: ["associate", "intern", "product marketing", "product designer", "junior"]
+
+  # +10 points when the title also contains one of these.
+  seniority_boost: ["senior", "lead", "principal", "head", "director", "staff", "group"]
+
+  locations:
+    # +20: the job is in one of these places.
+    include: ["dubai", "abu dhabi", "uae", "united arab emirates"]
+    # +15: remote roles you can take from where you live...
+    remote_ok: ["emea", "mena", "remote"]
+    # ...unless the location also names a region you can't work from (e.g. "Remote (US)").
+    remote_exclude: ["us", "usa", "united states", "canada", "americas", "latam", "apac"]
+
+  # Matched as whole words in the title and description. Weight 1 (nice) to 5 (core).
+  # Points are summed and capped at 40.
+  keywords:
+    crypto: 5
+    tokenization: 5
+    rwa: 5
+    stablecoin: 4
+    exchange: 4
+    payments: 3
+    fintech: 3
+    ai: 3
+    kyc: 2
+    compliance: 1
+
+  # Jobs scoring at least this trigger an alert (when alerts arrive in phase 1).
+  min_score: 70
+
+# One line per company. Get these lines from careers URLs with:
+#   pnpm jobhunter detect https://jobs.lever.co/somecompany
+companies:
+  - { name: "Stripe", ats: greenhouse, slug: "stripe" }
+  - { name: "Palantir", ats: lever, slug: "palantir" }
+  - { name: "Ramp", ats: ashby, slug: "ramp" }
+
+alerts:
+  telegram: false # needs TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID secrets (phase 1)
+  email: false
+  only_new: true
