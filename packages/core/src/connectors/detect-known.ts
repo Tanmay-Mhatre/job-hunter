@@ -22,5 +22,31 @@ export function detectKnownAts(url: URL): DetectedCompany | null {
   if (/\.jobs\.personio\.(de|com)$/.test(host)) return { ats: "personio", slug: sub };
   if (host.endsWith(".bamboohr.com") && sub && sub !== "www") return { ats: "bamboohr", slug: sub };
   if (host.endsWith(".breezy.hr") && sub && sub !== "app") return { ats: "breezy", slug: sub };
+
+  // Found by the careers-page resolver (scripts/catalog/resolve.ts); recognised, not fetched yet.
+  const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+  // SAP SuccessFactors: career{N}.successfactors.com/career?company=acme (also .eu / sapsf.com hosts)
+  if (/(^|\.)successfactors\.(com|eu)$|(^|\.)sapsf\.(com|eu)$/.test(host)) {
+    const company = url.searchParams.get("company");
+    return company ? { ats: "successfactors", slug: company } : null;
+  }
+  if (host.endsWith(".teamtailor.com") && sub && !["www", "app", "career", "api"].includes(sub)) return { ats: "teamtailor", slug: sub };
+  // Comeet: comeet.com/jobs/{company}/{uid}. Keyed by the company uid; the name goes in `site`.
+  if (/(^|\.)comeet\.(com|co)$/.test(host) && parts[0] === "jobs" && parts[1] && parts[2]) return { ats: "comeet", slug: parts[2], site: parts[1] };
+  // Oracle Recruiting Cloud: {pod}.fa.{dc}.oraclecloud.com/hcmUI/CandidateExperience/{lang}/sites/{site}
+  const oracle = host.match(/^([^.]+)\.fa\.([^.]+)\.oraclecloud\.com$/);
+  if (oracle && /candidateexperience/i.test(url.pathname)) {
+    const i = parts.findIndex((p) => p.toLowerCase() === "sites");
+    return { ats: "oracle", slug: oracle[1]!, shard: oracle[2]!, site: i >= 0 ? parts[i + 1] : undefined };
+  }
+  if (host.endsWith(".icims.com") && sub && sub !== "www") return { ats: "icims", slug: sub.replace(/^careers-/, "") };
+  if (host.endsWith(".taleo.net") && sub && sub !== "www") return { ats: "taleo", slug: sub };
+  if (host === "jobs.jobvite.com" && seg) return { ats: "jobvite", slug: seg };
+  if (host.endsWith(".pinpointhq.com") && sub && !["www", "app", "api"].includes(sub)) return { ats: "pinpoint", slug: sub };
+  if (host === "ats.rippling.com" && seg) return { ats: "rippling", slug: seg };
+  if (host.endsWith(".applytojob.com") && sub && sub !== "www") return { ats: "jazzhr", slug: sub };
+  if (/\.zohorecruit\.(com|eu|in|com\.au)$/.test(host) && sub && sub !== "www") return { ats: "zoho", slug: sub };
+  if (host.endsWith(".careers.hibob.com") && sub) return { ats: "hibob", slug: sub };
+  if (host.endsWith(".freshteam.com") && sub && sub !== "www") return { ats: "freshteam", slug: sub };
   return null;
 }

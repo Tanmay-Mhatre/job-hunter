@@ -92,14 +92,15 @@ function localApi(): Plugin {
           if (url === "/api/setup/config" && req.method === "POST") return await respondJson(res, ["setup", "save"], await readBody(req));
           if (url === "/api/setup/resume" && req.method === "GET") return await respondJson(res, ["setup", "resume"]);
           if (url === "/api/setup/resume" && req.method === "POST") return await respondJson(res, ["setup", "resume", "save"], await readBody(req));
-          if (url === "/api/setup/check" && req.method === "POST") return await respondJson(res, ["setup", "check"], await readBody(req));
+          if (url === "/api/setup/check" && req.method === "POST") return await respondJson(res, ["setup", "check", "--data", dataDir], await readBody(req));
           if (url === "/api/companies/suggest" && req.method === "POST") {
             // Scoring every indexed company takes seconds, so reuse the answer until the
             // profile, the index or the hidden list changes.
             const body = await readBody(req);
-            const stamp = [body, mtime(join(repoRoot, "jobhunter.config.local.yaml")), mtime(join(dataDir, "catalog", "index.json"))].join("|");
+            const catalog = ["index.json", "directory.json", "additions.json"].map((f) => mtime(join(dataDir, "catalog", f)));
+            const stamp = [body, mtime(join(repoRoot, "jobhunter.config.local.yaml")), ...catalog].join("|");
             if (suggestCache?.stamp !== stamp) {
-              const r = await collect(["companies", "suggest", "--json", "--stdin", "--data", dataDir], body);
+              const r = await collect(["companies", "suggest", "--json", "--stdin", "--limit", "100", "--data", dataDir], body);
               suggestCache = { stamp, body: r.stdout.trim() || JSON.stringify({ error: r.stderr.trim().slice(-500) }) };
             }
             res.setHeader("content-type", "application/json");

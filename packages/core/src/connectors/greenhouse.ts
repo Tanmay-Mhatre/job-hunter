@@ -27,7 +27,8 @@ export const greenhouse: Connector<GreenhouseJob> = {
 
   detect(url) {
     const host = url.hostname.toLowerCase();
-    if (!host.endsWith("greenhouse.io")) return null;
+    // Board hosts only (boards., job-boards., boards-api., and their .eu. forms), not greenhouse.io's own site.
+    if (!/^(job-)?boards(-api)?\.(eu\.)?greenhouse\.io$/.test(host)) return null;
     const region = host.includes(".eu.") ? "eu" : undefined;
     // Embedded boards: boards.greenhouse.io/embed/job_board?for=acme
     const forParam = url.searchParams.get("for");

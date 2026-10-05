@@ -1,0 +1,46 @@
+import { CircleCheck } from "lucide-react";
+import { useEffect, useState } from "react";
+import type { Job } from "../lib/data";
+import { Button } from "./ui";
+
+/**
+ * After you open a job's apply page, ask on your return whether you applied, so the Pipeline
+ * stays true without typing anything.
+ */
+export function ApplyPrompt({ job, onAnswer }: { job: Job | null; onAnswer: (applied: boolean) => void }) {
+  const [back, setBack] = useState(false);
+
+  useEffect(() => {
+    setBack(false);
+    if (!job) return;
+    const opened = Date.now();
+    // Coming back to this tab (not the click itself) is the moment to ask.
+    const onReturn = () => document.visibilityState === "visible" && Date.now() - opened > 1500 && setBack(true);
+    document.addEventListener("visibilitychange", onReturn);
+    window.addEventListener("focus", onReturn);
+    return () => {
+      document.removeEventListener("visibilitychange", onReturn);
+      window.removeEventListener("focus", onReturn);
+    };
+  }, [job]);
+
+  if (!job || !back) return null;
+  return (
+    <div className="fixed inset-x-0 bottom-20 z-50 flex justify-center px-4 md:bottom-6" role="dialog" aria-label="Did you apply?">
+      <div className="flex max-w-xl flex-wrap items-center gap-3 rounded-2xl border border-line bg-surface p-3 pl-4 shadow-2xl">
+        <CircleCheck className="size-5 shrink-0 text-accent" />
+        <p className="min-w-0 flex-1 text-sm">
+          Did you apply to <b>{job.title}</b> at <b>{job.company}</b>?
+        </p>
+        <div className="flex gap-2">
+          <Button size="sm" variant="primary" onClick={() => onAnswer(true)}>
+            Yes, mark applied
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => onAnswer(false)}>
+            Not yet
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}

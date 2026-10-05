@@ -7,6 +7,7 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { careersUrl, guessName, type DetectedCompany } from "../../packages/core/src/index";
 
 const here = dirname(fileURLToPath(import.meta.url));
 type Merged = { key: string; ats: string; slug: string; region?: string; shard?: string; site?: string; name?: string; families: string[]; confidence: "high" | "single" };
@@ -46,42 +47,18 @@ if (existsSync(curatedFile)) {
   }
 }
 
-/**
- * Last-resort name from a board slug: "kraken.com" -> "Kraken", "acme-labs" -> "Acme Labs",
- * "AcmeLabs" -> "Acme Labs". Joined lowercase words ("dollartree") can't be split without a dictionary.
- */
-function titleFromSlug(slug: string): string {
-  return slug
-    .replace(/\.(com|io|ai|co|net|org|xyz|app|dev|tech)$/i, "")
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/[-_.]+/g, " ")
-    .replace(/\s+\d+$/, "")
-    .trim()
-    .replace(/\b\w/g, (ch) => ch.toUpperCase());
-}
-const careersUrl = (b: Merged) =>
-  b.ats === "greenhouse"
-    ? `https://job-boards${b.region === "eu" ? ".eu" : ""}.greenhouse.io/${b.slug}`
-    : b.ats === "lever"
-      ? `https://jobs${b.region === "eu" ? ".eu" : ""}.lever.co/${b.slug}`
-      : b.ats === "ashby"
-        ? `https://jobs.ashbyhq.com/${b.slug}`
-        : b.ats === "smartrecruiters"
-          ? `https://careers.smartrecruiters.com/${b.slug}`
-          : `https://${b.slug}.${b.shard}.myworkdayjobs.com/${b.site}`;
-
 const rows = merged.map((b) => {
   const c = checks.get(b.key);
   return {
     key: b.key,
     // Best name first: the hiring system's own, then a source list's, then the curated one, then the slug.
-    name: c?.name || b.name || curatedNames.get(b.key) || titleFromSlug(b.slug),
+    name: c?.name || b.name || curatedNames.get(b.key) || guessName(b.slug),
     name_source: c?.name ? "ats" : b.name ? "source list" : curatedNames.has(b.key) ? "curated" : "slug",
     ats: b.ats,
     slug: b.slug,
     ...(b.region ? { region: b.region } : {}),
     ...(b.shard ? { shard: b.shard, site: b.site } : {}),
-    careers_url: careersUrl(b),
+    careers_url: careersUrl(b as DetectedCompany),
     tier: curated.has(b.key) ? "curated" : "dump",
     confidence: b.confidence,
     agreeing_sources: b.families.length,

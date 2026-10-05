@@ -76,3 +76,89 @@ describe("scoreJob", () => {
     expect(scoreJob(job({ postedAt: undefined }), profile(), now).why.freshness).toBe(10);
   });
 });
+
+describe("location: only places the user picked", () => {
+  // Like the real profile that leaked: UAE, UK, US, Ireland, plus remote in a few regions and plain "remote".
+  const wide = profile({
+    locations: {
+      include: ["dubai", "uae", "united arab emirates", "emirates", "united kingdom", "uk", "wales", "london", "united states", "us", "america", "new york", "ireland"],
+      remote_ok: ["emea", "mena", "gcc", "europe", "eu", "anywhere", "worldwide", "global", "remote"],
+      remote_exclude: [],
+    },
+  });
+  const loc = (location: string, workplace: "onsite" | "remote" | "hybrid" | "unknown" = "remote", p = wide) => scoreJob(job({ location, workplace }), p, now).why;
+
+  it.each(["India", "Asia; Hong Kong; Taiwan, Taipei", "Portugal", "Argentina", "Remote, Ontario; Remote, British Columbia", "AMER - Remote", "LatAm", "Chennai or Remote, India", "Bogota"])(
+    "drops remote jobs tied to somewhere else: %s",
+    (where) => expect(loc(where).gate).toBe("location"),
+  );
+
+  it("explains why, naming the place", () => {
+    expect(loc("Chennai or Remote, India").locationNote).toBe("Remote, but only in India: not one of your places.");
+    expect(loc("AMER - Remote").locationNote).toBe("Remote, but only in Americas: not one of your places.");
+    expect(loc("Remote (async)", "unknown").locationNote).toMatch(/limited to "async"/);
+    expect(loc("Berlin", "onsite").locationNote).toBeUndefined();
+  });
+
+  it.each([
+    ["Remote", 15],
+    ["Fully remote, any time zone", 15],
+    ["Remote - EMEA", 15],
+    ["Remote - Global", 15],
+    ["Amsterdam, Netherlands; Remote - Europe", 15],
+    ["Remote (US)", 20],
+    ["Dubai", 20],
+    ["London, England, United Kingdom", 20],
+  ] as const)("keeps %s", (where, points) => expect(loc(where).location).toBe(points));
+
+  it("lets the longest place name win", () => {
+    expect(loc("North America", "onsite").gate).toBe("location"); // not "america"
+    expect(loc("Sydney, New South Wales", "onsite").gate).toBe("location"); // not "wales"
+    expect(loc("Cardiff, Wales", "onsite").location).toBe(20);
+    const york = profile({ locations: { include: ["york"], remote_ok: [], remote_exclude: [] } });
+    expect(loc("New York, NY", "onsite", york).gate).toBe("location");
+    expect(loc("York, England", "onsite", york).location).toBe(20);
+    // Names of the same place never hide each other.
+    const emirates = profile({ locations: { include: ["emirates"], remote_ok: [], remote_exclude: [] } });
+    expect(loc("Abu Dhabi, United Arab Emirates", "onsite", emirates).location).toBe(20);
+  });
+
+  it("counts states, provinces, their codes and U.S. spellings for a country the user picked", () => {
+    for (const where of ["Santa Monica, CA/Remote", "California", "Remote-Friendly | Washington, DC (Washington, D.C.)", "U.S. Remote", "AMER - Remote (Tampa, FL)"]) {
+      expect(loc(where).location).toBe(20);
+    }
+    // Canada wasn't picked, so its provinces still don't count.
+    expect(loc("Remote, Ontario; Remote, British Columbia").gate).toBe("location");
+    const canada = profile({ locations: { include: ["canada"], remote_ok: [], remote_exclude: [] } });
+    expect(loc("Remote, Ontario", "remote", canada).location).toBe(20);
+    expect(loc("Toronto, ON", "onsite", canada).location).toBe(20);
+    // Codes count only in capitals after a comma or bracket.
+    expect(loc("Dubai, ca", "onsite", canada).gate).toBe("location");
+  });
+
+  it("doesn't count a picked city that the job places in another country", () => {
+    const ukIe = profile({ locations: { include: ["united kingdom", "uk", "london", "cambridge", "ireland", "dublin"], remote_ok: [], remote_exclude: [] } });
+    expect(loc("Cambridge, MA USA; San Francisco, CA USA", "onsite", ukIe).gate).toBe("location");
+    expect(loc("London, Ontario, Canada", "onsite", ukIe).gate).toBe("location");
+    expect(loc("Cambridge, England", "onsite", ukIe).location).toBe(20);
+    expect(loc("Cambridge", "onsite", ukIe).location).toBe(20);
+    // A place inside brackets is its own location.
+    expect(loc("Amsterdam, Netherlands (London; Tel Aviv)", "onsite", ukIe).location).toBe(20);
+  });
+
+  it("is strict for a UAE-only profile", () => {
+    const uae = profile({ locations: { include: ["dubai", "uae", "united arab emirates"], remote_ok: ["mena", "gcc", "remote"], remote_exclude: [] } });
+    expect(loc("U.S. Remote", "remote", uae).gate).toBe("location");
+    expect(loc("Santa Monica, CA/Remote", "remote", uae).gate).toBe("location");
+    expect(loc("Remote - GCC", "remote", uae).location).toBe(15);
+    expect(loc("Remote", "remote", uae).location).toBe(15);
+  });
+
+  it("still honours remote exclusions, and needs plain remote to be allowed", () => {
+    const noUs = profile({ locations: { include: [], remote_ok: ["remote", "emea"], remote_exclude: ["emea"] } });
+    expect(loc("Remote - EMEA", "remote", noUs).gate).toBe("location");
+    const regionsOnly = profile({ locations: { include: [], remote_ok: ["emea"], remote_exclude: [] } });
+    expect(loc("Remote", "remote", regionsOnly).gate).toBe("location");
+    expect(loc("Remote - EMEA", "remote", regionsOnly).location).toBe(15);
+  });
+});

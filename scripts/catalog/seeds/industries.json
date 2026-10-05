@@ -1,0 +1,2475 @@
+{
+ "about": "Must-have companies per industry (ids from packages/core/src/catalog/industries.ts). Edit by hand; scripts/catalog/resolve.ts finds each one's hiring system.",
+ "companies": [
+  {
+   "name": "0x",
+   "website": "0x.org",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/0x"
+  },
+  {
+   "name": "1inch",
+   "website": "1inch.io",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.lever.co/1inch"
+  },
+  {
+   "name": "9fin",
+   "website": "9fin.com",
+   "industries": [
+    "fintech"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/9fin"
+  },
+  {
+   "name": "ADCB",
+   "website": "adcb.com",
+   "industries": [
+    "banking"
+   ],
+   "region": "gcc"
+  },
+  {
+   "name": "Addepar",
+   "website": "addepar.com",
+   "industries": [
+    "fintech"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/addepar1"
+  },
+  {
+   "name": "ADGM",
+   "website": "adgm.com",
+   "industries": [
+    "regtech"
+   ],
+   "region": "uae"
+  },
+  {
+   "name": "Admirals",
+   "website": "admiralmarkets.com",
+   "industries": [
+    "brokerage"
+   ]
+  },
+  {
+   "name": "ADQ",
+   "website": "adq.ae",
+   "industries": [
+    "wealth"
+   ],
+   "region": "uae"
+  },
+  {
+   "name": "Affirm",
+   "website": "affirm.com",
+   "industries": [
+    "fintech"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/affirm"
+  },
+  {
+   "name": "Airwallex",
+   "website": "airwallex.com",
+   "industries": [
+    "payments"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/airwallex"
+  },
+  {
+   "name": "Alchemy",
+   "website": "alchemy.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/alchemy"
+  },
+  {
+   "name": "Almanak",
+   "website": "almanak.co",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Amber Group",
+   "website": "ambergroup.io",
+   "industries": [
+    "crypto",
+    "digital-assets"
+   ],
+   "careers_url": "https://jobs.lever.co/ambergroup"
+  },
+  {
+   "name": "Anchorage",
+   "website": "anchorage.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.lever.co/anchorage"
+  },
+  {
+   "name": "Animoca Brands",
+   "website": "animocabrands.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.lever.co/animocabrands"
+  },
+  {
+   "name": "Aptoslabs",
+   "website": "aptoslabs.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/aptoslabs"
+  },
+  {
+   "name": "Aragon",
+   "website": "aragon.org",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Arbitrumfoundation",
+   "website": "arbitrum.foundation",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.lever.co/arbitrumfoundation"
+  },
+  {
+   "name": "Artemisanalytics",
+   "website": "artemisanalytics.com",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Asterdex",
+   "website": "asterdex.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.lever.co/pioneer-services"
+  },
+  {
+   "name": "Atticus.Com",
+   "website": "atticus.com",
+   "industries": [
+    "fintech"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/atticus"
+  },
+  {
+   "name": "Augustus",
+   "website": "augustus.com",
+   "industries": [
+    "fintech"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/Augustus"
+  },
+  {
+   "name": "Auroralabs",
+   "website": "auroralabs.dev",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.lever.co/aurora-dev"
+  },
+  {
+   "name": "Avalabs",
+   "website": "avalabs.org",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Avara",
+   "website": "avara.xyz",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "AvaTrade",
+   "website": "avatrade.com",
+   "industries": [
+    "brokerage"
+   ]
+  },
+  {
+   "name": "Aven",
+   "website": "aven.com",
+   "industries": [
+    "fintech"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/Aven"
+  },
+  {
+   "name": "Axi",
+   "website": "axi.com",
+   "industries": [
+    "brokerage"
+   ]
+  },
+  {
+   "name": "Aztec",
+   "website": "aztec.network",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "B2Broker",
+   "website": "b2broker.com",
+   "industries": [
+    "trading-tech",
+    "brokerage",
+    "crypto"
+   ],
+   "region": "gcc"
+  },
+  {
+   "name": "B2C2",
+   "website": "b2c2.com",
+   "industries": [
+    "market-making"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/b2c2"
+  },
+  {
+   "name": "Baraka",
+   "website": "getbaraka.com",
+   "industries": [
+    "brokerage",
+    "wealth"
+   ],
+   "region": "gcc"
+  },
+  {
+   "name": "Base",
+   "website": "base.org",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Bastion",
+   "website": "bastion.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/Bastion"
+  },
+  {
+   "name": "Biconomy",
+   "website": "biconomy.io",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Binance",
+   "website": "binance.com",
+   "industries": [
+    "crypto",
+    "crypto-exchange"
+   ],
+   "region": "gcc",
+   "careers_url": "https://jobs.lever.co/binance"
+  },
+  {
+   "name": "Bitcoindepot",
+   "website": "bitcoindepot.com",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "BitcoinSuisse",
+   "website": "bitcoinsuisse.com",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Bitfinex",
+   "website": "bitfinex.com",
+   "industries": [
+    "crypto",
+    "crypto-exchange"
+   ]
+  },
+  {
+   "name": "Bitget",
+   "website": "bitget.com",
+   "industries": [
+    "crypto",
+    "crypto-exchange"
+   ]
+  },
+  {
+   "name": "Bitgo",
+   "website": "bitgo.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/bitgo"
+  },
+  {
+   "name": "BitOasis",
+   "website": "bitoasis.net",
+   "industries": [
+    "crypto",
+    "crypto-exchange"
+   ],
+   "region": "gcc"
+  },
+  {
+   "name": "Bitpanda",
+   "website": "bitpanda.com",
+   "industries": [
+    "crypto",
+    "crypto-exchange",
+    "brokerage"
+   ],
+   "careers_url": "https://job-boards.eu.greenhouse.io/bitpanda"
+  },
+  {
+   "name": "Bitstamp",
+   "website": "bitstamp.net",
+   "industries": [
+    "crypto",
+    "crypto-exchange"
+   ]
+  },
+  {
+   "name": "Bitwise",
+   "website": "bitwiseinvestments.com",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Block-Labs",
+   "website": "blocklabs.io",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/block-labs"
+  },
+  {
+   "name": "Blockchain",
+   "website": "blockchain.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/blockchain"
+  },
+  {
+   "name": "Blockdaemon",
+   "website": "blockdaemon.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/blockdaemon"
+  },
+  {
+   "name": "Blockstream",
+   "website": "blockstream.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/blockstream"
+  },
+  {
+   "name": "Blockworks",
+   "website": "blockworks.co",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/Blockworks"
+  },
+  {
+   "name": "Blox-Route",
+   "website": "bloxroute.com",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Boost",
+   "website": "boost.xyz",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Brave",
+   "website": "brave.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/brave"
+  },
+  {
+   "name": "Bvnk",
+   "website": "bvnk.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/bvnk"
+  },
+  {
+   "name": "Bybit",
+   "website": "bybit.com",
+   "industries": [
+    "crypto",
+    "crypto-exchange"
+   ],
+   "region": "gcc",
+   "careers_url": "https://job-boards.greenhouse.io/bybit"
+  },
+  {
+   "name": "Caldera",
+   "website": "caldera.xyz",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Capital.com",
+   "website": "capital.com",
+   "industries": [
+    "brokerage"
+   ],
+   "region": "gcc",
+   "careers_url": "https://jobs.lever.co/capital"
+  },
+  {
+   "name": "Capitalontap",
+   "website": "capitalontap.com",
+   "industries": [
+    "fintech"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/capitalontap"
+  },
+  {
+   "name": "Careem",
+   "website": "careem.com",
+   "industries": [
+    "fintech"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/careem",
+   "region": "uae"
+  },
+  {
+   "name": "Celestia",
+   "website": "celestia.org",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Centrifuge",
+   "website": "centrifuge.io",
+   "industries": [
+    "tokenization"
+   ],
+   "careers_url": "https://jobs.lever.co/centrifuge"
+  },
+  {
+   "name": "Cere-Network",
+   "website": "cere.network",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Chainalysis",
+   "website": "chainalysis.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/chainalysis-careers"
+  },
+  {
+   "name": "Chainlink-Labs",
+   "website": "chainlinklabs.com",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Checkout.com",
+   "website": "checkout.com",
+   "industries": [
+    "payments"
+   ]
+  },
+  {
+   "name": "Circle",
+   "website": "circle.com",
+   "industries": [
+    "payments"
+   ]
+  },
+  {
+   "name": "Clearmatics",
+   "website": "clearmatics.com",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Clearstreet",
+   "website": "clearstreet.io",
+   "industries": [
+    "fintech"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/clearstreet"
+  },
+  {
+   "name": "Cleo",
+   "website": "web.meetcleo.com",
+   "industries": [
+    "fintech"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/cleo-2"
+  },
+  {
+   "name": "CMC Markets",
+   "website": "cmcmarkets.com",
+   "industries": [
+    "brokerage"
+   ]
+  },
+  {
+   "name": "Cmgx",
+   "website": "cmgx.io",
+   "industries": [
+    "fintech"
+   ],
+   "careers_url": "https://jobs.lever.co/cmgx"
+  },
+  {
+   "name": "Coinbase",
+   "website": "coinbase.com",
+   "industries": [
+    "crypto",
+    "crypto-exchange"
+   ]
+  },
+  {
+   "name": "Coinflow.Cash",
+   "website": "coinflow.cash",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/Coinflow"
+  },
+  {
+   "name": "Coingecko",
+   "website": "coingecko.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.lever.co/coingecko"
+  },
+  {
+   "name": "Coinlist",
+   "website": "coinlist.co",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Coinmarketcap",
+   "website": "coinmarketcap.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.lever.co/coinmarketcap"
+  },
+  {
+   "name": "CoinMENA",
+   "website": "coinmena.com",
+   "industries": [
+    "crypto",
+    "crypto-exchange"
+   ],
+   "region": "gcc"
+  },
+  {
+   "name": "Coinspaid",
+   "website": "coinspaid.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.eu.lever.co/coinspaid"
+  },
+  {
+   "name": "Cointracker",
+   "website": "cointracker.io",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Conduit",
+   "website": "conduit.xyz",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/Conduit"
+  },
+  {
+   "name": "Connext-Network",
+   "website": "connext.network",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.lever.co/connext-network"
+  },
+  {
+   "name": "Consensys",
+   "website": "consensys.io",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/consensys"
+  },
+  {
+   "name": "Copper",
+   "website": "copper.co",
+   "industries": [
+    "crypto",
+    "digital-assets"
+   ],
+   "careers_url": "https://job-boards.eu.greenhouse.io/copperco"
+  },
+  {
+   "name": "Cosmoslabs",
+   "website": "cosmoslabs.io",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/cosmoslabs"
+  },
+  {
+   "name": "Cow-Dao",
+   "website": "cow.fi",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Cryptio",
+   "website": "cryptio.co",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/cryptio"
+  },
+  {
+   "name": "Crypto-Finance",
+   "website": "crypto-finance.com",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Crypto.com",
+   "website": "crypto.com",
+   "industries": [
+    "crypto",
+    "crypto-exchange",
+    "payments"
+   ],
+   "region": "gcc",
+   "careers_url": "https://jobs.lever.co/crypto"
+  },
+  {
+   "name": "Darwinex",
+   "website": "darwinex.com",
+   "industries": [
+    "brokerage"
+   ]
+  },
+  {
+   "name": "Decentraland",
+   "website": "decentraland.org",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Deribit",
+   "website": "deribit.com",
+   "industries": [
+    "crypto",
+    "crypto-exchange"
+   ],
+   "region": "gcc"
+  },
+  {
+   "name": "Deriv",
+   "website": "deriv.com",
+   "industries": [
+    "brokerage"
+   ],
+   "region": "gcc"
+  },
+  {
+   "name": "Devexperts",
+   "website": "devexperts.com",
+   "industries": [
+    "trading-tech"
+   ]
+  },
+  {
+   "name": "Dfinity",
+   "website": "dfinity.org",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "DIFC",
+   "website": "difc.ae",
+   "industries": [
+    "regtech"
+   ],
+   "region": "uae"
+  },
+  {
+   "name": "Distributedcrafts",
+   "website": "gobob.xyz",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Dourolabs",
+   "website": "dourolabs.xyz",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/dourolabs.xyz"
+  },
+  {
+   "name": "Dragonflycapital",
+   "website": "dragonfly.xyz",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Dubai Islamic Bank",
+   "website": "dib.ae",
+   "industries": [
+    "banking"
+   ],
+   "region": "gcc"
+  },
+  {
+   "name": "Dune",
+   "website": "dune.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/dune"
+  },
+  {
+   "name": "Earnin",
+   "website": "earnin.com",
+   "industries": [
+    "fintech"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/earnin"
+  },
+  {
+   "name": "Econetwork",
+   "website": "eco.com",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Eigenlabs",
+   "website": "eigencloud.xyz",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/eigen-labs"
+  },
+  {
+   "name": "Eiger",
+   "website": "eiger.co",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Ellipsislabs",
+   "website": "ellipsislabs.xyz",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/ellipsislabs"
+  },
+  {
+   "name": "Emirates Digital Wallet",
+   "website": "edw.ae",
+   "industries": [
+    "fintech"
+   ],
+   "region": "uae"
+  },
+  {
+   "name": "Emirates NBD",
+   "website": "emiratesnbd.com",
+   "industries": [
+    "banking"
+   ],
+   "region": "gcc"
+  },
+  {
+   "name": "Equiti",
+   "website": "equiti.com",
+   "industries": [
+    "brokerage"
+   ],
+   "region": "gcc"
+  },
+  {
+   "name": "Ethenalabs",
+   "website": "ethena.fi",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Ether-Fi",
+   "website": "ether.fi",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/ether.fi"
+  },
+  {
+   "name": "Ethereumfoundation",
+   "website": "ethereum.org",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Ethglobal",
+   "website": "ethglobal.com",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "eToro",
+   "website": "etoro.com",
+   "industries": [
+    "brokerage",
+    "wealth",
+    "crypto"
+   ]
+  },
+  {
+   "name": "Exness",
+   "website": "exness.com",
+   "industries": [
+    "brokerage"
+   ]
+  },
+  {
+   "name": "Exodus54",
+   "website": "exodus.com",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Figment",
+   "website": "figment.io",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Figure",
+   "website": "figure.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/figure"
+  },
+  {
+   "name": "Filecoinfoundation",
+   "website": "fil.org",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/filecoinfoundation"
+  },
+  {
+   "name": "Finalto",
+   "website": "finalto.com",
+   "industries": [
+    "brokerage",
+    "trading-tech"
+   ]
+  },
+  {
+   "name": "Fireblocks",
+   "website": "fireblocks.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/fireblocks"
+  },
+  {
+   "name": "First Abu Dhabi Bank",
+   "website": "bankfab.com",
+   "industries": [
+    "banking"
+   ],
+   "region": "gcc"
+  },
+  {
+   "name": "Flashbots",
+   "website": "flashbots.net",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Flex",
+   "website": "getflex.com",
+   "industries": [
+    "fintech"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/flex"
+  },
+  {
+   "name": "Flowdesk",
+   "website": "flowdesk.co",
+   "industries": [
+    "market-making"
+   ]
+  },
+  {
+   "name": "Foundrydigital",
+   "website": "foundrydigital.com",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Freedx",
+   "website": "exchange.freedx.com",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Freetrade",
+   "website": "freetrade.io",
+   "industries": [
+    "brokerage",
+    "wealth"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/freetrade"
+  },
+  {
+   "name": "Fuellabs",
+   "website": "fuel.network",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.lever.co/fuellabs"
+  },
+  {
+   "name": "Futu (Moomoo)",
+   "website": "futuholdings.com",
+   "industries": [
+    "brokerage",
+    "wealth"
+   ]
+  },
+  {
+   "name": "Fuze",
+   "website": "fuze.finance",
+   "industries": [
+    "crypto"
+   ],
+   "region": "uae"
+  },
+  {
+   "name": "FXCM",
+   "website": "fxcm.com",
+   "industries": [
+    "brokerage"
+   ]
+  },
+  {
+   "name": "FxPro",
+   "website": "fxpro.com",
+   "industries": [
+    "brokerage"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/fxpro"
+  },
+  {
+   "name": "Galaxy",
+   "website": "galaxy.com",
+   "industries": [
+    "crypto",
+    "digital-assets"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/galaxydigitalservices"
+  },
+  {
+   "name": "Gate.io",
+   "website": "gate.io",
+   "industries": [
+    "crypto",
+    "crypto-exchange"
+   ],
+   "careers_url": "https://jobs.lever.co/gate"
+  },
+  {
+   "name": "Gauntlet",
+   "website": "gauntlet.network",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.lever.co/gauntlet"
+  },
+  {
+   "name": "Gemini",
+   "website": "gemini.com",
+   "industries": [
+    "crypto",
+    "crypto-exchange"
+   ]
+  },
+  {
+   "name": "Getrecharge.Com",
+   "website": "getrecharge.com",
+   "industries": [
+    "fintech"
+   ]
+  },
+  {
+   "name": "Goldsky",
+   "website": "goldsky.com",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Grape-Health",
+   "website": "grapehealth.ch",
+   "industries": [
+    "fintech"
+   ],
+   "careers_url": "https://jobs.eu.lever.co/grape-health"
+  },
+  {
+   "name": "Grayscaleinvestments",
+   "website": "grayscale.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/grayscaleinvestments"
+  },
+  {
+   "name": "GSR",
+   "website": "gsr.io",
+   "industries": [
+    "market-making"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/gsrmarkets"
+  },
+  {
+   "name": "Harmony",
+   "website": "harmony.one",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.lever.co/harmony"
+  },
+  {
+   "name": "Hex Trust",
+   "website": "hextrust.com",
+   "industries": [
+    "crypto",
+    "digital-assets"
+   ]
+  },
+  {
+   "name": "Hiro",
+   "website": "hiro.so",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "HTX",
+   "website": "htx.com",
+   "industries": [
+    "crypto",
+    "crypto-exchange"
+   ]
+  },
+  {
+   "name": "Hub71",
+   "website": "hub71.com",
+   "industries": [
+    "crypto"
+   ],
+   "region": "uae"
+  },
+  {
+   "name": "IC Markets",
+   "website": "icmarkets.com",
+   "industries": [
+    "brokerage"
+   ]
+  },
+  {
+   "name": "Iftother",
+   "website": "free.technology",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/iftother"
+  },
+  {
+   "name": "IG Group",
+   "website": "iggroup.com",
+   "industries": [
+    "brokerage"
+   ]
+  },
+  {
+   "name": "IG Group",
+   "website": "ig.com",
+   "industries": [
+    "brokerage"
+   ]
+  },
+  {
+   "name": "Imc.Com",
+   "website": "imc.com",
+   "industries": [
+    "fintech"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/imc"
+  },
+  {
+   "name": "Immunefi",
+   "website": "immunefi.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/immunefi"
+  },
+  {
+   "name": "Immutable",
+   "website": "immutable.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.lever.co/immutable"
+  },
+  {
+   "name": "Impossiblecloud",
+   "website": "impossiblecloud.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.lever.co/impossiblecloud"
+  },
+  {
+   "name": "Integral",
+   "website": "integral.com",
+   "industries": [
+    "trading-tech"
+   ]
+  },
+  {
+   "name": "Interactive Brokers",
+   "website": "interactivebrokers.com",
+   "industries": [
+    "brokerage",
+    "wealth"
+   ]
+  },
+  {
+   "name": "Io-Global",
+   "website": "iohk.io",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Jumpcrypto",
+   "website": "jumpcrypto.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/jumpcrypto"
+  },
+  {
+   "name": "Kaiko",
+   "website": "kaiko.com",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Kalshi",
+   "website": "kalshi.com",
+   "industries": [
+    "fintech"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/kalshi"
+  },
+  {
+   "name": "Keyrock",
+   "website": "keyrock.eu",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/Keyrock"
+  },
+  {
+   "name": "Kiln.Fi",
+   "website": "kiln.fi",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Komainu",
+   "website": "komainu.com",
+   "industries": [
+    "crypto",
+    "digital-assets"
+   ],
+   "region": "uae"
+  },
+  {
+   "name": "Kraken",
+   "website": "kraken.com",
+   "industries": [
+    "crypto",
+    "crypto-exchange"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/kraken.com"
+  },
+  {
+   "name": "KuCoin",
+   "website": "kucoin.com",
+   "industries": [
+    "crypto",
+    "crypto-exchange"
+   ]
+  },
+  {
+   "name": "Laser Digital",
+   "website": "laserdigital.com",
+   "industries": [
+    "crypto",
+    "digital-assets"
+   ],
+   "region": "uae"
+  },
+  {
+   "name": "Layerzerolabs",
+   "website": "layerzero.network",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/layerzerolabs"
+  },
+  {
+   "name": "Lean Technologies",
+   "website": "leantech.me",
+   "industries": [
+    "banking"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/leantech",
+   "region": "gcc"
+  },
+  {
+   "name": "Ledger",
+   "website": "ledger.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/ledger"
+  },
+  {
+   "name": "Leverate",
+   "website": "leverate.com",
+   "industries": [
+    "trading-tech",
+    "brokerage"
+   ]
+  },
+  {
+   "name": "Li.Fi",
+   "website": "li.fi",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Linera.Io",
+   "website": "linera.io",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Liv",
+   "website": "liv.me",
+   "industries": [
+    "digital-bank"
+   ],
+   "region": "gcc"
+  },
+  {
+   "name": "LMAX Group",
+   "website": "lmax.com",
+   "industries": [
+    "trading-tech",
+    "crypto-exchange",
+    "crypto"
+   ]
+  },
+  {
+   "name": "Luxor",
+   "website": "luxor.tech",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/luxor"
+  },
+  {
+   "name": "M2",
+   "website": "m2.com",
+   "industries": [
+    "crypto",
+    "crypto-exchange"
+   ],
+   "region": "gcc"
+  },
+  {
+   "name": "Magic",
+   "website": "magic.link",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Magiceden",
+   "website": "magiceden.io",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/magiceden"
+  },
+  {
+   "name": "Mara",
+   "website": "mara.com",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Mashreq",
+   "website": "mashreq.com",
+   "industries": [
+    "banking",
+    "digital-bank"
+   ],
+   "region": "gcc"
+  },
+  {
+   "name": "Match-Trade Technologies",
+   "website": "match-trade.com",
+   "industries": [
+    "trading-tech",
+    "brokerage"
+   ]
+  },
+  {
+   "name": "Matrixport",
+   "website": "matrixport.com",
+   "industries": [
+    "crypto",
+    "digital-assets"
+   ]
+  },
+  {
+   "name": "Matterlabs",
+   "website": "matter-labs.io",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/matter-labs"
+  },
+  {
+   "name": "Meshpay",
+   "website": "meshpay.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/mesh"
+  },
+  {
+   "name": "Messari",
+   "website": "messari.io",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "MetaQuotes",
+   "website": "metaquotes.net",
+   "industries": [
+    "trading-tech",
+    "brokerage"
+   ]
+  },
+  {
+   "name": "MEXC",
+   "website": "mexc.com",
+   "industries": [
+    "crypto",
+    "crypto-exchange"
+   ]
+  },
+  {
+   "name": "Momentmarkets",
+   "website": "moment.com",
+   "industries": [
+    "fintech"
+   ]
+  },
+  {
+   "name": "Moneybox",
+   "website": "moneyboxapp.com",
+   "industries": [
+    "fintech"
+   ],
+   "careers_url": "https://jobs.lever.co/moneyboxapp"
+  },
+  {
+   "name": "MoonPay",
+   "website": "moonpay.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.lever.co/moonpay"
+  },
+  {
+   "name": "Mubadala",
+   "website": "mubadala.com",
+   "industries": [
+    "wealth"
+   ],
+   "region": "uae"
+  },
+  {
+   "name": "Mystenlabs",
+   "website": "mystenlabs.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/mystenlabs"
+  },
+  {
+   "name": "Near",
+   "website": "near.org",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Nethermind",
+   "website": "nethermind.io",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/nethermind"
+  },
+  {
+   "name": "Network International",
+   "website": "network.ae",
+   "industries": [
+    "payments"
+   ],
+   "region": "gcc"
+  },
+  {
+   "name": "Ninjatrader",
+   "website": "ninjatrader.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/ninjatrader"
+  },
+  {
+   "name": "Nomic.Foundation",
+   "website": "nomic.foundation",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/nomic.foundation"
+  },
+  {
+   "name": "Nomina.Io",
+   "website": "nomina.io",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/nomina"
+  },
+  {
+   "name": "Numeus",
+   "website": "classic.numeus.xyz",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.eu.greenhouse.io/numus"
+  },
+  {
+   "name": "NymCard",
+   "website": "nymcard.com",
+   "industries": [
+    "payments"
+   ],
+   "region": "uae"
+  },
+  {
+   "name": "O1labs",
+   "website": "o1labs.org",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "OANDA",
+   "website": "oanda.com",
+   "industries": [
+    "brokerage"
+   ]
+  },
+  {
+   "name": "Oasisnetwork",
+   "website": "oasisprotocol.org",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Obol-Tech",
+   "website": "obol.tech",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Offchainlabs",
+   "website": "offchainlabs.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.lever.co/offchainlabs"
+  },
+  {
+   "name": "OKX",
+   "website": "okx.com",
+   "industries": [
+    "crypto",
+    "crypto-exchange"
+   ],
+   "region": "gcc",
+   "careers_url": "https://job-boards.greenhouse.io/OKX"
+  },
+  {
+   "name": "Ondo Finance",
+   "website": "ondo.finance",
+   "industries": [
+    "tokenization"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/ondofinance"
+  },
+  {
+   "name": "Onepay.Com",
+   "website": "onepay.com",
+   "industries": [
+    "fintech"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/oneapp"
+  },
+  {
+   "name": "OpenSea",
+   "website": "opensea.io",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/OpenSea"
+  },
+  {
+   "name": "Oplabs",
+   "website": "oplabs.co",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/oplabs"
+  },
+  {
+   "name": "Orca",
+   "website": "orca.so",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/orca"
+  },
+  {
+   "name": "Orderlynetwork",
+   "website": "orderly.network",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/orderly"
+  },
+  {
+   "name": "Paradigm.Co",
+   "website": "paradigm.co",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Paradigm.Xyz",
+   "website": "paradigm.xyz",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/paradigm"
+  },
+  {
+   "name": "Parity.Io",
+   "website": "parity.io",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/parity"
+  },
+  {
+   "name": "Paxos",
+   "website": "paxos.com",
+   "industries": [
+    "tokenization"
+   ]
+  },
+  {
+   "name": "Paxoslabs",
+   "website": "paxoslabs.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/paxoslabs"
+  },
+  {
+   "name": "Payoneer",
+   "website": "payoneer.com",
+   "industries": [
+    "payments"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/payoneer"
+  },
+  {
+   "name": "Pepperstone",
+   "website": "pepperstone.com",
+   "industries": [
+    "brokerage"
+   ]
+  },
+  {
+   "name": "Phantom",
+   "website": "phantom.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/phantom"
+  },
+  {
+   "name": "Plasma",
+   "website": "plasma.to",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Plume",
+   "website": "plume.org",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Plus500",
+   "website": "plus500.com",
+   "industries": [
+    "brokerage"
+   ]
+  },
+  {
+   "name": "Polygon",
+   "website": "polygon.technology",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/polygon-labs"
+  },
+  {
+   "name": "Polymarket",
+   "website": "polymarket.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/polymarket"
+  },
+  {
+   "name": "Polymesh",
+   "website": "polymesh.network",
+   "industries": [
+    "tokenization"
+   ]
+  },
+  {
+   "name": "Prypco",
+   "website": "prypco.com",
+   "industries": [
+    "tokenization"
+   ],
+   "region": "uae"
+  },
+  {
+   "name": "Public.com",
+   "website": "public.com",
+   "industries": [
+    "brokerage"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/public"
+  },
+  {
+   "name": "Pyth",
+   "website": "pyth.network",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Pyypl",
+   "website": "pyypl.com",
+   "industries": [
+    "payments"
+   ],
+   "region": "uae"
+  },
+  {
+   "name": "Qonto",
+   "website": "qonto.com",
+   "industries": [
+    "fintech"
+   ],
+   "careers_url": "https://jobs.lever.co/qonto"
+  },
+  {
+   "name": "Quiknodeinc",
+   "website": "quicknode.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/quicknode"
+  },
+  {
+   "name": "Rain",
+   "website": "rain.com",
+   "industries": [
+    "crypto",
+    "crypto-exchange"
+   ],
+   "region": "gcc",
+   "careers_url": "https://jobs.ashbyhq.com/rain"
+  },
+  {
+   "name": "Ramp.Network",
+   "website": "ramp.network",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Rapyd",
+   "website": "rapyd.net",
+   "industries": [
+    "payments"
+   ]
+  },
+  {
+   "name": "Recall",
+   "website": "recall.network",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/recall"
+  },
+  {
+   "name": "Revolut",
+   "website": "revolut.com",
+   "industries": [
+    "digital-bank",
+    "payments"
+   ]
+  },
+  {
+   "name": "Rillet.Com",
+   "website": "rillet.com",
+   "industries": [
+    "fintech"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/rillet"
+  },
+  {
+   "name": "Ripple",
+   "website": "ripple.com",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Risklabs",
+   "website": "risklabs.foundation",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/risklabs"
+  },
+  {
+   "name": "Ritual",
+   "website": "ritual.net",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/ritual"
+  },
+  {
+   "name": "Robinhood",
+   "website": "robinhood.com",
+   "industries": [
+    "brokerage",
+    "wealth",
+    "crypto"
+   ]
+  },
+  {
+   "name": "RWA.Xyz",
+   "website": "rwa.xyz",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/RWA.xyz"
+  },
+  {
+   "name": "Safe.Global",
+   "website": "safe.global",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Saharaai",
+   "website": "saharaai.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/Sahara"
+  },
+  {
+   "name": "Sarwa",
+   "website": "sarwa.co",
+   "industries": [
+    "wealth",
+    "brokerage"
+   ],
+   "region": "gcc"
+  },
+  {
+   "name": "Saxo Bank",
+   "website": "home.saxo",
+   "industries": [
+    "brokerage",
+    "wealth"
+   ]
+  },
+  {
+   "name": "Scalable Capital",
+   "website": "scalable.capital",
+   "industries": [
+    "brokerage",
+    "wealth"
+   ]
+  },
+  {
+   "name": "Scroll",
+   "website": "scroll.io",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Securitize",
+   "website": "securitize.io",
+   "industries": [
+    "tokenization"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/securitize"
+  },
+  {
+   "name": "SeiLabs",
+   "website": "sei.io",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/sei-labs"
+  },
+  {
+   "name": "Serotonin",
+   "website": "serotonin.co",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.lever.co/serotonin"
+  },
+  {
+   "name": "Shardeum",
+   "website": "shardeum.org",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Smartasset",
+   "website": "smartasset.com",
+   "industries": [
+    "fintech"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/smartasset"
+  },
+  {
+   "name": "Solanafoundation",
+   "website": "solana.org",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/Solana Foundation"
+  },
+  {
+   "name": "Sound.Xyz",
+   "website": "sound.xyz",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/sound.xyz"
+  },
+  {
+   "name": "Spotware",
+   "website": "spotware.com",
+   "industries": [
+    "trading-tech",
+    "brokerage"
+   ]
+  },
+  {
+   "name": "Sprucesystems",
+   "website": "spruceid.com",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Ssv.Network",
+   "website": "ssv.network",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "StashAway",
+   "website": "stashaway.com",
+   "industries": [
+    "wealth"
+   ]
+  },
+  {
+   "name": "Stellar",
+   "website": "stellar.org",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/stellar"
+  },
+  {
+   "name": "Strike.Me",
+   "website": "strike.me",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/strike"
+  },
+  {
+   "name": "Stripe",
+   "website": "stripe.com",
+   "industries": [
+    "payments"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/stripe"
+  },
+  {
+   "name": "Succinct",
+   "website": "succinct.xyz",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/succinct"
+  },
+  {
+   "name": "Sui.Foundation",
+   "website": "sui.io",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/Sui Foundation"
+  },
+  {
+   "name": "Swanbitcoin",
+   "website": "swanbitcoin.com",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Swingdev",
+   "website": "swing.dev",
+   "industries": [
+    "fintech"
+   ],
+   "careers_url": "https://jobs.lever.co/swingdev"
+  },
+  {
+   "name": "Swissborg",
+   "website": "swissborg.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.lever.co/swissborg"
+  },
+  {
+   "name": "Swissquote",
+   "website": "swissquote.com",
+   "industries": [
+    "brokerage",
+    "wealth"
+   ],
+   "careers_url": "https://careers.smartrecruiters.com/Swissquote"
+  },
+  {
+   "name": "Sygnum",
+   "website": "sygnum.com",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Symbiotic.Fi",
+   "website": "symbiotic.fi",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/Symbiotic"
+  },
+  {
+   "name": "Syndica",
+   "website": "syndica.io",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/syndica"
+  },
+  {
+   "name": "Tabby",
+   "website": "tabby.ai",
+   "industries": [
+    "lending",
+    "payments",
+    "fintech"
+   ],
+   "region": "gcc"
+  },
+  {
+   "name": "Talos",
+   "website": "talos.com",
+   "industries": [
+    "trading-tech"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/Talos-Trading"
+  },
+  {
+   "name": "Tamara",
+   "website": "tamara.co",
+   "industries": [
+    "lending",
+    "payments",
+    "fintech"
+   ],
+   "region": "gcc",
+   "careers_url": "https://job-boards.greenhouse.io/tamara"
+  },
+  {
+   "name": "Tarabut",
+   "website": "tarabut.com",
+   "industries": [
+    "banking",
+    "payments"
+   ],
+   "region": "gcc"
+  },
+  {
+   "name": "Taxbit",
+   "website": "taxbit.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/taxbit"
+  },
+  {
+   "name": "Telr",
+   "website": "telr.com",
+   "industries": [
+    "payments"
+   ],
+   "region": "uae"
+  },
+  {
+   "name": "Tenderly",
+   "website": "tenderly.co",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/tenderly"
+  },
+  {
+   "name": "Theblock",
+   "website": "theblock.co",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "ThinkMarkets",
+   "website": "thinkmarkets.com",
+   "industries": [
+    "brokerage"
+   ]
+  },
+  {
+   "name": "Thndr",
+   "website": "thndr.app",
+   "industries": [
+    "brokerage"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/thndr",
+   "region": "mena"
+  },
+  {
+   "name": "Thunes",
+   "website": "thunes.com",
+   "industries": [
+    "payments"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/thunes"
+  },
+  {
+   "name": "Tickmill",
+   "website": "tickmill.com",
+   "industries": [
+    "brokerage"
+   ]
+  },
+  {
+   "name": "Tiger Brokers",
+   "website": "itiger.com",
+   "industries": [
+    "brokerage",
+    "wealth"
+   ]
+  },
+  {
+   "name": "Tokeny",
+   "website": "tokeny.com",
+   "industries": [
+    "tokenization"
+   ]
+  },
+  {
+   "name": "Toku",
+   "website": "toku.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.lever.co/toku"
+  },
+  {
+   "name": "Trading 212",
+   "website": "trading212.com",
+   "industries": [
+    "brokerage",
+    "wealth"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/trading212"
+  },
+  {
+   "name": "Trmlabs",
+   "website": "trmlabs.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/trm-labs"
+  },
+  {
+   "name": "Trojan-Trading",
+   "website": "trojan.com",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Truelayer",
+   "website": "truelayer.com",
+   "industries": [
+    "fintech"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/truelayer"
+  },
+  {
+   "name": "Trust-Wallet",
+   "website": "trustwallet.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/trust-wallet"
+  },
+  {
+   "name": "Uniswaplabs",
+   "website": "uniswap.org",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/uniswap"
+  },
+  {
+   "name": "Wahed",
+   "website": "wahed.com",
+   "industries": [
+    "wealth"
+   ]
+  },
+  {
+   "name": "Walletconnect",
+   "website": "reown.com",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Webull",
+   "website": "webull.com",
+   "industries": [
+    "brokerage",
+    "wealth"
+   ]
+  },
+  {
+   "name": "Windranger",
+   "website": "windranger.io",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/windranger"
+  },
+  {
+   "name": "Wintermute",
+   "website": "wintermute.com",
+   "industries": [
+    "market-making"
+   ],
+   "careers_url": "https://jobs.lever.co/wintermute-trading"
+  },
+  {
+   "name": "Wio Bank",
+   "website": "wio.io",
+   "industries": [
+    "digital-bank",
+    "banking"
+   ],
+   "region": "gcc"
+  },
+  {
+   "name": "Wise",
+   "website": "wise.com",
+   "industries": [
+    "payments"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/wise"
+  },
+  {
+   "name": "Worldcoin",
+   "website": "world.org",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Wormholefoundation",
+   "website": "wormhole.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/wormholelabs"
+  },
+  {
+   "name": "Wyndlabs",
+   "website": "wyndlabs.ai",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "Xapo",
+   "website": "xapobank.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/xapo61"
+  },
+  {
+   "name": "Xlabs",
+   "website": "xlabs.xyz",
+   "industries": [
+    "crypto"
+   ]
+  },
+  {
+   "name": "XM",
+   "website": "xm.com",
+   "industries": [
+    "brokerage"
+   ],
+   "careers_url": "https://jobs.eu.lever.co/xm"
+  },
+  {
+   "name": "XTB",
+   "website": "xtb.com",
+   "industries": [
+    "brokerage"
+   ]
+  },
+  {
+   "name": "YAP",
+   "website": "yap.com",
+   "industries": [
+    "digital-bank",
+    "payments"
+   ],
+   "region": "gcc"
+  },
+  {
+   "name": "Yuno",
+   "website": "y.uno",
+   "industries": [
+    "fintech"
+   ],
+   "careers_url": "https://jobs.lever.co/yuno"
+  },
+  {
+   "name": "Zand",
+   "website": "zand.ae",
+   "industries": [
+    "digital-bank"
+   ],
+   "region": "uae"
+  },
+  {
+   "name": "Zetachain",
+   "website": "zetachain.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://job-boards.greenhouse.io/zetachain"
+  },
+  {
+   "name": "Ziina",
+   "website": "ziina.com",
+   "industries": [
+    "payments"
+   ],
+   "region": "gcc",
+   "careers_url": "https://jobs.ashbyhq.com/ziina"
+  },
+  {
+   "name": "Zodia Custody",
+   "website": "zodia-custody.com",
+   "industries": [
+    "crypto",
+    "digital-assets"
+   ],
+   "region": "uae"
+  },
+  {
+   "name": "Zodl",
+   "website": "zodl.com",
+   "industries": [
+    "crypto"
+   ],
+   "careers_url": "https://jobs.ashbyhq.com/zodl"
+  },
+  {
+   "name": "Zora",
+   "website": "zora.co",
+   "industries": [
+    "crypto"
+   ]
+  }
+ ]
+}

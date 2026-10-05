@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { suggestCompanies, type IndexedCompany, type IndexRow } from "../src/suggest";
+import { suggestCompanies, type DirectoryCompany, type IndexedCompany, type IndexRow } from "../src/suggest";
 import { profile } from "./helpers";
 
 const now = new Date("2026-10-04T12:00:00Z");
@@ -40,8 +40,59 @@ describe("suggestCompanies", () => {
     // profile() targets UAE places, so other GCC countries are "near"; Berlin is not.
     const r = suggestCompanies(profile(), [co("greenhouse:riyadh", [pm("Riyadh, Saudi Arabia")]), co("greenhouse:berlin", [pm("Berlin")])], { now });
     expect(r.hiringNow).toEqual([]);
-    expect(r.worthWatching.map((s) => s.key)).toEqual(["greenhouse:riyadh"]);
+    expect(r.worthWatching.map((s) => s.key)).toEqual(["greenhouse:riyadh", "greenhouse:berlin"]);
     expect(r.worthWatching[0]!.reasons).toEqual(["1 similar role nearby or remote"]);
+  });
+
+  it("watches companies hiring your role elsewhere, or other roles in your places", () => {
+    const r = suggestCompanies(
+      profile(),
+      [co("lever:elsewhere", [pm("London, UK"), pm("Singapore"), pm("London")]), co("ashby:office", [eng("Dubai"), eng("Abu Dhabi, UAE")]), co("ashby:nothing", [eng("Berlin")])],
+      { now },
+    );
+    const byKey = Object.fromEntries(r.worthWatching.map((s) => [s.key, s]));
+    expect(Object.keys(byKey).sort()).toEqual(["ashby:office", "lever:elsewhere"]);
+    expect(byKey["lever:elsewhere"]).toMatchObject({ elsewhere: 3, reasons: ["Hires for your roles in London, Singapore"] });
+    expect(byKey["lever:elsewhere"]!.examples[0]).toBe("Senior Product Manager (London, UK)");
+    expect(byKey["ashby:office"]).toMatchObject({ in_your_places: 2, reasons: ["Hiring in Dubai, Abu Dhabi (other roles)"] });
+  });
+
+  it("finds your topics in job titles, ignoring one stray title at a big company", () => {
+    const small = co("ashby:pay", [["Payments Engineer", "Berlin", "onsite", 2, 1], eng("Berlin")]);
+    const bigRows = Array.from({ length: 40 }, (_, i): IndexRow => [`Engineer ${i}`, "Berlin", "onsite", 2, 1]);
+    const big = co("greenhouse:big", [["Payments Analyst", "Berlin", "onsite", 2, 1], ...bigRows]);
+    const r = suggestCompanies(profile(), [small, big], { now });
+    expect(r.worthWatching.map((s) => s.key)).toEqual(["ashby:pay"]);
+    expect(r.worthWatching[0]!.reasons).toEqual(["Your topics: payments"]);
+  });
+
+  it("suggests companies with no openings from the shortlist or a matching source tag", () => {
+    const dir = (key: string, extra: Partial<DirectoryCompany> = {}): DirectoryCompany => ({
+      key,
+      name: key.split(":")[1]!,
+      ats: key.split(":")[0]!,
+      slug: key.split(":")[1]!,
+      careers_url: `https://example.com/${key}`,
+      open_jobs: 0,
+      ...extra,
+    });
+    const r = suggestCompanies(profile({ keywords: { web3: 5, payments: 3 } }), [], {
+      now,
+      others: [dir("lever:shortlisted", { tier: "curated" }), dir("ashby:cryptoco", { tags: ["crypto"] }), dir("ashby:random"), dir("lever:gone", { tier: "curated" })],
+      exclude: new Set(["lever:gone"]),
+    });
+    expect(r.worthWatching.map((s) => [s.key, s.reasons])).toEqual([
+      ["lever:shortlisted", ["On your shortlist"]],
+      ["ashby:cryptoco", ["Your topics: web3"]],
+    ]);
+    expect(r.scanned).toBe(4);
+  });
+
+  it("returns up to `limit` companies in each section", () => {
+    const many = Array.from({ length: 8 }, (_, i) => co(`lever:c${i}`, [pm(i % 2 ? "Dubai" : "London")]));
+    const r = suggestCompanies(profile(), many, { now, limit: 3 });
+    expect(r.hiringNow).toHaveLength(3);
+    expect(r.worthWatching).toHaveLength(3);
   });
 
   it("leaves out excluded (watched or hidden) companies", () => {
@@ -64,10 +115,41 @@ describe("suggestCompanies", () => {
     const smallOnes = Array.from({ length: 12 }, (_, i) => co(`lever:small${i}`, [pm("Dubai", 20)], { open_jobs: 10 }));
     const r = suggestCompanies(profile(), [...big, ...smallOnes], { now });
     const first12 = r.hiringNow.slice(0, 12);
-    expect(first12.filter((s) => s.open_jobs > 300)).toHaveLength(3);
+    expect(first12.filter((s) => (s.open_jobs ?? 0) > 300)).toHaveLength(3);
     // The other giants are pushed further down, not dropped.
     expect(r.hiringNow).toHaveLength(18);
-    expect(r.hiringNow.slice(12).filter((s) => s.open_jobs > 300)).toHaveLength(3);
+    expect(r.hiringNow.slice(12).filter((s) => (s.open_jobs ?? 0) > 300)).toHaveLength(3);
+  });
+
+  it("lets a giant that doesn't fit the window take the next free slot, not the end", () => {
+    // The OKX case: a big exchange ranked just below three other giants used to fall to the bottom.
+    const giants = Array.from({ length: 4 }, (_, i) => co(`greenhouse:giant${i}`, [pm("Dubai", 1, 6 - i)], { open_jobs: 400 }));
+    const smallOnes = Array.from({ length: 40 }, (_, i) => co(`lever:s${i}`, [pm("Dubai", 30)], { open_jobs: 5 }));
+    const r = suggestCompanies(profile(), [...giants, ...smallOnes], { now, limit: 100 });
+    const pos = r.hiringNow.findIndex((s) => s.key === "greenhouse:giant3");
+    expect(pos).toBeGreaterThanOrEqual(3);
+    expect(pos).toBeLessThan(15);
+  });
+
+  it("puts companies in the user's industries first, with the industry as the first reason", () => {
+    const exchange = co("lever:exchange", [pm("Dubai")], { tags: ["crypto", "crypto-exchange"], open_jobs: 400 });
+    const media = co("greenhouse:media", [pm("Dubai"), pm("Dubai"), pm("Abu Dhabi"), pm("Dubai, UAE"), pm("Dubai", 1, 9)]);
+    const r = suggestCompanies(profile({ industries: ["crypto-exchange", "brokerage"] }), [media, exchange], { now });
+    expect(r.hiringNow.map((s) => s.key)).toEqual(["lever:exchange", "greenhouse:media"]);
+    expect(r.hiringNow[0]!.industries).toEqual(["crypto-exchange"]);
+    expect(r.hiringNow[0]!.reasons[0]).toBe("Your industry: Crypto exchange");
+    // Without industries picked, volume wins as before.
+    expect(suggestCompanies(profile(), [media, exchange], { now }).hiringNow[0]!.key).toBe("greenhouse:media");
+  });
+
+  it("lists industry companies on hiring systems we can't scan yet separately", () => {
+    const dir = (key: string, tags: string[]): DirectoryCompany => ({ key, name: key, ats: key.split(":")[0]!, slug: "x", careers_url: "https://x", open_jobs: 12, tags });
+    const r = suggestCompanies(profile({ industries: ["brokerage"] }), [], {
+      now,
+      others: [dir("workday:cmc|wd3|careers", ["brokerage"]), dir("workday:other|wd1|x", ["healthtech"]), dir("lever:quiet", ["brokerage"])],
+    });
+    expect(r.notScannable.map((s) => s.key)).toEqual(["workday:cmc|wd3|careers"]);
+    expect(r.worthWatching.map((s) => s.key)).toEqual(["lever:quiet"]);
   });
 
   it("uses topic data when present and rescales when it isn't", () => {

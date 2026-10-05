@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { htmlToText, inferWorkplace, matchesTerm } from "../src/text";
+import { htmlToText, inferWorkplace, matchesAny, matchesTerm } from "../src/text";
 
 describe("matchesTerm", () => {
   it("matches whole words only", () => {
@@ -46,5 +46,14 @@ describe("inferWorkplace", () => {
     expect(inferWorkplace("Dubai or Remote")).toBe("remote");
     expect(inferWorkplace("London (Hybrid)")).toBe("hybrid");
     expect(inferWorkplace("Dubai")).toBe("unknown");
+  });
+});
+
+describe("matchesAny", () => {
+  it("agrees with checking each term on its own", () => {
+    const terms = ["ai", "product manager", "c++", "uae", "abu dhabi"];
+    const texts = ["AI-native", "maintain", "Senior Product-Manager", "C++ engineer", "Dubai, UAE", "Abu  Dhabi", "nothing here"];
+    for (const t of texts) expect(matchesAny(t, terms)).toBe(terms.some((x) => matchesTerm(t, x)));
+    expect(matchesAny("anything", [])).toBe(false);
   });
 });

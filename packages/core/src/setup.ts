@@ -3,10 +3,11 @@ import { join, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
 import { CONFIG_CANDIDATES } from "./config";
-import { detectCompany, getConnector } from "./connectors";
+import { careersUrl, companyKey, detectCompany, getConnector } from "./connectors";
 import { HttpClient, HttpError } from "./http";
 import { RESUME_PATH } from "./resume";
-import { ConfigSchema, type AtsType, type Config } from "./schema";
+import { ConfigSchema, type AtsType, type Config, type Profile } from "./schema";
+import { passesGates } from "./score";
 import { configToYaml } from "./yaml-writer";
 
 /** The user's own config. The shipped jobhunter.config.yaml is only an example. */
@@ -66,23 +67,49 @@ export function saveConfig(input: unknown, cwd = process.cwd()): SaveResult {
 export type CompanyCheck = {
   input: string;
   /**
-   * ok: feed works · soon: recognised ATS, connector not built yet · error: recognised but the
-   * feed failed (usually a wrong link) · unknown: not a careers site we recognise.
+   * live: board has open jobs · dormant: board exists, no openings right now · soon: recognised
+   * ATS, connector not built yet · error: recognised but the feed failed (usually a wrong link) ·
+   * unknown: not a careers site we recognise.
    */
-  status: "ok" | "soon" | "error" | "unknown";
+  status: "live" | "dormant" | "soon" | "error" | "unknown";
+  /** Directory key ("ats:slug"). */
+  key?: string;
   name?: string;
+  /** Where the name came from: the hiring system itself, our company directory, or the link. */
+  name_source?: "ats" | "directory" | "slug";
   ats?: AtsType;
   slug?: string;
   region?: "global" | "eu";
   shard?: string;
   site?: string;
-  jobs?: number;
-  sampleTitles?: string[];
+  careers_url?: string;
+  open_jobs?: number;
+  /** Most common job locations, most frequent first. */
+  top_locations?: string[];
+  sample_titles?: string[];
+  /** Open jobs that pass the user's title and location filters (when a profile is given). */
+  matches?: number;
+  match_examples?: string[];
+  /** Already in the company directory. */
+  in_directory?: boolean;
   error?: string;
 };
 
-/** Detect each careers URL and, where we have a connector, fetch it once to prove it works. */
-export async function checkCompanies(inputs: readonly string[], http = new HttpClient({ retries: 1 })): Promise<CompanyCheck[]> {
+export type CheckOptions = {
+  http?: HttpClient;
+  /** Count the jobs that match this profile. */
+  profile?: Profile;
+  /** Company directory names by key, to mark known companies and borrow their names. */
+  directory?: ReadonlyMap<string, { name: string }>;
+};
+
+/**
+ * Detect each careers URL and, where we have a connector, fetch it once: the result carries
+ * everything the company directory records, plus how many jobs match the user.
+ */
+export async function checkCompanies(inputs: readonly string[], opts: CheckOptions = {}): Promise<CompanyCheck[]> {
+  const http = opts.http ?? new HttpClient({ retries: 1 });
+  const now = new Date();
   const out: CompanyCheck[] = [];
   for (const raw of inputs) {
     const input = raw.trim();
@@ -92,8 +119,19 @@ export async function checkCompanies(inputs: readonly string[], http = new HttpC
       out.push({ input, status: "unknown", error: "Not a careers site we recognise yet." });
       continue;
     }
-    const { supported, ...ref } = found;
-    const base: CompanyCheck = { input, status: "soon", ...ref };
+    const { supported, name: guessed, ...ref } = found;
+    const key = companyKey(ref);
+    const known = opts.directory?.get(key);
+    const base: CompanyCheck = {
+      input,
+      status: "soon",
+      key,
+      name: known?.name ?? guessed,
+      name_source: known ? "directory" : "slug",
+      ...ref,
+      careers_url: careersUrl(ref) || input,
+      in_directory: !!known,
+    };
     if (!supported) {
       if (ref.ats === "workday" && !ref.site) base.error = "Use the full Workday link, including the site name (e.g. …/en-US/External).";
       out.push(base);
@@ -101,17 +139,41 @@ export async function checkCompanies(inputs: readonly string[], http = new HttpC
     }
     try {
       const connector = getConnector(ref.ats)!;
-      const company = { ...ref, enabled: true };
-      const jobs = await connector.fetch(company, { http, now: new Date() });
+      const company = { ...ref, name: base.name!, enabled: true };
+      const jobs = await connector.fetch(company, { http, now });
       if (!jobs.length) {
-        out.push({ ...base, status: "error", error: "No open jobs on this board. Check the link: some sites show an empty board for a wrong company name." });
+        // Greenhouse, Lever and Ashby answer 404 for a wrong name, so an empty board is real.
+        // SmartRecruiters answers 200 + nothing for any made-up id, so we can't tell.
+        out.push(
+          ref.ats === "smartrecruiters"
+            ? { ...base, status: "error", error: "No open jobs on this board. Check the link: SmartRecruiters shows an empty board for a wrong company name." }
+            : { ...base, status: "dormant", open_jobs: 0, top_locations: [], sample_titles: [], ...(opts.profile ? { matches: 0, match_examples: [] } : {}) },
+        );
         continue;
       }
-      const normalized = [...new Set(jobs.map((j) => connector.normalize(j, company).title))].slice(0, 3);
+      const normalized = jobs.map((j) => connector.normalize(j, company));
+      const places = new Map<string, number>();
+      for (const j of normalized) {
+        const place = j.location.split(/[,;|/]/)[0]!.trim();
+        if (place) places.set(place, (places.get(place) ?? 0) + 1);
+      }
+      const result: CompanyCheck = {
+        ...base,
+        status: "live",
+        open_jobs: jobs.length,
+        top_locations: [...places.entries()].sort((a, b) => b[1] - a[1]).map(([p]) => p).slice(0, 5),
+        sample_titles: [...new Set(normalized.map((j) => j.title))].slice(0, 3),
+      };
+      if (opts.profile) {
+        const matching = normalized.filter((j) => passesGates(j, opts.profile!));
+        result.matches = matching.length;
+        result.match_examples = matching.slice(0, 3).map((j) => (j.location ? `${j.title} (${j.location})` : j.title));
+      }
       // Greenhouse and SmartRecruiters tell us the real company name.
       const first = jobs[0] as { company_name?: string; company?: { name?: string } } | undefined;
       const realName = first?.company_name ?? first?.company?.name;
-      out.push({ ...base, status: "ok", name: realName || ref.name, jobs: jobs.length, sampleTitles: normalized });
+      if (realName) Object.assign(result, { name: realName, name_source: "ats" });
+      out.push(result);
     } catch (err) {
       const msg =
         err instanceof HttpError && err.status === 404

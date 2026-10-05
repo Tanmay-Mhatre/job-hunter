@@ -4,6 +4,7 @@ import { dirname, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import {
   checkCompanies,
+  companyKey,
   ConfigError,
   connectors,
   detectCompany,
@@ -17,14 +18,49 @@ import {
   saveRun,
   setupStatus,
   suggestCompanies,
+  type CompanyCheck,
   type CompanyHealth,
+  type DirectoryCompany,
   type IndexedCompany,
   type Job,
 } from "@jobhunter/core";
 
-/** Directory key for a configured company, matching scripts/catalog keys. */
-function companyKey(c: { ats: string; slug: string; shard?: string; site?: string }): string {
-  return (c.ats === "workday" ? `workday:${c.slug}|${c.shard}|${c.site}` : `${c.ats}:${c.slug}`).toLowerCase();
+type DirectoryEntry = DirectoryCompany & { indexed?: boolean; status?: string; origin?: "user" };
+
+/** The published company directory plus companies added by link (empty if not built yet). */
+function readDirectory(dataDir: string): DirectoryEntry[] {
+  const read = (name: string): DirectoryEntry[] => {
+    const file = resolve(dataDir, "catalog", name);
+    return existsSync(file) ? (JSON.parse(readFileSync(file, "utf8")) as { companies: DirectoryEntry[] }).companies : [];
+  };
+  const dir = read("directory.json");
+  const known = new Set(dir.map((c) => c.key));
+  return [...dir, ...read("additions.json").filter((c) => !known.has(c.key)).map((c) => ({ ...c, origin: "user" as const }))];
+}
+
+/** Remember boards found by "Add by link" that the directory doesn't have yet. */
+function recordAdditions(dataDir: string, results: CompanyCheck[]): void {
+  const fresh = results.filter((r) => (r.status === "live" || r.status === "dormant") && !r.in_directory && r.key);
+  if (!fresh.length) return;
+  const file = resolve(dataDir, "catalog", "additions.json");
+  const current = existsSync(file) ? (JSON.parse(readFileSync(file, "utf8")) as { companies: (DirectoryEntry & { added_at: string })[] }).companies : [];
+  const byKey = new Map(current.map((c) => [c.key, c]));
+  for (const r of fresh) {
+    byKey.set(r.key!, {
+      key: r.key!,
+      name: r.name!,
+      ats: r.ats!,
+      slug: r.slug!,
+      ...(r.region ? { region: r.region } : {}),
+      ...(r.shard ? { shard: r.shard, site: r.site } : {}),
+      careers_url: r.careers_url!,
+      status: r.status,
+      open_jobs: r.open_jobs ?? null,
+      added_at: byKey.get(r.key!)?.added_at ?? new Date().toISOString(),
+    });
+  }
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, JSON.stringify({ companies: [...byKey.values()] }, null, 1));
 }
 
 async function cmdCompanies(args: string[]): Promise<number> {
@@ -53,10 +89,12 @@ async function cmdCompanies(args: string[]): Promise<number> {
   const { config } = loadConfig(values.config);
   const hidden: string[] = values.stdin ? ((JSON.parse((await readStdin()) || "{}") as { hidden?: string[] }).hidden ?? []) : [];
   const index = JSON.parse(readFileSync(indexFile, "utf8")) as { generated_at: string; companies: IndexedCompany[] };
+  // Directory companies without job rows (no openings, or not indexed): candidates to watch.
+  const others = readDirectory(values.data).filter((c) => !c.indexed);
   // Leave out companies already watched and ones the user said no to.
   const exclude = new Set([...config.companies.map(companyKey), ...hidden.map((h) => h.toLowerCase())]);
   const started = Date.now();
-  const result = suggestCompanies(config.profile, index.companies, { exclude, limit: Number(values.limit) || 30 });
+  const result = suggestCompanies(config.profile, index.companies, { exclude, others, limit: Number(values.limit) || 30 });
   if (values.json) {
     console.log(JSON.stringify({ ...result, index_generated_at: index.generated_at, took_ms: Date.now() - started }));
     return 0;
@@ -66,6 +104,10 @@ async function cmdCompanies(args: string[]): Promise<number> {
   for (const s of result.hiringNow) console.log(`  ${String(s.score).padStart(3)}  ${s.name} (${s.ats}) · ${s.reasons.join(" · ")}\n        e.g. ${s.examples.join(" | ")}`);
   console.log("\nWorth watching:");
   for (const s of result.worthWatching) console.log(`  ${String(s.score).padStart(3)}  ${s.name} (${s.ats}) · ${s.reasons.join(" · ")}`);
+  if (result.notScannable.length) {
+    console.log("\nIn your industries, not scannable yet:");
+    for (const s of result.notScannable) console.log(`       ${s.name} (${s.ats}) · ${s.reasons.join(" · ")}`);
+  }
   return 0;
 }
 
@@ -76,7 +118,7 @@ Usage:
   jobhunter detect <url>...     Turn careers URLs into config lines
   jobhunter validate            Check your config file
   jobhunter setup <status|save|check>   Used by the dashboard's setup wizard (JSON in/out)
-  jobhunter companies suggest   Companies from the directory that are hiring for your profile
+  jobhunter companies suggest   Companies from the directory that fit your profile (industries, roles, places)
 
 Options for companies suggest:
   -c, --config <path>   Config file (as for run)
@@ -247,7 +289,12 @@ async function cmdSetup(args: string[]): Promise<number> {
     }
     case "check": {
       const body = JSON.parse(await readStdin()) as { urls?: string[] };
-      console.log(JSON.stringify(await checkCompanies(body.urls ?? [])));
+      // Your saved profile (to count matching jobs) and the directory (to mark known companies).
+      const status = setupStatus(process.cwd(), resolve(values.data));
+      const directory = new Map(readDirectory(values.data).map((c) => [c.key, c]));
+      const results = await checkCompanies(body.urls ?? [], { profile: status.config?.profile, directory });
+      recordAdditions(values.data, results);
+      console.log(JSON.stringify(results));
       return 0;
     }
     default:

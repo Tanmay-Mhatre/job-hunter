@@ -71,6 +71,25 @@ export function matchesTerm(text: string, term: string): boolean {
   return termRegex(term).test(text);
 }
 
+const anyCache = new Map<string, RegExp | null>();
+
+/**
+ * True if any term matches (same whole-word rules as matchesTerm). The terms are compiled into
+ * one cached pattern, so this is one regex test instead of one per term: it matters when scoring
+ * hundreds of thousands of job titles.
+ */
+export function matchesAny(text: string, terms: readonly string[]): boolean {
+  if (!terms.length) return false;
+  const key = terms.join("\u0000");
+  let re = anyCache.get(key);
+  if (re === undefined) {
+    const parts = terms.map((t) => t.toLowerCase().trim()).filter(Boolean);
+    re = parts.length ? new RegExp(parts.map((t) => `(?:${termRegex(t).source})`).join("|"), "iu") : null;
+    anyCache.set(key, re);
+  }
+  return re ? re.test(text) : false;
+}
+
 export function matchingTerms(text: string, terms: readonly string[]): string[] {
   return terms.filter((t) => matchesTerm(text, t));
 }

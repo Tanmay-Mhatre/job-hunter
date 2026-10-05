@@ -223,9 +223,9 @@ export const REGIONS: Region[] = [
   { name: "south asia", aliases: [], hint: "India, Pakistan, Bangladesh, Sri Lanka…" },
   { name: "southeast asia", aliases: [], hint: "Singapore, Malaysia, Indonesia, Vietnam…" },
   { name: "anz", aliases: [], hint: "Australia & New Zealand" },
-  { name: "americas", aliases: [], hint: "North, Central & South America" },
+  { name: "americas", aliases: ["amer"], hint: "North, Central & South America" },
   { name: "north america", aliases: [], hint: "USA & Canada" },
-  { name: "latam", aliases: ["latin america"], hint: "Latin America" },
+  { name: "latam", aliases: ["latin america", "south america", "central america"], hint: "Latin America" },
   { name: "worldwide", aliases: ["anywhere", "global"], hint: "Any location" },
 ];
 
@@ -302,6 +302,87 @@ function ownerOf(term: string) {
 }
 
 /**
+ * Place names that aren't picker options but contain one ("New South Wales" contains "wales",
+ * "New York" contains "york"), with the place they belong to. Used so the longest name wins.
+ */
+const EXTRA_PLACES: Record<string, string> = {
+  "new south wales": "country:australia",
+  "new england": "country:united states",
+  "new mexico": "country:united states",
+  "new jersey": "country:united states",
+  "new hampshire": "country:united states",
+  "west virginia": "country:united states",
+  "new brunswick": "country:canada",
+  "british columbia": "country:canada",
+  "new caledonia": "term:new caledonia",
+  "papua new guinea": "term:papua new guinea",
+  "equatorial guinea": "term:equatorial guinea",
+};
+
+/**
+ * States and provinces, for job locations like "Santa Monica, CA" or "Remote, Ontario". Not picker
+ * options: they count for a user who picked the country. Codes are matched only in upper case.
+ */
+export const SUBDIVISIONS: Record<string, { names: string[]; codes: string[] }> = {
+  "united states": {
+    names: [
+      "alabama", "alaska", "arizona", "arkansas", "california", "colorado", "connecticut", "delaware", "florida", "hawaii", "idaho", "illinois",
+      "indiana", "iowa", "kansas", "kentucky", "louisiana", "maine", "maryland", "massachusetts", "michigan", "minnesota", "mississippi",
+      "missouri", "montana", "nebraska", "nevada", "new hampshire", "new jersey", "new mexico", "north carolina", "north dakota", "ohio",
+      "oklahoma", "oregon", "pennsylvania", "rhode island", "south carolina", "south dakota", "tennessee", "texas", "utah", "vermont",
+      "virginia", "west virginia", "wisconsin", "wyoming", "district of columbia", "new york state", "new england", "bay area", "silicon valley",
+    ],
+    codes: [
+      "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN",
+      "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA",
+      "WA", "WV", "WI", "WY", "DC",
+    ],
+  },
+  canada: {
+    names: ["ontario", "quebec", "british columbia", "alberta", "manitoba", "saskatchewan", "nova scotia", "new brunswick", "newfoundland", "prince edward island"],
+    codes: ["ON", "QC", "BC", "AB", "MB", "SK", "NS", "NB", "NL", "PE"],
+  },
+  australia: {
+    names: ["new south wales", "victoria", "queensland", "western australia", "south australia", "tasmania", "australian capital territory"],
+    codes: ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT"],
+  },
+};
+
+/** Which place a term belongs to ("country:united kingdom", "region:latam"), or undefined if unknown. */
+export function placeOwner(term: string): string | undefined {
+  const t = term.toLowerCase().trim();
+  const o = ownerOf(t);
+  if (o) return `${o.kind}:${o.name}`;
+  if (EXTRA_PLACES[t]) return EXTRA_PLACES[t];
+  for (const [country, sub] of Object.entries(SUBDIVISIONS)) if (sub.names.includes(t)) return `country:${country}`;
+  return undefined;
+}
+
+/** Display name of a place term's owner: "uk" -> "United Kingdom", "Chennai" -> "India". */
+export function placeOwnerName(term: string): string | undefined {
+  const owner = placeOwner(term);
+  if (!owner) return undefined;
+  const name = owner.slice(owner.indexOf(":") + 1);
+  // Short region codes read as acronyms: "emea" -> "EMEA".
+  if (owner.startsWith("region:") && name.length <= 5) return name.toUpperCase();
+  return name.replace(/(^|\s)\p{L}/gu, (ch) => ch.toUpperCase());
+}
+
+let allNames: string[] | undefined;
+/** Every place name we know (countries, aliases, cities, regions, extras), longest first. */
+export function allPlaceNames(): string[] {
+  allNames ??= [
+    ...new Set([
+      ...REGIONS.flatMap((r) => [r.name, ...r.aliases]),
+      ...COUNTRIES.flatMap((c) => countryTerms(c, true)),
+      ...Object.keys(EXTRA_PLACES),
+      ...Object.values(SUBDIVISIONS).flatMap((s) => s.names),
+    ]),
+  ].sort((a, b) => b.length - a.length);
+  return allNames;
+}
+
+/**
  * Group flat match terms by the country or region they belong to, so the UI can show
  * "United Arab Emirates" as one selection and remove all of its terms together.
  * Terms not in the catalogue stay on their own. Groups keep first-appearance order.
@@ -319,4 +400,177 @@ export function groupPlaces(terms: readonly string[]): PlaceGroup[] {
     }
   }
   return [...groups.values()];
+}
+
+/**
+ * Where one location in a job's location text ends and the next begins: "Dubai; London",
+ * "SF | NYC", "Berlin or Remote", "Amsterdam (London; Tel Aviv)".
+ */
+export const LOCATION_SEGMENTS = /[;|/()]|\s+or\s+/i;
+
+/** Two-letter country codes some hiring systems put in the country field ("AE", "GB"). */
+const ISO2: Record<string, string> = {
+  AE: "united arab emirates", SA: "saudi arabia", QA: "qatar", BH: "bahrain", KW: "kuwait", OM: "oman", JO: "jordan", LB: "lebanon",
+  EG: "egypt", MA: "morocco", IL: "israel", TR: "turkey", CY: "cyprus", GB: "united kingdom", UK: "united kingdom", IE: "ireland",
+  FR: "france", DE: "germany", NL: "netherlands", BE: "belgium", LU: "luxembourg", CH: "switzerland", AT: "austria", ES: "spain",
+  PT: "portugal", IT: "italy", MT: "malta", GR: "greece", SE: "sweden", NO: "norway", DK: "denmark", FI: "finland", EE: "estonia",
+  LV: "latvia", LT: "lithuania", PL: "poland", CZ: "czech republic", SK: "slovakia", HU: "hungary", RO: "romania", BG: "bulgaria",
+  RS: "serbia", HR: "croatia", SI: "slovenia", UA: "ukraine", GE: "georgia", AM: "armenia", US: "united states", CA: "canada",
+  MX: "mexico", BR: "brazil", AR: "argentina", CL: "chile", CO: "colombia", PE: "peru", UY: "uruguay", IN: "india", PK: "pakistan",
+  CN: "china", HK: "hong kong", TW: "taiwan", JP: "japan", KR: "south korea", SG: "singapore", MY: "malaysia", ID: "indonesia",
+  TH: "thailand", VN: "vietnam", PH: "philippines", AU: "australia", NZ: "new zealand", NG: "nigeria", KE: "kenya", ZA: "south africa",
+};
+
+let countryPattern: RegExp | undefined;
+/** Every country name, alias, city and state, as one pattern (longest first, so "New South Wales" beats "wales"). */
+function countryNamePattern(): RegExp {
+  if (!countryPattern) {
+    const names = allPlaceNames().filter((n) => placeOwner(n)?.startsWith("country:"));
+    const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "[\\s-]+");
+    countryPattern = new RegExp(`(?<![\\p{L}\\p{N}])(?:${names.map(esc).join("|")})(?![\\p{L}\\p{N}])`, "giu");
+  }
+  return countryPattern;
+}
+let codePattern: RegExp | undefined;
+function subdivisionCodePattern(): RegExp {
+  if (!codePattern) {
+    const parts = Object.entries(SUBDIVISIONS).flatMap(([country, s]) => s.codes.map((code) => [code, country] as const));
+    codePattern = new RegExp(`(?:,\\s*|\\()(${[...new Set(parts.map(([c]) => c))].join("|")})(?![\\p{L}])`, "gu");
+  }
+  return codePattern;
+}
+let cities: Set<string> | undefined;
+const cityNames = () => (cities ??= new Set(COUNTRIES.flatMap((c) => c.cities)));
+
+const CODE_OWNER = new Map<string, string>();
+for (const [country, s] of Object.entries(SUBDIVISIONS)) for (const code of s.codes) if (!CODE_OWNER.has(code)) CODE_OWNER.set(code, country);
+
+/**
+ * Countries a job's location names, as display names ("Dubai, UAE" -> ["United Arab Emirates"],
+ * "San Jose, CA" -> ["United States"]). `country` is the hiring system's own field, if any.
+ */
+export function countriesIn(location: string, country?: string): string[] {
+  // A city is weak evidence ("San Jose" is also in Costa Rica, "London" also in Ontario): it only
+  // counts when nothing in the location names a country, alias, state or code outright.
+  // Judged per segment, so "Dubai; London, UK" keeps both.
+  const pretty = (name: string) => name.replace(/(^|\s)\p{L}/gu, (ch) => ch.toUpperCase());
+  const found = new Set<string>();
+  const text = location.replace(/\bU\.S\.A?\.?/g, "USA").replace(/\bU\.K\.?/g, "UK");
+  for (const segment of text.split(LOCATION_SEGMENTS)) {
+    const strong = new Set<string>();
+    const weak = new Set<string>();
+    for (const m of segment.matchAll(countryNamePattern())) {
+      const name = m[0].toLowerCase().replace(/[\s-]+/g, " ");
+      const owner = placeOwner(name)?.slice(8);
+      if (owner) (cityNames().has(name) ? weak : strong).add(owner);
+    }
+    for (const m of segment.matchAll(subdivisionCodePattern())) strong.add(CODE_OWNER.get(m[1]!)!);
+    for (const c of strong.size ? strong : weak) found.add(pretty(c));
+  }
+  const code = country?.trim();
+  if (code && ISO2[code.toUpperCase()]) found.add(pretty(ISO2[code.toUpperCase()]!));
+  else if (code) for (const m of code.matchAll(countryNamePattern())) found.add(pretty(placeOwner(m[0].toLowerCase())?.slice(8) ?? m[0]));
+  return [...found];
+}
+
+/** Spellings of the same city that job ads use. */
+const CITY_ALIASES: Record<string, string> = {
+  nyc: "new york",
+  "new york city": "new york",
+  "new york ny": "new york",
+  manhattan: "new york",
+  brooklyn: "new york",
+  sf: "san francisco",
+  "san francisco bay area": "san francisco",
+  "sf bay area": "san francisco",
+  "bay area": "san francisco",
+  "washington dc": "washington dc",
+  "washington d c": "washington dc",
+  "district of columbia": "washington dc",
+  bengaluru: "bangalore",
+  "greater london": "london",
+  "city of london": "london",
+};
+
+/** Wording in a location that isn't a place. */
+const NOT_A_PLACE =
+  /\b(fully|remote|remotely|hybrid|office|offices|hq|headquarters|on-?site|onsite|in-?office|within|only|based|any|anywhere|time ?zones?|zone|flexible|first|friendly|travel|required|job|requisitions?|location|locations|multiple|various|global|worldwide|roles?)\b/gi;
+
+const titleCase = (s: string) => s.replace(/(^|[\s-])\p{L}/gu, (ch) => ch.toUpperCase());
+
+let notCity: Set<string> | undefined;
+/** Names that are countries, aliases, regions or states: never a city on their own. */
+function notCityNames(): Set<string> {
+  if (!notCity) {
+    notCity = new Set([
+      ...REGIONS.flatMap((r) => [r.name, ...r.aliases]),
+      ...COUNTRIES.flatMap((c) => [c.name, ...c.aliases]),
+      ...Object.values(SUBDIVISIONS).flatMap((s) => [...s.names, ...s.codes.map((x) => x.toLowerCase())]),
+      ...Object.keys(ISO2).map((x) => x.toLowerCase()),
+      "usa", "us", "uk", "uae", "emea", "apac", "amer", "americas", "latam", "remote", "europe",
+    ]);
+  }
+  return notCity;
+}
+
+let regionPattern: RegExp | undefined;
+/** "Middle East North Africa", "Roles EMEA": a region, not a city. */
+function isRegionPhrase(name: string): boolean {
+  if (!regionPattern) {
+    const names = [...REGIONS.flatMap((r) => [r.name, ...r.aliases]), "north africa", "middle east", "asia pacific", "sub saharan africa"];
+    regionPattern = new RegExp(`(?<![\\p{L}])(?:${names.map((n) => n.replace(/\s+/g, "[\\s-]+")).join("|")})(?![\\p{L}])`, "iu");
+  }
+  return regionPattern.test(name);
+}
+
+let cityPattern: RegExp | undefined;
+function catalogueCityPattern(): RegExp {
+  if (!cityPattern) {
+    const names = [...new Set([...COUNTRIES.flatMap((c) => c.cities), ...Object.keys(CITY_ALIASES)])].sort((a, b) => b.length - a.length);
+    const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "[\\s.-]+");
+    cityPattern = new RegExp(`(?<![\\p{L}\\p{N}])(?:${names.map(esc).join("|")})(?![\\p{L}\\p{N}])`, "iu");
+  }
+  return cityPattern;
+}
+
+/**
+ * Cities a job's location names, as "City, Country" when the country is known
+ * ("USA - New York" -> ["New York, United States"], "Dubai; London, UK" -> two entries).
+ * Countries, regions, states and remote wording on their own give no city.
+ */
+export function citiesIn(location: string): string[] {
+  const found = new Set<string>();
+  const text = location
+    .replace(/\bU\.S\.A?\.?/g, "USA")
+    .replace(/\bU\.K\.?/g, "UK")
+    .replace(/\bD\.C\.?/g, "DC")
+    .replace(/\bWashington,?\s+DC\b/gi, "Washington DC");
+  // A segment that names no country borrows the location's, when the whole location names just one.
+  const only = countriesIn(location);
+  const fallback = only.length === 1 ? only[0] : undefined;
+  for (const segment of text.split(LOCATION_SEGMENTS)) {
+    const country = countriesIn(segment)[0] ?? fallback;
+    // Code prefixes like "US-CA-Menlo Park", "USA - New York", "US California (Redwood City)", "The Netherlands".
+    const cleaned = segment
+      .replace(/^\s*[A-Z]{2,3}(?:-[A-Z]{2})?-(?=\S)/, "")
+      .replace(/^\s*(?:USA|US|UK|UAE)\b[\s,:–-]*/i, "")
+      .replace(/^\s*the\s+/i, "");
+    let city: string | undefined;
+    const known = cleaned.match(catalogueCityPattern())?.[0];
+    if (known) city = known.toLowerCase().replace(/[\s.-]+/g, " ");
+    else {
+      for (const part of cleaned.split(/[,(]/)) {
+        const name = part.replace(NOT_A_PLACE, " ").replace(/[^\p{L}\s'.-]/gu, " ").replace(/\s+/g, " ").replace(/^[\s.-]+|[\s.-]+$/g, "").toLowerCase();
+        if (name.length < 3 || notCityNames().has(name) || isRegionPhrase(name)) continue;
+        city = name;
+        break;
+      }
+    }
+    if (!city) continue;
+    city = CITY_ALIASES[city] ?? city;
+    if (notCityNames().has(city)) continue;
+    const display = city === "washington dc" ? "Washington DC" : titleCase(city);
+    found.add(country ? `${display}, ${country}` : display);
+  }
+  return [...found];
 }

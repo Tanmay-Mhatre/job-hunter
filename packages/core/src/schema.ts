@@ -11,6 +11,20 @@ export const ATS_TYPES = [
   "personio",
   "bamboohr",
   "breezy",
+  // Recognised only (no connector yet): found by the careers-page resolver, saved as "coming soon".
+  "successfactors",
+  "teamtailor",
+  "comeet",
+  "oracle",
+  "icims",
+  "taleo",
+  "jobvite",
+  "pinpoint",
+  "rippling",
+  "jazzhr",
+  "zoho",
+  "hibob",
+  "freshteam",
 ] as const;
 export type AtsType = (typeof ATS_TYPES)[number];
 
@@ -27,6 +41,8 @@ export type ScoreBreakdown = {
   freshness: number;
   /** Set when the job failed a gate and was scored 0. */
   gate?: "title" | "location";
+  /** Why the location didn't fit, when it's worth saying (e.g. "Remote, but only in India…"). */
+  locationNote?: string;
 };
 
 /** The one shape every connector produces. */
@@ -91,14 +107,31 @@ export type RunSummary = {
 };
 
 /** data/jobs.json */
+/** data/history.json: every job ever seen, as merge needs it (internal). */
 export type JobsFile = { version: 1; generatedAt: string; jobs: Job[] };
+
+/** A job as the dashboard gets it: no description (that's in descriptions.json), plus derived fields. */
+export type DashboardJob = Omit<Job, "description" | "missedRuns"> & {
+  /** Countries the location names ("United Arab Emirates"); empty when it names none. */
+  countries: string[];
+  /** Cities the location names, as "City, Country" ("Dubai, United Arab Emirates"). */
+  cities: string[];
+  seniority: "leadership" | "principal" | "senior" | "mid" | "entry";
+  /** Same company + same title: postings of one role in several places share it. */
+  group: string;
+  /** A description is stored (descriptions.json). */
+  hasDescription: boolean;
+};
+
+/** data/jobs.json (jobs that pass your filters) and data/jobs-other.json (the rest). */
+export type DashboardJobsFile = { version: 2; generatedAt: string; jobs: DashboardJob[] };
 
 /** data/meta.json */
 export type DataMeta = {
   version: 1;
   generatedAt: string;
   profile: Profile;
-  companies: { name: string; ats: AtsType; slug: string; enabled: boolean; careers_url?: string }[];
+  companies: { name: string; ats: AtsType; slug: string; enabled: boolean; careers_url?: string; /** Industry ids from the company directory. */ industries?: string[] }[];
   /** Newest first, capped. */
   runs: RunSummary[];
 };
@@ -147,6 +180,8 @@ export const ProfileSchema = z.object({
     /** Remote regions you can't work from, e.g. "us", "canada". Blocks a remote match, never a city match. */
     remote_exclude: terms.default([]),
   }),
+  /** Industry ids you want to work in (see catalog/industries.ts); used to suggest companies. */
+  industries: z.array(z.string().trim().toLowerCase().min(1)).default([]),
   /** keyword -> weight 1..5, matched as whole words in title + description. */
   keywords: z.record(term, z.number().int().min(1).max(5)).default({}),
   min_score: z.number().int().min(0).max(100).default(70),

@@ -2,9 +2,10 @@ import { ArrowRight, Building2, Clock, RefreshCw, Save, X } from "lucide-react";
 import { useState } from "react";
 import type { DataMeta } from "../lib/data";
 import { canRunLocally } from "../lib/data";
-import { companiesBlocker, draftToConfig, saveConfig, type Draft } from "../lib/setup";
+import { draftToConfig, saveConfig, type Draft } from "../lib/setup";
 import { Companies } from "./Companies";
-import { CompanyFinder, companyKey } from "./CompanyFinder";
+import { keyOf } from "../lib/companies";
+import { CompanyFinder } from "./CompanyFinder";
 import { EmptyState } from "./EmptyState";
 import { Button, Card, cx } from "./ui";
 
@@ -32,9 +33,8 @@ export function CompaniesTab({ configured, meta, draft, saved, update, onSaved, 
   const [status, setStatus] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const dirty = companiesKey(draft) !== companiesKey(saved);
-  const blocker = companiesBlocker(draft);
-  const savedKeys = new Set(saved.companies.map(companyKey));
-  const added = draft.companies.filter((r) => !savedKeys.has(companyKey(r))).length;
+  const savedKeys = new Set(saved.companies.map(keyOf));
+  const added = draft.companies.filter((r) => !savedKeys.has(keyOf(r))).length;
 
   if (!configured) {
     return (
@@ -83,7 +83,7 @@ export function CompaniesTab({ configured, meta, draft, saved, update, onSaved, 
         ) : (
           <ul className="mt-3 flex flex-wrap gap-1.5">
             {draft.companies.map((r) => {
-              const isNew = !savedKeys.has(companyKey(r));
+              const isNew = !savedKeys.has(keyOf(r));
               return (
                 <li
                   key={r.id}
@@ -113,17 +113,17 @@ export function CompaniesTab({ configured, meta, draft, saved, update, onSaved, 
       {(dirty || status) && canRunLocally && (
         <div className="sticky bottom-16 z-10 flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-surface/95 p-3 shadow-lg backdrop-blur md:bottom-4">
           <span className={`mr-auto text-sm ${status?.tone === "bad" ? "text-bad" : status ? "text-good" : "text-muted"}`}>
-            {status?.text ?? blocker ?? (added ? `${added} compan${added === 1 ? "y" : "ies"} added, not saved yet.` : "You have unsaved changes.")}
+            {status?.text ?? (added ? `${added} compan${added === 1 ? "y" : "ies"} added, not saved yet.` : "You have unsaved changes.")}
           </span>
           {dirty && (
             <>
               <Button variant="ghost" onClick={() => update({ companies: saved.companies })} disabled={saving}>
                 Discard
               </Button>
-              <Button onClick={() => void save(false)} disabled={saving || !!blocker}>
+              <Button onClick={() => void save(false)} disabled={saving}>
                 <Save className="size-4" /> Save
               </Button>
-              <Button variant="primary" onClick={() => void save(true)} disabled={saving || scanning || !!blocker || trackable === 0}>
+              <Button variant="primary" onClick={() => void save(true)} disabled={saving || scanning || trackable === 0}>
                 <RefreshCw className="size-4" /> Save & scan
               </Button>
             </>

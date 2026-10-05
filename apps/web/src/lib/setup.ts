@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ROLE_FAMILIES } from "@jobhunter/core/catalog/roles";
-import { connectors, detectCompany } from "@jobhunter/core/detect";
+import { careersUrl, companyKey, connectors, detectCompany } from "@jobhunter/core/detect";
 import type { AiProfile } from "@jobhunter/core/resume-parse";
 import type { AtsType, CompanyHealth, Config } from "@jobhunter/core/schema";
 import { canRunLocally } from "./data";
@@ -43,17 +43,26 @@ export async function saveConfig(config: Config): Promise<SaveResult> {
   return (await res.json()) as SaveResult;
 }
 
+/** One checked careers link, with the same fields as a company directory entry (see core setup.ts). */
 export type CompanyCheck = {
   input: string;
-  status: "ok" | "soon" | "error" | "unknown";
+  /** live: open jobs · dormant: no openings right now · soon: support coming · error: wrong link · unknown: not recognised */
+  status: "live" | "dormant" | "soon" | "error" | "unknown";
+  key?: string;
   name?: string;
+  name_source?: "ats" | "directory" | "slug";
   ats?: AtsType;
   slug?: string;
   region?: "global" | "eu";
   shard?: string;
   site?: string;
-  jobs?: number;
-  sampleTitles?: string[];
+  careers_url?: string;
+  open_jobs?: number;
+  top_locations?: string[];
+  sample_titles?: string[];
+  matches?: number;
+  match_examples?: string[];
+  in_directory?: boolean;
   error?: string;
 };
 
@@ -64,7 +73,7 @@ export async function checkCompanies(urls: string[]): Promise<CompanyCheck[]> {
       const d = detectCompany(input);
       if (!d) return { input, status: "unknown", error: "Not a careers site we recognise yet." };
       const { supported, ...ref } = d;
-      return { input, ...ref, status: supported ? "ok" : "soon" };
+      return { input, ...ref, key: companyKey(ref), careers_url: careersUrl(ref) || input, name_source: "slug", status: supported ? "live" : "soon" };
     });
   }
   const res = await fetch("/api/setup/check", { method: "POST", body: JSON.stringify({ urls }) });
@@ -106,11 +115,19 @@ export async function runScan(onEvent: (e: RunEvent) => void): Promise<void> {
 
 // ---------- the wizard's working copy ----------
 
-export type CompanyRow = CompanyCheck & {
+/** A company on the watchlist. */
+export type CompanyRow = {
   id: string;
-  /** "saved" = loaded from an existing config, not re-checked. */
-  state: CompanyCheck["status"] | "saved" | "checking";
+  /** The careers link (or "ats: slug" for config lines without one). */
+  input: string;
+  /** saved: we can scan it now · soon: its hiring system is coming soon; kept until then. */
+  state: "saved" | "soon";
   name: string;
+  ats?: AtsType;
+  slug?: string;
+  region?: "global" | "eu";
+  shard?: string;
+  site?: string;
 };
 
 export type Draft = {
@@ -123,6 +140,8 @@ export type Draft = {
   remoteOk: string[];
   remoteExclude: string[];
   keywords: Record<string, number>;
+  /** Industry ids (Industries step). */
+  industries: string[];
   companies: CompanyRow[];
   minScore: number;
   alerts: Config["alerts"];
@@ -148,6 +167,7 @@ export function emptyDraft(): Draft {
     remoteOk: [],
     remoteExclude: [],
     keywords: {},
+    industries: [],
     companies: [],
     minScore: 70,
     alerts: { telegram: false, email: false, only_new: true },
@@ -179,7 +199,6 @@ export function draftFromConfig(input: unknown): Draft {
         input: typeof co.careers_url === "string" ? co.careers_url : `${co.ats}: ${co.slug}`,
         // Saved companies on ATSs we can't fetch yet stay "coming soon".
         state: connectors[co.ats as AtsType] ? "saved" : "soon",
-        status: connectors[co.ats as AtsType] ? "ok" : "soon",
         name: typeof co.name === "string" ? co.name : co.slug,
         ats: co.ats as AtsType,
         slug: co.slug,
@@ -200,6 +219,7 @@ export function draftFromConfig(input: unknown): Draft {
     remoteOk,
     remoteExclude: strings(l.remote_exclude),
     keywords,
+    industries: strings(p.industries),
     companies,
     minScore: typeof p.min_score === "number" ? p.min_score : d.minScore,
     alerts: {
@@ -212,11 +232,9 @@ export function draftFromConfig(input: unknown): Draft {
   };
 }
 
-/** Rows that go into the config: working, saved, or recognised-but-coming-soon (with what they need). */
+/** Rows that go into the config: trackable now, or coming soon with what they need (Workday needs its site). */
 export function usableCompanies(d: Draft): CompanyRow[] {
-  return d.companies.filter(
-    (r) => (r.state === "ok" || r.state === "saved" || (r.state === "soon" && (r.ats !== "workday" || (r.shard && r.site)))) && r.ats && r.slug,
-  );
+  return d.companies.filter((r) => (r.state === "saved" || r.ats !== "workday" || (r.shard && r.site)) && r.ats && r.slug);
 }
 
 export function draftToConfig(d: Draft): Config {
@@ -248,6 +266,7 @@ export function draftToConfig(d: Draft): Config {
         remote_ok: d.remote ? d.remoteOk : [],
         remote_exclude: d.remote ? d.remoteExclude : [],
       },
+      industries: d.industries,
       keywords: d.keywords,
       min_score: d.minScore,
     },
@@ -262,24 +281,19 @@ export const STEPS = [
   { id: 1, key: "resume", label: "Resume" },
   { id: 2, key: "roles", label: "Roles" },
   { id: 3, key: "locations", label: "Locations" },
-  { id: 4, key: "keywords", label: "Topics" },
-  { id: 5, key: "review", label: "Review" },
+  { id: 4, key: "industries", label: "Industries" },
+  { id: 5, key: "keywords", label: "Topics" },
+  { id: 6, key: "review", label: "Review" },
 ] as const;
 
 /** Step numbers by name, so screens never hard-code positions. Companies are added after setup. */
-export const STEP = { welcome: 0, resume: 1, roles: 2, locations: 3, keywords: 4, review: 5 } as const;
+export const STEP = { welcome: 0, resume: 1, roles: 2, locations: 3, industries: 4, keywords: 5, review: 6 } as const;
 export const STEP_COUNT = STEPS.length;
 
-/** Why the user can't continue yet, or null. Resume and Topics are optional. */
+/** Why the user can't continue yet, or null. Resume, Industries and Topics are optional. */
 export function stepBlocker(step: number, d: Draft): string | null {
   if (step === STEP.roles && d.include.length === 0) return "Pick at least one job title.";
   if (step === STEP.locations && d.places.length === 0 && !(d.remote && d.remoteOk.length > 0)) return "Add a place, or allow remote roles in at least one region.";
-  return null;
-}
-
-/** Why the companies list can't be saved yet, or null (Companies tab / Settings). */
-export function companiesBlocker(d: Draft): string | null {
-  if (d.companies.some((r) => r.state === "checking")) return "Checking links…";
   return null;
 }
 
@@ -296,6 +310,7 @@ export function setupProgress(d: Draft, hasResume = false): SetupProgress {
   // Optional steps only send people back if they never got past them.
   if (furthest <= STEP.resume && !hasResume && d.include.length === 0) return { started, nextStep: STEP.resume };
   for (const s of [STEP.roles, STEP.locations]) if (stepBlocker(s, d)) return { started, nextStep: s };
+  if (furthest <= STEP.industries && d.industries.length === 0) return { started, nextStep: STEP.industries };
   if (furthest <= STEP.keywords && Object.keys(d.keywords).length === 0) return { started, nextStep: STEP.keywords };
   return { started, nextStep: STEP.review };
 }

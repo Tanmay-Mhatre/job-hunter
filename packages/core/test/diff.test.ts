@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -99,5 +99,38 @@ companies:
     expect(meta.runs.map((r) => r.startedAt)).toEqual([T2, T1]);
     expect(meta.profile.min_score).toBe(70);
     expect(readdirSync(join(dir, "runs"))).toHaveLength(2);
+  });
+
+  it("splits dashboard files: matches, the rest, descriptions; and tags companies with industries", () => {
+    dir = mkdtempSync(join(tmpdir(), "jobhunter-"));
+    mkdirSync(join(dir, "catalog"));
+    writeFileSync(join(dir, "catalog", "directory.json"), JSON.stringify({ companies: [{ key: "greenhouse:acme", tags: ["crypto"] }] }));
+    const config = parseConfig(`
+profile:
+  titles: { include: ["product manager"] }
+  locations: { include: ["dubai"] }
+companies:
+  - { name: "Acme", ats: greenhouse, slug: "acme" }
+`);
+    const gated = job("2", { score: 0, why: { title: 0, location: 20, keywords: [], keywordPoints: 0, freshness: 10, gate: "title" } });
+    const r = run(T1, [job("1", { firstSeen: T1, title: "Senior Product Manager", location: "Dubai, UAE" }), gated]);
+    saveRun(dir, config, r, mergeHistory([], r, config.companies));
+    const read = (f: string) => JSON.parse(readFileSync(join(dir, f), "utf8"));
+    const matches = read("jobs.json");
+    expect(matches.version).toBe(2);
+    expect(matches.jobs.map((j: { id: string }) => j.id)).toEqual(["greenhouse:acme:1"]);
+    expect(matches.jobs[0]).toMatchObject({ countries: ["United Arab Emirates"], seniority: "senior", hasDescription: true, group: "Acme|senior product manager" });
+    expect(matches.jobs[0].description).toBeUndefined();
+    expect(read("jobs-other.json").jobs.map((j: { id: string }) => j.id)).toEqual(["greenhouse:acme:2"]);
+    expect(read("descriptions.json")).toEqual({ "greenhouse:acme:1": "payments" });
+    expect(readMeta(dir)!.companies[0]!.industries).toEqual(["crypto"]);
+    // Merge still reads every job, with descriptions.
+    expect(readJobs(dir).map((j) => j.id).sort()).toEqual(["greenhouse:acme:1", "greenhouse:acme:2"]);
+  });
+
+  it("reads the old single jobs.json until history.json exists", () => {
+    dir = mkdtempSync(join(tmpdir(), "jobhunter-"));
+    writeFileSync(join(dir, "jobs.json"), JSON.stringify({ version: 1, generatedAt: T0, jobs: [job("9")] }));
+    expect(readJobs(dir).map((j) => j.id)).toEqual(["greenhouse:acme:9"]);
   });
 });

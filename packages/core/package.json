@@ -12,7 +12,10 @@
     "./detect": "./src/connectors/index.ts",
     "./resume-parse": "./src/resume-parse.ts",
     "./catalog/roles": "./src/catalog/roles.ts",
-    "./catalog/places": "./src/catalog/places.ts"
+    "./catalog/places": "./src/catalog/places.ts",
+    "./catalog/industries": "./src/catalog/industries.ts",
+    "./catalog/seniority": "./src/catalog/seniority.ts",
+    "./dashboard": "./src/dashboard.ts"
   },
   "dependencies": {
     "yaml": "^2.8.0",

@@ -1,11 +1,12 @@
-import { Download, RefreshCw, Save, Upload } from "lucide-react";
+import { ArrowRight, Download, RefreshCw, Save, Upload } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { canRunLocally } from "../lib/data";
 import { draftToConfig, saveBlockers, saveConfig, type Draft } from "../lib/setup";
 import type { Suggestions } from "../lib/suggest";
 import { ResumeStep } from "../setup/ResumeStep";
+import type { Prefs } from "../lib/prefs";
 import { exportState, readStateFile, type UserState } from "../lib/userState";
-import { CompaniesStep, KeywordsStep, LocationsStep, RolesStep, ThresholdPicker } from "../setup/steps";
+import { IndustriesStep, KeywordsStep, LocationsStep, RolesStep, ThresholdPicker } from "../setup/steps";
 import { Button, Card } from "./ui";
 
 type Props = {
@@ -18,14 +19,16 @@ type Props = {
   onScan: () => void;
   scanning: boolean;
   user: UserState;
-  onImport: (s: UserState) => void;
+  prefs: Prefs;
+  onImport: (s: UserState, prefs?: Partial<Prefs>) => void;
   suggest: Suggestions;
   resumeText: string;
   saveResume: (text: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+  toCompanies: () => void;
 };
 
 /** Edit any part of the setup after the wizard, then save (and rescan). */
-export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanning, user, onImport, suggest, resumeText, saveResume }: Props) {
+export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanning, user, prefs, onImport, suggest, resumeText, saveResume, toCompanies }: Props) {
   const [status, setStatus] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const blockers = saveBlockers(draft).map((b) => b.message);
@@ -60,16 +63,26 @@ export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanni
       <Section id="locations" title="Locations" hint="Jobs outside these places are hidden.">
         <LocationsStep draft={draft} update={update} suggest={suggest} />
       </Section>
+      <Section id="industries" title="Industries" hint="Companies in these industries are suggested first.">
+        <IndustriesStep draft={draft} update={update} suggest={suggest} />
+      </Section>
       <Section id="keywords" title="Topics" hint="Rank jobs that mention these higher.">
         <KeywordsStep draft={draft} update={update} suggest={suggest} resumeText={resumeText} />
       </Section>
-      <Section id="companies" title="Companies" hint="Paste more careers links to watch more companies.">
-        <CompaniesStep draft={draft} update={update} />
+      <Section id="companies" title="Companies" hint="Find, add and remove the companies you watch in the Companies tab.">
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-sm">
+            You watch <b className="tabular">{draft.companies.length}</b> compan{draft.companies.length === 1 ? "y" : "ies"}.
+          </p>
+          <Button size="sm" onClick={toCompanies}>
+            Manage in Companies tab <ArrowRight className="size-3.5" />
+          </Button>
+        </div>
       </Section>
       <Section id="threshold" title="Strong match threshold" hint="Jobs at or above this get a star, and alerts once those arrive.">
         <ThresholdPicker draft={draft} update={update} />
       </Section>
-      <TrackingData user={user} onImport={onImport} />
+      <TrackingData user={user} prefs={prefs} onImport={onImport} />
 
       {canRunLocally && (dirty || status) && (
         <div className="sticky bottom-16 z-10 rounded-2xl border border-line bg-surface/95 p-3 shadow-lg backdrop-blur md:bottom-4">
@@ -108,7 +121,7 @@ function Section({ id, title, hint, children }: { id: string; title: string; hin
   );
 }
 
-function TrackingData({ user, onImport }: { user: UserState; onImport: (s: UserState) => void }) {
+function TrackingData({ user, prefs, onImport }: { user: UserState; prefs: Prefs; onImport: (s: UserState, prefs?: Partial<Prefs>) => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const tracked = Object.keys(user).length;
@@ -117,9 +130,9 @@ function TrackingData({ user, onImport }: { user: UserState; onImport: (s: UserS
     if (!f) return;
     try {
       const next = await readStateFile(f);
-      const count = Object.keys(next).length;
+      const count = Object.keys(next.state).length;
       if (tracked && !confirm(`Replace your ${tracked} tracked jobs in this browser with the ${count} in the file?`)) return;
-      onImport(next);
+      onImport(next.state, next.prefs);
       setMsg({ tone: "ok", text: `Imported ${count} tracked jobs.` });
     } catch (err) {
       setMsg({ tone: "bad", text: (err as Error).message });
@@ -132,11 +145,11 @@ function TrackingData({ user, onImport }: { user: UserState; onImport: (s: UserS
     <Card className="p-5 sm:p-6">
       <h2 className="text-base font-semibold">Your tracking data</h2>
       <p className="mt-0.5 text-sm text-muted">
-        Statuses and notes for <b className="tabular text-fg">{tracked}</b> jobs are saved in this browser only. Export a backup or move them to another
-        device.
+        Statuses and notes for <b className="tabular text-fg">{tracked}</b> jobs, plus your saved Radar views and hidden companies, are saved in this
+        browser only. Export a backup or move them to another device.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button onClick={() => exportState(user)} disabled={!tracked}>
+        <Button onClick={() => exportState(user, prefs)} disabled={!tracked && !prefs.views.length && !prefs.hiddenCompanies.length}>
           <Download className="size-4" /> Export
         </Button>
         <Button onClick={() => fileRef.current?.click()}>

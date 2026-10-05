@@ -8,7 +8,7 @@ import { diagnoseNoMatches } from "../src/diagnose";
 import type { Job } from "../src/schema";
 import { checkCompanies, saveConfig, setupStatus } from "../src/setup";
 import { configToYaml } from "../src/yaml-writer";
-import { fakeHttp, fixture, json } from "./helpers";
+import { profile, fakeHttp, fixture, json } from "./helpers";
 
 const example = parseConfig(readFileSync(new URL("../../../jobhunter.config.yaml", import.meta.url), "utf8"));
 
@@ -50,6 +50,19 @@ describe("detectCompany for not-yet-supported ATSs", () => {
     ["https://acme.jobs.personio.de/", { ats: "personio", slug: "acme" }],
     ["https://acme.bamboohr.com/careers", { ats: "bamboohr", slug: "acme" }],
     ["https://acme.breezy.hr/", { ats: "breezy", slug: "acme" }],
+    ["https://career5.successfactors.eu/career?company=AcmeBank&career_ns=job_listing", { ats: "successfactors", slug: "AcmeBank" }],
+    ["https://acme.teamtailor.com/jobs", { ats: "teamtailor", slug: "acme" }],
+    ["https://www.comeet.com/jobs/acme/A1.B2C", { ats: "comeet", slug: "A1.B2C", site: "acme", name: "Acme" }],
+    ["https://abcd.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/requisitions", { ats: "oracle", slug: "abcd", shard: "em2", site: "CX_1" }],
+    ["https://careers-acme.icims.com/jobs/search", { ats: "icims", slug: "acme" }],
+    ["https://acme.taleo.net/careersection/2/jobsearch.ftl", { ats: "taleo", slug: "acme" }],
+    ["https://jobs.jobvite.com/acme/jobs", { ats: "jobvite", slug: "acme" }],
+    ["https://acme.pinpointhq.com/", { ats: "pinpoint", slug: "acme" }],
+    ["https://ats.rippling.com/acme/jobs", { ats: "rippling", slug: "acme" }],
+    ["https://acme.applytojob.com/apply", { ats: "jazzhr", slug: "acme" }],
+    ["https://acme.zohorecruit.com/jobs/Careers", { ats: "zoho", slug: "acme" }],
+    ["https://acme.careers.hibob.com/", { ats: "hibob", slug: "acme" }],
+    ["https://acme.freshteam.com/jobs", { ats: "freshteam", slug: "acme" }],
   ])("%s", (url, expected) => {
     expect(detectCompany(url)).toMatchObject(expected);
   });
@@ -60,18 +73,45 @@ describe("detectCompany for not-yet-supported ATSs", () => {
 });
 
 describe("checkCompanies", () => {
-  it("reports ok / error / soon / unknown", async () => {
+  it("reports live / error / soon / unknown with the full directory record", async () => {
     const { http, calls } = fakeHttp((url) => (url.includes("greenhouse") ? json(fixture("greenhouse.json")) : json({}, 404)));
     const res = await checkCompanies(
-      ["https://job-boards.greenhouse.io/acme", " jobs.lever.co/nope ", "https://acme.wd3.myworkdayjobs.com/en-US", "https://example.com/careers", ""],
-      http,
+      ["https://job-boards.greenhouse.io/acme/jobs/123", " jobs.lever.co/nope ", "https://acme.wd3.myworkdayjobs.com/en-US", "https://example.com/careers", ""],
+      { http },
     );
-    expect(res.map((r) => r.status)).toEqual(["ok", "error", "soon", "unknown"]);
-    expect(res[0]).toMatchObject({ name: "Acme", ats: "greenhouse", slug: "acme", jobs: 3 });
-    expect(res[0]!.sampleTitles).toHaveLength(3);
+    expect(res.map((r) => r.status)).toEqual(["live", "error", "soon", "unknown"]);
+    expect(res[0]).toMatchObject({
+      key: "greenhouse:acme",
+      name: "Acme",
+      name_source: "slug", // this fixture has no company_name
+      ats: "greenhouse",
+      slug: "acme",
+      careers_url: "https://job-boards.greenhouse.io/acme",
+      open_jobs: 3,
+      in_directory: false,
+    });
+    expect(res[0]!.sample_titles).toHaveLength(3);
+    expect(res[0]!.top_locations!.length).toBeGreaterThan(0);
+    expect(res[0]!.matches).toBeUndefined(); // no profile given
     expect(res[1]!.error).toMatch(/Not found/);
     expect(res[2]!.error).toMatch(/full Workday link/); // no site in that URL
     expect(calls).toHaveLength(2); // never fetches unsupported or unknown
+  });
+
+  it("counts jobs matching the profile and marks companies already in the directory", async () => {
+    const { http } = fakeHttp(() => json(fixture("greenhouse.json")));
+    const [r] = await checkCompanies(["job-boards.greenhouse.io/acme"], { http, profile: profile(), directory: new Map([["greenhouse:acme", { name: "Acme Inc" }]]) });
+    expect(r).toMatchObject({ in_directory: true, name: "Acme Inc", name_source: "directory" });
+    expect(r!.matches).toBeGreaterThanOrEqual(0);
+    expect(r!.match_examples!.length).toBe(Math.min(3, r!.matches!));
+  });
+
+  it("treats an empty Greenhouse/Lever/Ashby board as dormant, but an empty SmartRecruiters one as a likely wrong link", async () => {
+    const { http } = fakeHttp((url) => (url.includes("smartrecruiters") ? json({ totalFound: 0, content: [] }) : json({ jobs: [] })));
+    const [gh, sr] = await checkCompanies(["job-boards.greenhouse.io/quiet", "careers.smartrecruiters.com/Madeup"], { http });
+    expect(gh).toMatchObject({ status: "dormant", open_jobs: 0, name: "Quiet", name_source: "slug" });
+    expect(sr).toMatchObject({ status: "error" });
+    expect(sr!.error).toMatch(/SmartRecruiters/);
   });
 });
 

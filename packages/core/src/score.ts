@@ -1,5 +1,6 @@
+import { allPlaceNames, countriesIn, LOCATION_SEGMENTS, placeOwner, placeOwnerName, SUBDIVISIONS } from "./catalog/places";
 import type { NormalizedJob, Profile, ScoreBreakdown } from "./schema";
-import { matchesTerm } from "./text";
+import { matchesAny, matchesTerm, termRegex } from "./text";
 
 export const POINTS = {
   titleMatch: 20,
@@ -19,30 +20,18 @@ type Scorable = Pick<NormalizedJob, "title" | "location" | "workplace" | "descri
 /**
  * Transparent keyword scoring, 0..100. No AI.
  *
- * Gates: the title must match an include term and no exclude term, and the location must match
- * locations.include, or locations.remote_ok without hitting remote_exclude. Failing a gate scores 0.
+ * Gates: the title must match an include term and no exclude term, and the location must be one
+ * the user picked (see locationFit). Failing a gate scores 0.
  *
  * @param seenAt used for freshness when the ATS gives no posting date (first time we saw the job).
  */
 export function scoreJob(job: Scorable, profile: Profile, now: Date, seenAt: Date = now): { score: number; why: ScoreBreakdown } {
   const title = job.title;
-  const location = job.workplace === "remote" && !matchesTerm(job.location, "remote") ? `${job.location} remote` : job.location;
-
-  const titleOk =
-    profile.titles.include.some((t) => matchesTerm(title, t)) && !profile.titles.exclude.some((t) => matchesTerm(title, t));
-  const titlePts = titleOk
-    ? POINTS.titleMatch + (profile.seniority_boost.some((t) => matchesTerm(title, t)) ? POINTS.seniority : 0)
-    : 0;
-
-  let locationPts = 0;
-  if (profile.locations.include.some((t) => matchesTerm(location, t))) {
-    locationPts = POINTS.locationCity;
-  } else if (
-    profile.locations.remote_ok.some((t) => matchesTerm(location, t)) &&
-    !profile.locations.remote_exclude.some((t) => matchesTerm(location, t))
-  ) {
-    locationPts = POINTS.locationRemote;
-  }
+  const location = gateLocation(job);
+  const titleOk = titlePasses(title, profile);
+  const titlePts = titleOk ? POINTS.titleMatch + (matchesAny(title, profile.seniority_boost) ? POINTS.seniority : 0) : 0;
+  const fit = locationFit(location, profile);
+  const locationPts = fit.points;
 
   const haystack = `${title}\n${job.description ?? ""}`;
   const matched = Object.entries(profile.keywords)
@@ -65,11 +54,120 @@ export function scoreJob(job: Scorable, profile: Profile, now: Date, seenAt: Dat
     freshness,
   };
   if (!titleOk) return { score: 0, why: { ...why, gate: "title" } };
-  if (locationPts === 0) return { score: 0, why: { ...why, gate: "location" } };
+  if (locationPts === 0) return { score: 0, why: { ...why, gate: "location", ...(fit.note ? { locationNote: fit.note } : {}) } };
   return { score: titlePts + locationPts + keywordPoints + freshness, why };
+}
+
+/** A remote job counts as "remote" even when its location text doesn't say so. */
+function gateLocation(job: Pick<NormalizedJob, "location" | "workplace">): string {
+  return job.workplace === "remote" && !matchesTerm(job.location, "remote") ? `${job.location} remote` : job.location;
+}
+
+function titlePasses(title: string, profile: Profile): boolean {
+  return matchesAny(title, profile.titles.include) && !matchesAny(title, profile.titles.exclude);
+}
+
+/** Remote wording that names no place: stripped before checking what else a remote job names. */
+const REMOTE_WORDS =
+  /\b(fully|100%|100 %|remote|remotely|first|friendly|work from home|work-from-home|wfh|home[- ]based|from home|anywhere|any ?time ?zone|timezone|time zone|flexible|distributed|telecommute|virtual|or|and|only|within|based|in|position|role|team|location|locations|opportunity)\b/gi;
+const GENERIC_REMOTE = ["remote", "anywhere", "worldwide", "global"];
+
+type LocationRules = {
+  include: string[];
+  /** States and provinces of the countries the user picked ("california", "ontario"). */
+  subdivisions: string[];
+  /** Their codes after a comma or bracket, upper case only: "Santa Monica, CA". */
+  codes: RegExp | null;
+  /** remote_ok terms that name a region or place (everything except plain "remote"). */
+  regions: string[];
+  /** The user takes remote jobs that name no place at all. */
+  bareRemote: boolean;
+  exclude: string[];
+  /** Longer place names that contain one of the user's terms but are somewhere else. */
+  mask: RegExp | null;
+};
+const rulesCache = new WeakMap<Profile["locations"], LocationRules>();
+
+function rulesFor(profile: Profile): LocationRules {
+  const loc = profile.locations;
+  let rules = rulesCache.get(loc);
+  if (!rules) {
+    const mine = [...loc.include, ...loc.remote_ok, ...loc.remote_exclude].map((t) => t.toLowerCase());
+    const owners = new Map(mine.map((t) => [t, placeOwner(t)]));
+    // "New South Wales" hides "wales", "North America" hides "america", unless the user picked them
+    // or they belong to the same place ("united arab emirates" never hides "emirates").
+    const hide = allPlaceNames().filter(
+      (p) => p.includes(" ") && !mine.includes(p) && mine.some((t) => t !== p && matchesTerm(p, t) && (!owners.get(t) || owners.get(t) !== placeOwner(p))),
+    );
+    // Countries the user picked (by any of their names or cities).
+    const countries = new Set(loc.include.map((t) => placeOwner(t)).filter((o): o is string => !!o?.startsWith("country:")).map((o) => o.slice(8)));
+    const subs = [...countries].map((c) => SUBDIVISIONS[c]).filter((x) => !!x);
+    const codes = subs.flatMap((x) => x!.codes);
+    rules = {
+      include: loc.include,
+      subdivisions: subs.flatMap((x) => x!.names),
+      codes: codes.length ? new RegExp(`(?:,\\s*|\\()(?:${codes.join("|")})(?![\\p{L}])`, "u") : null,
+      regions: loc.remote_ok.filter((t) => t.toLowerCase() !== "remote"),
+      bareRemote: loc.remote_ok.some((t) => GENERIC_REMOTE.includes(t.toLowerCase())),
+      exclude: loc.remote_exclude,
+      mask: hide.length ? new RegExp(hide.map((p) => `(?:${termRegex(p).source})`).join("|"), "giu") : null,
+    };
+    rulesCache.set(loc, rules);
+  }
+  return rules;
+}
+
+/**
+ * Does the location name one of the user's places? Checked per segment ("Dubai; London"), and a
+ * picked city only counts when that segment doesn't put it in another country: "Cambridge, MA USA"
+ * isn't the UK's Cambridge, "London, Ontario" isn't the UK's London.
+ */
+function inYourPlaces(text: string, r: LocationRules): boolean {
+  if (!(matchesAny(text, r.include) || matchesAny(text, r.subdivisions) || r.codes?.test(text))) return false;
+  for (const segment of text.split(LOCATION_SEGMENTS)) {
+    if (matchesAny(segment, r.subdivisions) || r.codes?.test(segment)) return true;
+    const hits = r.include.filter((t) => matchesTerm(segment, t));
+    if (!hits.length) continue;
+    const named = countriesIn(segment).map((c) => c.toLowerCase());
+    if (!named.length) return true;
+    if (hits.some((t) => { const owner = placeOwner(t); return !owner?.startsWith("country:") || named.includes(owner.slice(8)); })) return true;
+  }
+  return false;
+}
+
+/**
+ * Is this a place the user picked?
+ *   +20  it names one of their places (the longest place name wins: "New South Wales" isn't "wales")
+ *   +15  it names a remote region they picked (EMEA, GCC, worldwide…), unless it names an excluded one
+ *   +15  it's remote and names no place at all ("Remote", "Fully remote")
+ *    0   anything else, with a note when it's remote but tied to somewhere else ("Remote - India")
+ */
+export function locationFit(location: string, profile: Profile): { points: number; note?: string } {
+  const r = rulesFor(profile);
+  // "U.S." -> "US", "D.C." -> "DC", so abbreviations match like the plain words.
+  const plain = location.replace(/\bU\.S\.A\.?/g, "USA").replace(/\bU\.S\.?/g, "US").replace(/\bD\.C\.?/g, "DC");
+  const text = r.mask ? plain.replace(r.mask, " ") : plain;
+  if (inYourPlaces(text, r)) return { points: POINTS.locationCity };
+  const excluded = matchesAny(text, r.exclude);
+  if (!excluded && matchesAny(text, r.regions)) return { points: POINTS.locationRemote };
+  const remote = matchesTerm(location, "remote");
+  if (!remote) return { points: 0 };
+  // What's left once remote wording and punctuation are gone is a place: the job is remote there only.
+  const rest = plain.replace(REMOTE_WORDS, " ").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  if (!rest && r.bareRemote && !excluded) return { points: POINTS.locationRemote };
+  if (!rest) return { points: 0 };
+  const known = allPlaceNames().find((p) => matchesTerm(rest, p));
+  const where = known && placeOwnerName(known);
+  return { points: 0, note: where ? `Remote, but only in ${where}: not one of your places.` : `Remote, but limited to "${rest.slice(0, 40)}": not one of your places.` };
+}
+
+/** Which gate a job fails (title is checked first), or undefined if it passes both. No scoring. */
+export function gateOf(job: Pick<NormalizedJob, "title" | "location" | "workplace">, profile: Profile): "title" | "location" | undefined {
+  if (!titlePasses(job.title, profile)) return "title";
+  return locationFit(gateLocation(job), profile).points ? undefined : "location";
 }
 
 /** Title-and-location gate only; cheap check before expensive detail calls. */
 export function passesGates(job: Pick<NormalizedJob, "title" | "location" | "workplace">, profile: Profile): boolean {
-  return scoreJob({ ...job, description: "", postedAt: undefined }, profile, new Date()).why.gate === undefined;
+  return gateOf(job, profile) === undefined;
 }

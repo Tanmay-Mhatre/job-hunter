@@ -116,7 +116,7 @@ companies:
 describe("checkCompanies validity", () => {
   it("treats an empty board as invalid, since unknown names still answer 200", async () => {
     const { http } = fakeHttp(routes);
-    const [r] = await checkCompanies(["https://careers.smartrecruiters.com/NotARealCompany"], http);
+    const [r] = await checkCompanies(["https://careers.smartrecruiters.com/NotARealCompany"], { http });
     expect(r).toMatchObject({ status: "error", ats: "smartrecruiters", slug: "NotARealCompany" });
     expect(r!.error).toMatch(/No open jobs/);
   });

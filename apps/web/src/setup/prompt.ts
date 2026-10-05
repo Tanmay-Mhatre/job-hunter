@@ -1,9 +1,11 @@
+import { INDUSTRIES } from "@jobhunter/core/catalog/industries";
+
 /**
  * The prompt users paste into their own Claude or ChatGPT to merge several resumes into one
  * master resume. Job Hunter never sends the resume anywhere; the user runs this themselves.
  * Bump PROMPT_VERSION when the output format changes (parseAiAnswer must still read it).
  */
-export const PROMPT_VERSION = 1;
+export const PROMPT_VERSION = 2;
 
 export const MASTER_RESUME_PROMPT = `You are an expert resume writer. I've attached my resumes (and/or pasted them below). I use different versions for different kinds of roles. Merge them into ONE master resume that I can keep as the single source of truth.
 
@@ -34,9 +36,11 @@ After the resume, add a JSON block for my job search tool. Infer it from the res
     "locations": ["where I'd work next: my current city and country (add others only if my resumes say I'm open to relocating there)"],
     "open_to_remote": true,
     "remote_regions": ["regions that fit my location, e.g. emea"],
-    "keywords": { "domain or skill term": 5 }
+    "keywords": { "domain or skill term": 5 },
+    "industries": ["1-4 industry ids from the list below that match my experience and where I want to work next"]
   }
 }
 \`\`\`
 
-For "keywords", list 10-25 domain and skill terms from my experience, weighted 1-5 (5 = my core expertise). Output the resume and the JSON block only, with no other commentary.`;
+For "keywords", list 10-25 domain and skill terms from my experience, weighted 1-5 (5 = my core expertise).
+For "industries", use only these ids: ${INDUSTRIES.map((i) => `${i.id} (${i.label})`).join(", ")}. Output the resume and the JSON block only, with no other commentary.`;

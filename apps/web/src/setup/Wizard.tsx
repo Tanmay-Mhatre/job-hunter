@@ -1,3 +1,4 @@
+import { INDUSTRY_BY_ID } from "@jobhunter/core/catalog/industries";
 import { configToYaml } from "@jobhunter/core/yaml-writer";
 import { ArrowLeft, ArrowRight, Building2, CircleAlert, Download, FileText, Radar as RadarIcon, ScanSearch, Sparkles, Target } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -8,7 +9,7 @@ import type { ScanState } from "../lib/scan";
 import { draftToConfig, saveBlockers, saveConfig, STEP, STEP_COUNT, stepBlocker, STEPS, usableCompanies, type Draft, type SetupProgress } from "../lib/setup";
 import { buildSuggestions } from "../lib/suggest";
 import { ResumeStep } from "./ResumeStep";
-import { KeywordsStep, LocationsStep, RolesStep, ThresholdPicker } from "./steps";
+import { IndustriesStep, KeywordsStep, LocationsStep, RolesStep, ThresholdPicker } from "./steps";
 
 type Props = {
   step: number;
@@ -39,6 +40,10 @@ const COPY: Record<number, { title: string; intro: string }> = {
   },
   [STEP.roles]: { title: "What roles are you looking for?", intro: "We only show jobs whose title matches. Search the catalogue or browse by job family." },
   [STEP.locations]: { title: "Where do you want to work?", intro: "Jobs outside these places are hidden. Remote roles can count too." },
+  [STEP.industries]: {
+    title: "Which industries are you in?",
+    intro: "Pick the industries you've worked in or want to move into. Companies in them are suggested first. This never hides a job.",
+  },
   [STEP.keywords]: { title: "What topics matter to you?", intro: "These don't hide jobs. They rank the ones that mention your topics higher." },
   [STEP.review]: { title: "Review and save", intro: "Check everything reads right, then save. Next you'll add the companies to watch." },
 };
@@ -56,7 +61,9 @@ export function Wizard(props: Props) {
 
   const blocker = stepBlocker(step, draft);
   const optionalEmpty =
-    (step === STEP.resume && !resumeText) || (step === STEP.keywords && Object.keys(draft.keywords).length === 0);
+    (step === STEP.resume && !resumeText) ||
+    (step === STEP.industries && draft.industries.length === 0) ||
+    (step === STEP.keywords && Object.keys(draft.keywords).length === 0);
   return (
     <div className="mx-auto max-w-2xl">
       <Progress step={step} goStep={goStep} draft={draft} />
@@ -76,6 +83,7 @@ export function Wizard(props: Props) {
           )}
           {step === STEP.roles && <RolesStep draft={draft} update={update} suggest={suggest} />}
           {step === STEP.locations && <LocationsStep draft={draft} update={update} suggest={suggest} />}
+          {step === STEP.industries && <IndustriesStep draft={draft} update={update} suggest={suggest} />}
           {step === STEP.keywords && <KeywordsStep draft={draft} update={update} suggest={suggest} resumeText={resumeText} />}
           {step === STEP.review && (
             <Review
@@ -244,7 +252,7 @@ function Review({
   const [started, setStarted] = useState(false);
   const blockers = saveBlockers(draft);
   const companies = usableCompanies(draft);
-  const canScan = companies.some((c) => c.state === "ok" || c.state === "saved");
+  const canScan = companies.some((c) => c.state === "saved");
   const topKeywords = Object.entries(draft.keywords)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6)
@@ -343,6 +351,16 @@ function Review({
         )}
         .
       </>,
+    ],
+    [
+      STEP.industries,
+      draft.industries.length ? (
+        <>
+          Suggest companies in <b>{draft.industries.map((id) => INDUSTRY_BY_ID.get(id)?.label ?? id).join(", ")}</b> first.
+        </>
+      ) : (
+        <span className="text-muted">No industries picked (optional).</span>
+      ),
     ],
     [
       STEP.keywords,

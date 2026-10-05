@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Job } from "./data";
+import type { Prefs } from "./prefs";
 import { load, save } from "./storage";
 
 export const PIPELINE = ["saved", "applied", "interviewing", "offer", "rejected"] as const;
@@ -97,8 +98,8 @@ export function useVisitCutoff() {
   return useMemo(() => ({ cutoff, markAllSeen }), [cutoff, markAllSeen]);
 }
 
-export function exportState(state: UserState): void {
-  const blob = new Blob([JSON.stringify({ app: "job-hunter", version: 1, exportedAt: new Date().toISOString(), state }, null, 2)], {
+export function exportState(state: UserState, prefs?: Prefs): void {
+  const blob = new Blob([JSON.stringify({ app: "job-hunter", version: 1, exportedAt: new Date().toISOString(), state, prefs }, null, 2)], {
     type: "application/json",
   });
   const a = document.createElement("a");
@@ -108,10 +109,10 @@ export function exportState(state: UserState): void {
   URL.revokeObjectURL(a.href);
 }
 
-export async function readStateFile(file: File): Promise<UserState> {
-  const parsed = JSON.parse(await file.text()) as { app?: string; state?: UserState };
+export async function readStateFile(file: File): Promise<{ state: UserState; prefs?: Partial<Prefs> }> {
+  const parsed = JSON.parse(await file.text()) as { app?: string; state?: UserState; prefs?: Partial<Prefs> };
   if (parsed.app !== "job-hunter" || !parsed.state || typeof parsed.state !== "object") {
     throw new Error("That file isn't a Job Hunter export.");
   }
-  return parsed.state;
+  return { state: parsed.state, prefs: parsed.prefs };
 }

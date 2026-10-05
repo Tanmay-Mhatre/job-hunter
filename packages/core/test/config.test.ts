@@ -28,7 +28,7 @@ describe("parseConfig", () => {
   });
 
   it("explains bad values with their path", () => {
-    const bad = minimal.replace("ats: greenhouse", "ats: taleo") + "\n  - { name: X, ats: workday, slug: x }\n";
+    const bad = minimal.replace("ats: greenhouse", "ats: notarealats") + "\n  - { name: X, ats: workday, slug: x }\n";
     expect(() => parseConfig(bad)).toThrow(ConfigError);
     try {
       parseConfig(bad);

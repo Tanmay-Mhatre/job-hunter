@@ -35,7 +35,8 @@ ${RESUME}
     "locations": ["dubai", "abu dhabi"],
     "open_to_remote": true,
     "remote_regions": ["emea"],
-    "keywords": { "payments": 5, "crypto": 9, "kyc": "3", "tokenization": 0 }
+    "keywords": { "payments": 5, "crypto": 9, "kyc": "3", "tokenization": 0 },
+    "industries": ["Brokerage", "crypto-exchange", "space tourism"]
   }
 }
 \`\`\`
@@ -57,6 +58,8 @@ describe("parseAiAnswer", () => {
       open_to_remote: true,
       remote_regions: ["emea"],
       keywords: { payments: 5, crypto: 5, kyc: 3, tokenization: 1 },
+      // Labels map to ids; unknown industries are dropped.
+      industries: ["brokerage", "crypto", "crypto-exchange"],
     });
     expect(r.warnings).toEqual([]);
   });
@@ -97,7 +100,7 @@ describe("detectFromResume", () => {
   });
 
   it("returns nothing for tiny input", () => {
-    expect(detectFromResume("hi", { titles: ["x"], countries: COUNTRIES, keywords: {} })).toEqual({ titles: [], places: [], keywords: [] });
+    expect(detectFromResume("hi", { titles: ["x"], countries: COUNTRIES, keywords: {} })).toEqual({ titles: [], places: [], keywords: [], industries: [] });
   });
 });
 

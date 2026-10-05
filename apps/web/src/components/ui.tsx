@@ -158,3 +158,64 @@ export function Kbd({ children }: { children: ReactNode }) {
     </kbd>
   );
 }
+
+/** Page numbers to show: first, last, and the current page's neighbours, with gaps as null. */
+export function pageList(page: number, pages: number): (number | null)[] {
+  const keep = new Set([1, pages, page - 1, page, page + 1].filter((p) => p >= 1 && p <= pages));
+  const out: (number | null)[] = [];
+  let prev = 0;
+  for (const p of [...keep].sort((a, b) => a - b)) {
+    if (p - prev > 1) out.push(null);
+    out.push(p);
+    prev = p;
+  }
+  return out;
+}
+
+/** "Showing 26–50 of 6,592" with Prev / page numbers / Next (page numbers hidden on phones). */
+export function Pagination({ page, pageSize, total, onPage }: { page: number; pageSize: number; total: number; onPage: (p: number) => void }) {
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  if (total === 0) return null;
+  const from = (page - 1) * pageSize + 1;
+  const to = Math.min(total, page * pageSize);
+  return (
+    <nav aria-label="Pages" className="flex flex-wrap items-center justify-between gap-2">
+      <p className="tabular text-xs text-muted">
+        Showing {from.toLocaleString()}–{to.toLocaleString()} of {total.toLocaleString()}
+      </p>
+      {pages > 1 && (
+        <div className="flex items-center gap-1">
+          <Button size="sm" variant="ghost" onClick={() => onPage(page - 1)} disabled={page === 1} aria-label="Previous page">
+            ‹ Prev
+          </Button>
+          <span className="tabular px-1 text-xs text-muted sm:hidden">
+            Page {page} of {pages.toLocaleString()}
+          </span>
+          {pageList(page, pages).map((p, i) =>
+            p === null ? (
+              <span key={`gap${i}`} className="hidden px-1 text-xs text-muted sm:inline">
+                …
+              </span>
+            ) : (
+              <button
+                key={p}
+                type="button"
+                onClick={() => onPage(p)}
+                aria-current={p === page ? "page" : undefined}
+                className={cx(
+                  "tabular hidden h-8 min-w-8 rounded-lg px-2 text-xs sm:inline-block",
+                  p === page ? "bg-accent text-accent-fg" : "text-muted hover:bg-surface-2 hover:text-fg",
+                )}
+              >
+                {p.toLocaleString()}
+              </button>
+            ),
+          )}
+          <Button size="sm" variant="ghost" onClick={() => onPage(page + 1)} disabled={page === pages} aria-label="Next page">
+            Next ›
+          </Button>
+        </div>
+      )}
+    </nav>
+  );
+}

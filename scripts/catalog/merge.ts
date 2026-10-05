@@ -25,6 +25,8 @@ const SOURCES = {
   kalil: { family: "kalil", publishable: true },
   conors: { family: "openjobsdata", publishable: true },
   cryptojobs: { family: "cryptojobs", publishable: true },
+  // Our own: the industry seed list and the boards resolve.ts found on those companies' websites.
+  seeds: { family: "seeds", publishable: true },
   feashliaa: { family: "commoncrawl", publishable: false },
   // Votes carried inside upstreamit's slug store (CC BY-SA): cross-check only.
   "up:commoncrawl": { family: "commoncrawl", publishable: false },
@@ -132,6 +134,17 @@ for (const f of ["greenhouse", "lever", "ashby", "smartrecruiters", "workday"]) 
   const rows = (JSON.parse(readFileSync(join(here, "..", "curate", "sources", "crypto-jobs-fyi.companies.json"), "utf8")) as { companies: { name: string; jobs_url: string }[] }).companies;
   for (const r of rows) fromUrl("cryptojobs", r.jobs_url, r.name);
   count("cryptojobs", rows.length);
+}
+
+{
+  const seeds = (JSON.parse(readFileSync(join(here, "seeds", "industries.json"), "utf8")) as { companies: { name: string; careers_url?: string }[] }).companies;
+  for (const s of seeds) if (s.careers_url) fromUrl("seeds", s.careers_url, s.name);
+  const resolvedFile = join(here, "out", "resolved.json");
+  const resolved = existsSync(resolvedFile)
+    ? (JSON.parse(readFileSync(resolvedFile, "utf8")) as { companies: { name: string; board?: { ats: string; slug: string; region?: string; shard?: string; site?: string } }[] }).companies
+    : [];
+  for (const r of resolved) if (r.board) add("seeds", { ...r.board, name: r.name });
+  count("seeds", seeds.length);
 }
 
 // --- restricted sources: votes only, never new boards ---

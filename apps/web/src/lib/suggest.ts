@@ -12,6 +12,8 @@ export type Suggestions = {
   remote: boolean;
   remoteRegions: string[];
   keywords: [string, number][];
+  /** Industry ids. */
+  industries: string[];
   /** Where they came from, for the UI label. */
   source: "ai" | "resume" | null;
 };
@@ -24,6 +26,7 @@ export const NO_SUGGESTIONS: Suggestions = {
   remote: false,
   remoteRegions: [],
   keywords: [],
+  industries: [],
   source: null,
 };
 
@@ -45,6 +48,7 @@ export function buildSuggestions(resumeText: string, ai?: AiProfile): Suggestion
     remote: ai?.open_to_remote ?? false,
     remoteRegions: ai?.remote_regions ?? [],
     keywords: [...keywords].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])),
+    industries: ai?.industries.length ? ai.industries : found.industries,
     source: ai ? "ai" : "resume",
   };
 }
@@ -66,5 +70,6 @@ export function prefillDraft(d: Draft, s: Suggestions): Partial<Draft> {
     patch.remoteExclude = d.remoteExclude.length ? d.remoteExclude : ["us", "usa", "united states", "canada"];
   }
   if (!Object.keys(d.keywords).length && s.keywords.length) patch.keywords = Object.fromEntries(s.keywords.slice(0, 25));
+  if (!d.industries.length && s.industries.length) patch.industries = s.industries.slice(0, 4);
   return patch;
 }

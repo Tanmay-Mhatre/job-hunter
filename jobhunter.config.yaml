@@ -24,6 +24,10 @@ profile:
     # ...unless the location also names a region you can't work from (e.g. "Remote (US)").
     remote_exclude: ["us", "usa", "united states", "canada", "americas", "latam", "apac"]
 
+  # Industries you want to work in. Companies in them are suggested first.
+  # Ids: crypto, crypto-exchange, brokerage, trading-tech, payments, digital-bank, … (see the setup's Industries step)
+  industries: ["crypto-exchange", "brokerage", "payments"]
+
   # Matched as whole words in the title and description. Weight 1 (nice) to 5 (core).
   # Points are summed and capped at 40.
   keywords:

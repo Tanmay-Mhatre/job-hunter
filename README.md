@@ -74,20 +74,41 @@ pnpm jobhunter detect https://jobs.lever.co/somecompany https://job-boards.green
 
 ## Company directory and suggestions
 
-The **Companies** tab suggests companies that are hiring for *your* roles and places right now, lets you search about 21,000 companies, or add one by its careers link.
+### How a company reaches you
 
-How the directory is built (no AI, scripts in `scripts/catalog/`):
+```
+your profile ─┬─ roles + places ──► gates: which open jobs fit you
+              ├─ industries ──────► industry fit (biggest boost; shown first)
+              └─ topics ──────────► extra ranking
+                                      │
+directory (~21,000 companies, tagged by industry) ──► Suggested for you
+                                      │
+   Hiring for you now · Worth watching · In your industries, not scannable yet
+```
 
-1. **Merge** public, permissively licensed lists of company job boards (CC BY 4.0, MIT, Apache-2.0) plus our own Common Crawl query. Share-alike and non-commercial lists are used only to cross-check, never to add companies.
-2. **Check** every board live with the cheapest call each hiring system offers (live / dormant / dead).
-3. **Index** each live company's open job titles and locations (no descriptions).
-4. **Suggest**: your copy scores each company by how many of its open jobs pass your own title and location filters, so the ranking is private and explainable.
+- **Hiring for you now**: open roles that pass your title and location filters, companies in your industries first.
+- **Worth watching**: no matching opening today, but in your industry, on your shortlist, hiring your role elsewhere, or with a team where you want to work.
+- **In your industries, not scannable yet**: companies whose hiring system we can't read yet (e.g. eToro on Comeet, CMC Markets on Workday). Watch them now; they start working when support arrives.
+- **Browse all** pages through the whole directory; **Add by link** checks any careers link and shows what it finds before you add it.
+
+Everything is scored on your computer, from shared public data. Your profile never leaves it.
+
+### How the directory is built (no AI, `scripts/catalog/`)
+
+1. **Merge** public, permissively licensed lists of company job boards (CC BY 4.0, MIT, Apache-2.0), our own Common Crawl query, and the **industry seed list**. Share-alike and non-commercial lists only cross-check, never add companies.
+2. **Resolve** the seed list (`seeds/industries.json`, must-have companies per industry, editable): read each company's website the way a person would (homepage → careers link → the board it embeds) to find its hiring system. Polite: one request at a time per site, robots.txt honoured.
+3. **Check** every board live with the cheapest call each hiring system offers (live / dormant / dead).
+4. **Index** each live company's open job titles and locations (no descriptions).
+5. **Tag** companies by industry from three sources: the source lists' own labels, the seed list, and their job titles (e.g. many "Forex" or "MT5" roles means a brokerage).
+6. **Publish** to `data/catalog/`, and write **`out/coverage.md`**: per industry, how many must-have companies we can track, and which hiring systems to support next.
 
 Refresh it (about monthly) with:
 
 ```bash
 pnpm catalog:refresh
 ```
+
+A company missing? Add it with **Add by link** (remembered locally), or add it to `scripts/catalog/seeds/industries.json` and run the refresh.
 
 Source attribution: see `scripts/curate/sources/NOTICE.md` and the source list in `scripts/catalog/merge.ts`.
 

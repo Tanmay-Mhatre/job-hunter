@@ -1,3 +1,4 @@
+import { industriesForLabel, industriesFromText } from "./catalog/industries";
 import type { Country } from "./catalog/places";
 import { termRegex } from "./text";
 
@@ -10,6 +11,8 @@ export type AiProfile = {
   open_to_remote: boolean;
   remote_regions: string[];
   keywords: Record<string, number>;
+  /** Industry ids (catalog/industries.ts) the person has worked in or wants to. */
+  industries: string[];
 };
 
 export type ParsedAnswer = {
@@ -47,9 +50,11 @@ function normalizeProfile(raw: unknown): AiProfile | undefined {
     open_to_remote: o.open_to_remote === true || o.open_to_remote === "true",
     remote_regions: strList(o.remote_regions, 12),
     keywords,
+    // Accept ids or labels ("Brokerage, CFD & FX"); drop anything not in the taxonomy.
+    industries: [...new Set(strList(o.industries, 12).flatMap((x) => industriesForLabel(x)))],
   };
   const empty =
-    !profile.target_titles.length && !profile.locations.length && !Object.keys(profile.keywords).length && !profile.seniority.length;
+    !profile.target_titles.length && !profile.locations.length && !Object.keys(profile.keywords).length && !profile.seniority.length && !profile.industries.length;
   return empty ? undefined : profile;
 }
 
@@ -140,6 +145,8 @@ export type Detected = {
   titles: string[];
   places: string[];
   keywords: [string, number][];
+  /** Industry ids the resume mentions repeatedly, most mentioned first. */
+  industries: string[];
 };
 
 /** Offline suggestions from plain resume text, using the catalogues (no AI). */
@@ -148,11 +155,11 @@ export function detectFromResume(
   catalogs: { titles: readonly string[]; countries: readonly Country[]; keywords: Readonly<Record<string, number>> },
   limits = { titles: 8, places: 8, keywords: 25 },
 ): Detected {
-  if (text.trim().length < 40) return { titles: [], places: [], keywords: [] };
+  if (text.trim().length < 40) return { titles: [], places: [], keywords: [], industries: [] };
 
   const lower = text.toLowerCase();
   // Plain substring check first: cheap, and rules out almost every term.
-  const mentioned = (term: string) => lower.includes(term.split(/[s-]+/)[0]!);
+  const mentioned = (term: string) => lower.includes(term.split(/[\s-]+/)[0]!);
   const titleHits = catalogs.titles
     .filter(mentioned)
     .map((t) => [t, countMatches(text, t)] as const)
@@ -186,5 +193,5 @@ export function detectFromResume(
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, limits.keywords);
 
-  return { titles, places, keywords };
+  return { titles, places, keywords, industries: industriesFromText(text).slice(0, 5) };
 }

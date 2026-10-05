@@ -1,13 +1,14 @@
 import { matchesTerm } from "@jobhunter/core/text";
 import { COUNTRIES, countryTerms, groupPlaces, REGIONS, searchPlaces } from "@jobhunter/core/catalog/places";
+import { INDUSTRY_BY_ID } from "@jobhunter/core/catalog/industries";
 import { allTitles, COMMON_EXCLUDES, ROLE_FAMILIES, SENIORITY, type RoleFamily } from "@jobhunter/core/catalog/roles";
-import { Check, ChevronDown, CircleAlert, CircleCheck, Clock, HelpCircle, LoaderCircle, Minus, Plus, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, Minus, Plus, Search, X } from "lucide-react";
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { Combobox, type ComboItem } from "../components/Combobox";
 import { ToggleChips } from "../components/ToggleChips";
-import { Button, Chip, cx, Toggle } from "../components/ui";
+import { Button, cx, Toggle } from "../components/ui";
 import type { Suggestions } from "../lib/suggest";
-import { checkCompanies, rowId, type CompanyRow, type Draft } from "../lib/setup";
+import type { Draft } from "../lib/setup";
 import { CV_DICTIONARY, KEYWORD_PACKS, REMOTE_EXCLUDE_SUGGESTIONS } from "./presets";
 
 export type StepProps = { draft: Draft; update: (patch: Partial<Draft>) => void; suggest?: Suggestions };
@@ -503,7 +504,7 @@ export function LocationsStep({ draft, update, suggest }: StepProps) {
 
       {draft.remote && (
         <>
-          <Field label="Remote in which regions or countries?" hint="Remote jobs must mention one of these in their location, e.g. “Remote – EMEA” or “Remote, Germany”.">
+          <Field label="Remote in which regions or countries?" hint="Remote jobs count when they mention one of these, e.g. “Remote – EMEA”. A plain “Remote” counts too, but not one limited to another country, like “Remote – India”.">
             <Combobox
               label="Search remote regions"
               placeholder="Type a region or country, e.g. EMEA, Europe, Germany…"
@@ -560,6 +561,84 @@ export function LocationsStep({ draft, update, suggest }: StepProps) {
 
 // ---------- 4. Topics ----------
 
+// ---------- Industries ----------
+
+const INDUSTRY_GROUPS: { label: string; ids: string[] }[] = [
+  { label: "Trading, crypto & investing", ids: ["crypto-exchange", "crypto", "brokerage", "trading-tech", "market-making", "digital-assets", "tokenization", "wealth"] },
+  { label: "Payments & banking", ids: ["payments", "digital-bank", "banking", "lending", "fintech", "regtech", "insurtech"] },
+  { label: "Tech & other", ids: ["ai", "devtools", "cybersecurity", "ecommerce", "gaming", "media", "mobility", "travel", "healthtech", "edtech", "proptech"] },
+];
+const industryLabel = (id: string) => INDUSTRY_BY_ID.get(id)?.label ?? id;
+
+export function IndustriesStep({ draft, update, suggest }: StepProps) {
+  const [q, setQ] = useState("");
+  const fromResume = (suggest?.industries ?? []).filter((id) => INDUSTRY_BY_ID.has(id));
+  const query = q.trim().toLowerCase();
+  const matches = (id: string) => {
+    const ind = INDUSTRY_BY_ID.get(id);
+    return !query || !ind || ind.label.toLowerCase().includes(query) || ind.terms.some((t) => t.includes(query)) || id.includes(query);
+  };
+  // Topics the picked industries suggest, for the next step.
+  const topics = [...new Set(draft.industries.flatMap((id) => INDUSTRY_BY_ID.get(id)?.topics ?? []))].filter((t) => !(t in draft.keywords));
+
+  return (
+    <div className="space-y-6">
+      {fromResume.length > 0 && (
+        <div className="rounded-xl border border-dashed border-line p-4">
+          <p className="mb-2 text-sm">
+            <span className="font-semibold text-accent">{RESUME_LABEL(suggest)}</span>
+            <span className="text-muted">: click to add or remove</span>
+          </p>
+          <ToggleChips
+            label="Industries from your resume"
+            options={fromResume}
+            selected={draft.industries.filter((id) => fromResume.includes(id))}
+            onChange={(next) => update({ industries: [...draft.industries.filter((id) => !fromResume.includes(id)), ...next] })}
+            format={industryLabel}
+          />
+        </div>
+      )}
+
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted" />
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search industries, e.g. forex, neobank, payments…"
+          aria-label="Search industries"
+          className="h-9 w-full rounded-lg border border-line bg-surface pl-9 pr-3 text-sm outline-none placeholder:text-muted focus:border-accent"
+        />
+      </div>
+
+      {INDUSTRY_GROUPS.map((g) => {
+        const ids = g.ids.filter(matches);
+        if (!ids.length) return null;
+        return (
+          <Field key={g.label} label={g.label}>
+            <ToggleChips
+              label={g.label}
+              options={ids}
+              selected={draft.industries.filter((id) => g.ids.includes(id))}
+              // Picked ones stay listed even when the search hides them, so `next` is the whole group's selection.
+              onChange={(next) => update({ industries: [...draft.industries.filter((id) => !g.ids.includes(id)), ...next] })}
+              format={industryLabel}
+            />
+          </Field>
+        );
+      })}
+
+      <p className="text-sm text-muted">
+        {draft.industries.length === 0
+          ? "None picked. That's OK: suggestions will rank by your roles and places only."
+          : `${draft.industries.length} picked. Companies in ${draft.industries.length === 1 ? "this industry" : "these industries"} are suggested first.`}
+        {topics.length > 0 && <> Next we'll offer topics like {topics.slice(0, 5).join(", ")}.</>}
+      </p>
+    </div>
+  );
+}
+
+// ---------- Topics ----------
+
 export function KeywordsStep({ draft, update, suggest, resumeText = "" }: StepProps & { resumeText?: string }) {
   const [cv, setCv] = useState("");
   const [showCv, setShowCv] = useState(false);
@@ -594,8 +673,28 @@ export function KeywordsStep({ draft, update, suggest, resumeText = "" }: StepPr
     update({ keywords: next });
   };
 
+  const industryTopics = [...new Set(draft.industries.flatMap((id) => INDUSTRY_BY_ID.get(id)?.topics ?? []))];
+
   return (
     <div className="space-y-8">
+      {industryTopics.length > 0 && (
+        <Field label="Topics for your industries" hint="Click to add or remove. Added at weight 4.">
+          <ToggleChips
+            label="Topics for your industries"
+            options={industryTopics}
+            selected={industryTopics.filter((k) => k in draft.keywords)}
+            onChange={(next) => {
+              const kw = { ...draft.keywords };
+              for (const k of industryTopics) {
+                if (next.includes(k) && !(k in kw)) kw[k] = 4;
+                if (!next.includes(k) && k in kw) delete kw[k];
+              }
+              update({ keywords: kw });
+            }}
+          />
+        </Field>
+      )}
+
       <Field label="Pick the areas you care about" hint="Each adds topic words. Jobs that mention them rank higher. Click again to remove.">
         <div className="flex flex-wrap gap-2">
           {KEYWORD_PACKS.map((p) => (
@@ -714,161 +813,6 @@ function AddKeyword({ onAdd }: { onAdd: (k: string) => void }) {
         <Plus className="size-4" /> Add
       </Button>
     </div>
-  );
-}
-
-// ---------- Companies (Companies tab and Settings; not part of setup) ----------
-
-const ATS_LABEL: Record<string, string> = {
-  greenhouse: "Greenhouse",
-  lever: "Lever",
-  ashby: "Ashby",
-  workday: "Workday",
-  smartrecruiters: "SmartRecruiters",
-  workable: "Workable",
-  recruitee: "Recruitee",
-  personio: "Personio",
-  bamboohr: "BambooHR",
-  breezy: "Breezy HR",
-};
-
-export function CompaniesStep({ draft, update }: StepProps) {
-  const [text, setText] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [showHelp, setShowHelp] = useState(false);
-  const checking = draft.companies.some((r) => r.state === "checking");
-
-  const check = async () => {
-    const urls = [...new Set(text.split(/[\n\s,]+/).map((s) => s.trim()).filter(Boolean))];
-    if (!urls.length) return;
-    setError(null);
-    const pending: CompanyRow[] = urls.map((input) => ({ id: rowId(), input, state: "checking", status: "unknown", name: "" }));
-    let rows = [...draft.companies, ...pending];
-    update({ companies: rows });
-    setText("");
-    try {
-      const results = await checkCompanies(urls);
-      rows = rows.map((r) => {
-        const i = pending.findIndex((p) => p.id === r.id);
-        const res = i >= 0 ? results[i] : undefined;
-        return res ? { ...r, ...res, state: res.status, name: res.name ?? "" } : r;
-      });
-      update({ companies: rows });
-    } catch (err) {
-      setError((err as Error).message);
-      update({ companies: rows.filter((r) => r.state !== "checking") });
-    }
-  };
-
-  const setRow = (id: string, patch: Partial<CompanyRow>) => update({ companies: draft.companies.map((r) => (r.id === id ? { ...r, ...patch } : r)) });
-  const working = draft.companies.filter((r) => r.state === "ok" || r.state === "saved").length;
-
-  return (
-    <div className="space-y-6">
-      <Field
-        label="Paste careers page links"
-        hint={
-          <>
-            One per line. We recognise Greenhouse, Lever, Ashby and SmartRecruiters today, with Workday, Workable and more coming soon.{" "}
-            <button type="button" className="inline-flex items-center gap-0.5 font-medium text-accent" onClick={() => setShowHelp((v) => !v)}>
-              <HelpCircle className="size-3.5" /> Where do I find this link?
-            </button>
-          </>
-        }
-      >
-        {showHelp && (
-          <div className="rounded-xl bg-surface-2 p-3 text-sm">
-            <p>Open the company's careers page and click any job. If the address looks like one of these, paste the part up to the company name:</p>
-            <ul className="mt-2 space-y-1 font-mono text-xs text-muted">
-              <li>job-boards.greenhouse.io/<b className="text-fg">company</b></li>
-              <li>jobs.lever.co/<b className="text-fg">company</b></li>
-              <li>jobs.ashbyhq.com/<b className="text-fg">company</b></li>
-              <li>careers.smartrecruiters.com/<b className="text-fg">Company</b></li>
-              <li>
-                <b className="text-fg">company</b>.wd3.myworkdayjobs.com/en-US/<b className="text-fg">Site</b> (coming soon)
-              </li>
-              <li>apply.workable.com/<b className="text-fg">company</b> (coming soon)</li>
-            </ul>
-          </div>
-        )}
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === "Enter" && void check()}
-          rows={4}
-          aria-label="Careers page links, one per line"
-          placeholder={"https://jobs.lever.co/company\nhttps://job-boards.greenhouse.io/another"}
-          className="w-full resize-y rounded-xl border border-line bg-surface p-3 font-mono text-sm outline-none placeholder:text-muted focus:border-accent"
-        />
-        <div className="flex items-center gap-3">
-          <Button variant="primary" onClick={() => void check()} disabled={!text.trim() || checking}>
-            {checking ? <LoaderCircle className="size-4 animate-spin" /> : <CircleCheck className="size-4" />}
-            {checking ? "Checking…" : "Check links"}
-          </Button>
-          {error && <span className="text-sm text-bad">{error}</span>}
-        </div>
-      </Field>
-
-      {draft.companies.length > 0 && (
-        <div>
-          <h3 className="mb-2 text-sm font-semibold">
-            Your companies <span className="tabular font-normal text-muted">· {working} working</span>
-          </h3>
-          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line">
-            {draft.companies.map((r) => (
-              <CompanyRowView key={r.id} row={r} onName={(name) => setRow(r.id, { name })} onRemove={() => update({ companies: draft.companies.filter((x) => x.id !== r.id) })} />
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CompanyRowView({ row, onName, onRemove }: { row: CompanyRow; onName: (n: string) => void; onRemove: () => void }) {
-  const icon =
-    row.state === "checking" ? (
-      <LoaderCircle className="size-5 animate-spin text-muted" />
-    ) : row.state === "ok" || row.state === "saved" ? (
-      <CircleCheck className="size-5 text-accent" />
-    ) : row.state === "soon" ? (
-      <Clock className="size-5 text-warn" />
-    ) : (
-      <CircleAlert className="size-5 text-bad" />
-    );
-  const detail =
-    row.state === "checking"
-      ? "Checking…"
-      : row.state === "ok"
-        ? `${ATS_LABEL[row.ats!] ?? row.ats} · ${row.jobs ?? 0} open jobs${row.sampleTitles?.length ? ` · e.g. ${row.sampleTitles.slice(0, 2).join(", ")}` : ""}`
-        : row.state === "saved"
-          ? `${ATS_LABEL[row.ats!] ?? row.ats} · saved`
-          : row.state === "soon"
-            ? row.error ?? `${ATS_LABEL[row.ats!] ?? row.ats} support is coming soon. We'll keep it and it will start working then.`
-            : row.error ?? "Couldn't check this link.";
-
-  return (
-    <li className="flex items-start gap-3 bg-surface px-3 py-2.5">
-      <span className="mt-1.5 shrink-0">{icon}</span>
-      <div className="min-w-0 flex-1">
-        {row.state === "checking" || row.state === "unknown" || row.state === "error" ? (
-          <p className="truncate font-mono text-sm">{row.input}</p>
-        ) : (
-          <input
-            value={row.name}
-            onChange={(e) => onName(e.target.value)}
-            aria-label="Company name"
-            className="h-8 w-full max-w-72 rounded-md border border-transparent bg-transparent px-1.5 -ml-1.5 text-sm font-semibold outline-none hover:border-line focus:border-accent"
-          />
-        )}
-        <p className={cx("mt-0.5 text-xs", row.state === "error" || row.state === "unknown" ? "text-bad" : "text-muted")}>{detail}</p>
-        {(row.state === "error" || row.state === "unknown") && <p className="truncate text-[11px] text-muted">Not added. Fix the link and paste it again.</p>}
-      </div>
-      {row.state === "soon" && <Chip tone="warn">soon</Chip>}
-      <button type="button" onClick={onRemove} aria-label={`Remove ${row.name || row.input}`} className="mt-1 rounded p-1 text-muted hover:text-bad">
-        <Trash2 className="size-4" />
-      </button>
-    </li>
   );
 }
 

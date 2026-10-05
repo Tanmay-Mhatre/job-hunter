@@ -3,15 +3,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CompaniesTab } from "./components/CompaniesTab";
 import { EmptyState, SetupBanner } from "./components/EmptyState";
 import { checklistItems, ConfigProblemCard, FailingBanner, FirstScanCard, NoMatches, ScanningBar, SetupChecklist, SetupHero } from "./components/Guidance";
+import { ApplyPrompt } from "./components/ApplyPrompt";
 import { JobDrawer } from "./components/JobDrawer";
 import { Pipeline } from "./components/Pipeline";
-import { Radar } from "./components/Radar";
+import { RadarPage } from "./components/radar/RadarPage";
 import { Settings } from "./components/Settings";
-import { Button, Card, Chip, cx, IconButton, Kbd } from "./components/ui";
-import { canRunLocally, useData, type Job } from "./lib/data";
+import { Button, Card, cx, IconButton, Kbd } from "./components/ui";
+import { canRunLocally, useData, useOtherJobs, type Job } from "./lib/data";
+import { usePrefs } from "./lib/prefs";
 import { useScan } from "./lib/scan";
 import { useResume } from "./lib/resume";
-import { draftFromConfig, draftToConfig, emptyDraft, setupProgress, STEP, STEP_COUNT, useSetupStatus, type Draft } from "./lib/setup";
+import { profileFromPicks, type FilterPicks } from "./lib/profileSync";
+import { draftFromConfig, draftToConfig, emptyDraft, saveConfig, setupProgress, STEP, STEP_COUNT, useSetupStatus, type Draft } from "./lib/setup";
 import { buildSuggestions } from "./lib/suggest";
 import { load, save } from "./lib/storage";
 import { timeAgo } from "./lib/format";
@@ -28,7 +31,8 @@ type Tab = (typeof TABS)[number]["id"];
 type Route = { tab: Tab } | { setup: number };
 
 function parseHash(): Route {
-  const h = location.hash.slice(1);
+  // "#radar?posted=7…" carries the Radar's filters after the tab name.
+  const h = location.hash.slice(1).split("?")[0]!;
   const m = h.match(/^setup(?:\/(\d))?$/);
   if (m) return { setup: Math.min(STEP_COUNT, Number(m[1] ?? 0)) };
   return { tab: (TABS.some((t) => t.id === h) ? h : "radar") as Tab };
@@ -43,6 +47,9 @@ export function App() {
   const { state, reload } = useData();
   const setup = useSetupStatus();
   const user = useUserState();
+  const prefs = usePrefs();
+  /** The job whose apply page was just opened, to ask "Did you apply?" on return. */
+  const [applying, setApplying] = useState<Job | null>(null);
   const visit = useVisitCutoff();
   const [route, setRoute] = useState<Route>(parseHash);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -71,7 +78,8 @@ export function App() {
     if (key === appliedRef.current) return;
     appliedRef.current = key;
     // First-time setup resumes an unfinished draft from this browser.
-    setDraft(!personal && status !== null ? (load<Draft | null>(DRAFT_KEY, null) ?? saved) : saved);
+    const stored = !personal && status !== null ? load<Draft | null>(DRAFT_KEY, null) : null;
+    setDraft(stored ? { ...emptyDraft(), ...stored } : saved);
   }, [saved, status, personal]);
   useEffect(() => {
     if (status && !status.isPersonal) save(DRAFT_KEY, draft);
@@ -87,6 +95,21 @@ export function App() {
   }, [reload, setup.refresh]);
   const { scan, start: startScan } = useScan(afterScan);
   const scanning = scan.phase === "running";
+
+  /** Radar "Save to my profile": its place and industry picks become your profile, then a rescan. */
+  const saveProfileFromRadar = useCallback(
+    async (picks: FilterPicks): Promise<string | null> => {
+      const result = profileFromPicks(saved, picks);
+      if ("error" in result) return result.error;
+      const res = await saveConfig(draftToConfig({ ...saved, ...result.patch }));
+      if (!res.ok) return res.errors;
+      await setup.refresh();
+      save(DRAFT_KEY, null);
+      void startScan();
+      return null;
+    },
+    [saved, setup, startScan],
+  );
 
   // ----- routing -----
   useEffect(() => {
@@ -139,6 +162,7 @@ export function App() {
   const openJob = openId ? jobsById.get(openId) : undefined;
   const onStatus = useCallback((job: Job, s: Status) => user.toggleStatus(job, s), [user]);
   const onOpen = useCallback((job: Job) => setOpenId(job.id), []);
+  const onApply = useCallback((job: Job) => setApplying(job), []);
 
   const inSetup = "setup" in route;
   const tab = "tab" in route ? route.tab : null;
@@ -146,7 +170,7 @@ export function App() {
   // Global keys: Esc closes, 1-4 switch tabs, ? shows shortcuts.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).closest("input, textarea, select") || e.metaKey || e.ctrlKey || e.altKey) return;
+      if ((e.target as HTMLElement | null)?.closest?.("input, textarea, select") || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === "Escape") {
         setOpenId(null);
         setShowKeys(false);
@@ -160,6 +184,8 @@ export function App() {
   const lastRun = meta?.runs[0];
   const failing = lastRun?.health.filter((h) => !h.ok && !h.unsupported).length ?? 0;
   const matched = jobs.filter((j) => !j.why.gate && j.status === "open").length;
+  // "Why no matches?" needs the jobs that failed the filters too; fetched only then.
+  const otherJobs = useOtherJobs(state.kind === "ready" && !!lastRun && matched === 0);
   const items = checklistItems(notSetUp ? draftToConfig(draft) : status?.config, meta, !!resume.text);
 
   return (
@@ -283,17 +309,27 @@ export function App() {
                 {state.kind === "ready" && <ScanningBar scan={scan} />}
                 {setupState === "configured" && personal && companyCount > 0 && state.kind === "empty" && <FirstScanCard scan={scan} onScan={() => void startScan()} />}
                 {state.kind === "ready" && failing > 0 && <FailingBanner count={failing} onOpen={() => go({ tab: "companies" })} />}
-                {state.kind === "ready" && lastRun && matched === 0 && <NoMatches jobs={jobs} onStep={goStep} onCompanies={goCompanies} />}
+                {state.kind === "ready" && lastRun && matched === 0 && <NoMatches jobs={otherJobs ? [...jobs, ...otherJobs] : jobs} onStep={goStep} onCompanies={goCompanies} />}
                 {state.kind === "ready" && (matched > 0 || !lastRun) && (
-                  <Radar
+                  <RadarPage
                     jobs={state.jobs}
                     meta={state.meta}
                     user={user.state}
                     cutoff={visit.cutoff}
+                    prefs={prefs.prefs}
                     onMarkAllSeen={visit.markAllSeen}
-                    onOpen={onOpen}
+                    onOpenOverlay={onOpen}
+                    overlayOpen={!!openJob}
                     onStatus={onStatus}
-                    drawerOpen={!!openJob}
+                    onUpdate={(job, patch) => user.update(job, patch)}
+                    onApply={onApply}
+                    onSaveView={prefs.saveView}
+                    onRenameView={prefs.renameView}
+                    onDeleteView={prefs.deleteView}
+                    onHideCompany={prefs.setCompanyHidden}
+                    profile={status?.config?.profile}
+                    onEditProfile={() => go({ tab: "settings" })}
+                    onSaveProfile={canRunLocally && personal && setupState === "configured" ? saveProfileFromRadar : undefined}
                   />
                 )}
               </>
@@ -341,6 +377,7 @@ export function App() {
             {tab === "settings" && setupState === "invalid" && <ConfigProblemCard errors={status?.errors} onFix={() => goStep(0)} />}
             {tab === "settings" && (
               <Settings
+                toCompanies={goCompanies}
                 draft={draft}
                 update={update}
                 revert={() => setDraft(saved)}
@@ -355,7 +392,11 @@ export function App() {
                 }}
                 scanning={scanning}
                 user={user.state}
-                onImport={user.replaceAll}
+                prefs={prefs.prefs}
+                onImport={(state, p) => {
+                  user.replaceAll(state);
+                  if (p) prefs.replacePrefs(p);
+                }}
                 suggest={suggest}
                 resumeText={resume.text}
                 saveResume={saveResume}
@@ -387,17 +428,27 @@ export function App() {
           job={openJob}
           entry={user.state[openJob.id]}
           profile={meta.profile}
+          postings={jobs.filter((j) => j.group === openJob.group)}
+          industries={meta.companies.find((c) => c.name === openJob.company)?.industries}
           onClose={() => setOpenId(null)}
           onUpdate={(patch) => user.update(openJob, patch)}
+          onApply={onApply}
+          onOpenJob={(j) => setOpenId(j.id)}
         />
       )}
+
+      <ApplyPrompt
+        job={applying}
+        onAnswer={(applied) => {
+          if (applied && applying) user.update(applying, { status: "applied" });
+          setApplying(null);
+        }}
+      />
 
       {showKeys && <ShortcutHelp onClose={() => setShowKeys(false)} />}
     </div>
   );
 }
-
-const notScannedTitle = (n: number) => `Your ${n} ${n === 1 ? "company hasn't" : "companies haven't"} been scanned yet`;
 
 const pick = (j: Job | undefined) => (j ? { title: j.title, company: j.company, url: j.url, location: j.location, score: j.score } : {});
 
