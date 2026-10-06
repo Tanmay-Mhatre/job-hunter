@@ -1,0 +1,52 @@
+name: Automerge
+
+# Merge a pull request labelled "automerge" once CI's `check` job has passed on its latest commit.
+# Free stand-in for "require status checks" branch protection, which private repos on GitHub Free
+# don't get. It never merges a red or still-running PR; it doesn't stop a manual merge either.
+#
+# Runs when CI finishes, and when the label is added (in case CI had already passed).
+# Note: a merge made with GITHUB_TOKEN doesn't start CI on main again; the PR's own run covers it.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+concurrency:
+  group: automerge-${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha }}
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'workflow_run' || github.event.label.name == 'automerge'
+    steps:
+      - name: Merge if labelled and green
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          SHA: ${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          # The open PR whose latest commit is this one (none: a push to main, or the PR moved on).
+          pr=$(gh pr list --state open --search "$SHA" --json number,headRefOid,labels \
+            --jq "[.[] | select(.headRefOid == \"$SHA\")][0]")
+          if [ -z "$pr" ] || [ "$pr" = "null" ]; then echo "No open PR at $SHA."; exit 0; fi
+          number=$(jq -r .number <<<"$pr")
+          if ! jq -e '.labels | any(.name == "automerge")' <<<"$pr" >/dev/null; then
+            echo "PR #$number isn't labelled automerge."; exit 0
+          fi
+          # CI's `check` job on this exact commit: the most recent run must have succeeded.
+          ci=$(gh api "repos/$GH_REPO/commits/$SHA/check-runs?check_name=check" \
+            --jq '[.check_runs[]] | sort_by(.started_at) | last | "\(.status) \(.conclusion)"')
+          echo "PR #$number, CI check on $SHA: $ci"
+          if [ "$ci" != "completed success" ]; then echo "Not green yet; not merging."; exit 0; fi
+          # --match-head-commit: refuse if someone pushed after CI ran.
+          gh pr merge "$number" --merge --delete-branch --match-head-commit "$SHA"
