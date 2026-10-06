@@ -35,7 +35,8 @@ export const lever: Connector<LeverPosting> = {
     const host = url.hostname.toLowerCase();
     if (host !== "jobs.lever.co" && host !== "jobs.eu.lever.co") return null;
     const slug = firstPathSegment(url);
-    if (!slug) return null;
+    // jobs.lever.co also serves its own images and assets; those paths aren't company boards.
+    if (!slug || /^(img|images|static|assets|css|js|favicon.*|\d+)$/i.test(slug)) return null;
     return { ats: "lever", slug, region: host === "jobs.eu.lever.co" ? "eu" : undefined };
   },
 

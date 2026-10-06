@@ -70,6 +70,11 @@ describe("detectCompany for not-yet-supported ATSs", () => {
   it("marks built connectors as supported", () => {
     expect(detectCompany("https://jobs.lever.co/acme")).toMatchObject({ supported: true });
   });
+
+  it("doesn't mistake Lever's own image and asset links for boards", () => {
+    expect(detectCompany("https://jobs.lever.co/img/lever-logo.png")).toBeNull();
+    expect(detectCompany("https://jobs.lever.co/200")).toBeNull();
+  });
 });
 
 describe("checkCompanies", () => {
