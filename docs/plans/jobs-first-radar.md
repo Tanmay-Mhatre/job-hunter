@@ -1,6 +1,6 @@
 # Jobs-first Radar + my companies (plan v1)
 
-Status: **draft for approval** (2026-10-06). Replaces the "Suggested for you" part of `companies-flow.md`.
+Status: **built** (2026-10-06), steps 0–4. Notes on what changed from the plan are under each step. Replaces the "Suggested for you" part of `companies-flow.md`.
 Built from a code and data review, a two-agent debate (job-first vs company-first), and the user's decisions.
 
 ## Decisions
@@ -68,7 +68,10 @@ Original plan:
 - CLI: progress lines for the batch ("Checking 30 more companies hiring for you…"); `--no-discover` flag.
 - Tests: candidates, batch picking (skip window, muted, tracked), merge keeps checked companies' jobs, index-job ids stable.
 
-### 2. Radar ~2 days
+### 2. Radar ✅ done
+Also: industry is no longer a default Radar filter (only 13% of directory companies have one, so it hid most jobs); every job carries its company's directory industries. Index ages count from each company's `fetched_at` (the weekly build reuses fetches up to 7 days old). Check now doesn't add to the run history.
+
+Original plan:
 - `lib/data.ts`: load `discover.json` (optional file; older data works without it).
 - `lib/filters.ts` `sortJobs`: every sort puts **your companies first**, then the chosen order. New `Filters.mine` flag.
 - `RadarPage.tsx`:
@@ -79,13 +82,18 @@ Original plan:
 - `JobCard.tsx` / `JobDetail.tsx`: "Your company" badge; **Add company** and **Mute company** on every job.
 - New-job badges and alerts only for tracked and live-checked jobs.
 
-### 3. Companies page ~1.5 days
+### 3. Companies page ✅ done
+The "remove?" flag needs 10+ scans in a row with nothing for you over 7+ days (run history keeps 30 scans, so "30 days" wasn't measurable).
+
+Original plan:
 - Replace `CompanyFinder` tabs with: search box over the directory (fuzzy, one row per company, shows "N roles match you"),
   "Add by link" (kept), your list merged with the health table (sortable: matches, jobs, status), muted list.
 - Prompt "Nothing for you in 30 days, remove?" on tracked companies with no matches.
 - Remove "Suggested for you", "Add all", the "On your shortlist" label and the capped counts.
 
-### 4. Settings + docs ~0.5 day
+### 4. Settings + docs ✅ done
+
+Original plan:
 - Settings: "Also check up to 30 new companies each scan" switch (on), number field.
 - README: how the Radar finds jobs, fair use note updated (your companies + 30 per scan).
 

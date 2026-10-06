@@ -384,6 +384,9 @@ export function App() {
               <CompaniesTab
                 configured={setupState === "configured" && personal}
                 meta={meta}
+                jobs={jobs}
+                hiddenNames={prefs.prefs.hiddenCompanies}
+                onUnhideName={(name) => prefs.setCompanyHidden(name, false)}
                 draft={draft}
                 saved={saved}
                 update={update}

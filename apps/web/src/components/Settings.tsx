@@ -63,16 +63,17 @@ export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanni
       <Section id="locations" title="Locations" hint="Jobs outside these places are hidden.">
         <LocationsStep draft={draft} update={update} suggest={suggest} />
       </Section>
-      <Section id="industries" title="Industries" hint="Companies in these industries are suggested first.">
+      <Section id="industries" title="Industries" hint="Lets you narrow your Radar to these industries. Never hides a job on its own.">
         <IndustriesStep draft={draft} update={update} suggest={suggest} />
       </Section>
       <Section id="keywords" title="Topics" hint="Rank jobs that mention these higher.">
         <KeywordsStep draft={draft} update={update} suggest={suggest} resumeText={resumeText} />
       </Section>
-      <Section id="companies" title="Companies" hint="Find, add and remove the companies you watch in the Companies tab.">
+      <Section id="companies" title="Your companies" hint="Companies you'd love to work at: checked every scan, and their jobs always come first on your Radar.">
         <div className="flex flex-wrap items-center gap-3">
           <p className="text-sm">
-            You watch <b className="tabular">{draft.companies.length}</b> compan{draft.companies.length === 1 ? "y" : "ies"}.
+            You've picked <b className="tabular">{draft.companies.length}</b> compan{draft.companies.length === 1 ? "y" : "ies"}
+            {draft.muted.length > 0 && <> and hidden {draft.muted.length}</>}.
           </p>
           <Button size="sm" onClick={toCompanies}>
             Manage in Companies tab <ArrowRight className="size-3.5" />
@@ -82,8 +83,38 @@ export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanni
       <Section id="threshold" title="Strong match threshold" hint="Jobs at or above this get a star, and alerts once those arrive.">
         <ThresholdPicker draft={draft} update={update} />
       </Section>
-      <Section id="directory" title="Company directory" hint="The shared list of companies behind suggestions and Browse, rebuilt weekly from public lists and what users add.">
+      <Section
+        id="directory"
+        title="Jobs beyond your companies"
+        hint="Your Radar finds jobs for you in a shared directory of ~21,000 companies, rebuilt weekly from public lists and what users add."
+      >
         <div className="space-y-3">
+          <Toggle
+            checked={draft.discovery.check_per_scan > 0}
+            onChange={(v) => update({ discovery: { ...draft.discovery, check_per_scan: v ? 30 : 0 } })}
+          >
+            Also check the best of those companies live on every scan
+          </Toggle>
+          {draft.discovery.check_per_scan > 0 ? (
+            <label className="flex flex-wrap items-center gap-2 pl-6 text-sm">
+              Up to
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={draft.discovery.check_per_scan}
+                onChange={(e) => update({ discovery: { ...draft.discovery, check_per_scan: Math.min(100, Math.max(1, Math.round(Number(e.target.value) || 1))) } })}
+                className="h-8 w-20 rounded-lg border border-line bg-surface px-2 text-sm outline-none focus:border-accent"
+                aria-label="Companies to check per scan"
+              />
+              companies per scan, best matches first; each is checked at most once a week.
+            </label>
+          ) : null}
+          <p className="pl-6 text-xs text-muted">
+            {draft.discovery.check_per_scan > 0
+              ? "Checked jobs get a full score and a real apply link. The rest stay estimated (title, place and date only) until checked. Each check is one request to that company's careers page."
+              : "Off: only your companies are contacted. Directory jobs stay estimated, with a link to the careers page, until you check or add the company."}
+          </p>
           <Toggle checked={draft.directory.auto_update} onChange={(v) => update({ directory: { ...draft.directory, auto_update: v } })}>
             Download the latest directory automatically (checked weekly)
           </Toggle>
