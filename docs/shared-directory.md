@@ -1,6 +1,6 @@
 # Shared company directory
 
-The company list behind **Suggested for you** and **Browse all** lives online, is rebuilt weekly,
+The company list (and job index) behind the Radar's jobs and the Companies tab search lives online, is rebuilt weekly,
 and grows with every company a user adds by link. Every install downloads it; nothing about the
 user is ever uploaded.
 

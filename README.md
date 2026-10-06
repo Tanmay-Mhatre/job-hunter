@@ -1,6 +1,6 @@
 # Job Hunter
 
-A free, self-hosted job radar. Describe your profile and target companies in one config file; Job Hunter pulls openings straight from their applicant-tracking-system (ATS) feeds, scores each one against your profile with transparent keyword rules, and shows you the matches.
+A free, self-hosted job radar. Describe what you're looking for in one config file; Job Hunter finds matching openings across ~21,000 companies' applicant-tracking-system (ATS) feeds, scores each one against your profile with transparent keyword rules, and shows you the matches, with the companies you'd most like to join always on top.
 
 Good roles often appear on company careers pages (Greenhouse, Lever, Ashby, Workday…) before LinkedIn, or never reach it. Checking 50 careers pages by hand doesn't happen. This does it for you.
 
@@ -23,7 +23,7 @@ The dashboard walks you through setup the first time (about 3 minutes; you can s
 4. **Topics**: pick topic packs (Crypto, Fintech, AI…) or take the suggestions from your resume.
 5. **Review**: read it back in plain words, choose what counts as a strong match, and save.
 
-Then add companies in the **Companies** tab: paste careers page links, each is checked live (✓ working, ✗ wrong link, or "coming soon" for ATSs not supported yet), and **Save & scan**.
+Saving runs your first scan: no company list needed. It finds every job in the company directory that fits your roles and places, checks the best companies live and scores each job. Then, optionally, pick the companies you'd love to work at in the **Companies** tab (search the directory, or paste a careers link): they're checked every scan and their jobs always come first.
 
 Setup writes `jobhunter.config.local.yaml` (gitignored, commented, safe to edit by hand). After that, the Radar shows a checklist of anything still missing, explains a scan with no matches (and what to change), and flags companies whose links broke. Change anything later in **Settings**.
 
@@ -31,11 +31,11 @@ Prefer the terminal? Copy `jobhunter.config.yaml` to `jobhunter.config.local.yam
 
 ## Dashboard
 
-- **Radar**: new matches since your last visit, then everything else, best score first. Filter by score, company, posting date, workplace, source; search.
+- **Radar**: every job for you, best score first, with **your companies' jobs always on top** (★). Views: All, My companies, New, Strong matches, Saved, Applied. Filter by score, company, industry, posting date, workplace, source; search. Jobs from the directory that haven't been checked live yet show an estimated score (`~56`) and link to the careers page; **Check this company now** fetches it in a second or two.
 - **Job drawer**: score breakdown (why it matched), description, salary, notes, status, copy the JD for CV tailoring.
 - **Pipeline**: saved → applied → interviewing → offer → rejected. Drag cards between columns.
-- **Companies**: per-company health, run history, broken-link and "zero jobs for 3 runs" flags.
-- **Settings**: edit roles, locations, topics, companies and the strong-match threshold; export / import your tracking data.
+- **Companies**: your companies with what each has for you now, scan health and broken links; companies with nothing for you in 10+ scans over a week are flagged for removal. Add more by searching the directory (companies hiring for you first) or by link. Hidden companies, with Show again.
+- **Settings**: edit roles, locations, topics, the strong-match threshold and how many other companies each scan checks live; export / import your tracking data.
 
 Statuses and notes live in your browser (export them for backup). **Scan now** in the header scans on your machine. Keyboard: `j`/`k` move, `Enter` open, `s` save, `a` applied, `x` not interested, `/` search, `1`–`4` sections, `?` help.
 
@@ -50,7 +50,7 @@ Statuses and notes live in your browser (export them for backup). **Scan now** i
         https://jobs.lever.co/acme/...
 ```
 
-Useful flags: `--only <company>` to test one company, `--all` to also see gated-out jobs, `--dry-run` to save nothing, `--json out/run.json` for the raw result.
+Useful flags: `--only <company>` to test one of your companies, `--check <ats:slug>` to check one directory company, `--all` to also see gated-out jobs, `--dry-run` to save nothing, `--json out/run.json` for the raw result.
 
 Each run merges into `data/`: jobs keep their first-seen date, and a job missing from two successful runs of its company is marked closed. A company whose feed fails never closes its jobs.
 
@@ -72,26 +72,26 @@ pnpm jobhunter detect https://jobs.lever.co/somecompany https://job-boards.green
 | Workable | `apply.workable.com/{slug}` | phase 1 |
 | Recruitee, Personio, BambooHR, Breezy | | phase 3 |
 
-## Company directory and suggestions
-
-### How a company reaches you
+## How jobs reach you
 
 ```
-your profile ─┬─ roles + places ──► gates: which open jobs fit you
-              ├─ industries ──────► industry fit (biggest boost; shown first)
-              └─ topics ──────────► extra ranking
-                                      │
-directory (~21,000 companies, tagged by industry) ──► Suggested for you
-                                      │
-   Hiring for you now · Worth watching · In your industries, not scannable yet
+directory index (weekly: every open job's title, place and age at ~14,000 companies)
+        │  your roles + places (on your computer, no requests)
+        ▼
+eligible jobs ──► best 30 companies you haven't added ──► checked live ─┐
+        │                                                               │
+        └──► the rest: "estimated" (no description yet)                 │
+                                                                        ▼
+your companies ───────────────► checked live every scan ──────► full score, apply link
 ```
 
-- **Hiring for you now**: open roles that pass your title and location filters, companies in your industries first.
-- **Worth watching**: no matching opening today, but in your industry, on your shortlist, hiring your role elsewhere, or with a team where you want to work.
-- **In your industries, not scannable yet**: companies whose hiring system we can't read yet (e.g. eToro on Comeet, CMC Markets on Workday). Watch them now; they start working when support arrives.
-- **Browse all** pages through the whole directory; **Add by link** checks any careers link and shows what it finds before you add it.
+- **Your companies** (config `companies:`): checked every scan, their jobs listed first on the Radar. Optional.
+- **Checked companies**: each scan also checks up to `discovery.check_per_scan` (default 30) companies you haven't added, best matches first, each at most once a week. Only their matching jobs are kept, for 30 days after each check. Set it to `0` to contact only your companies.
+- **Estimated jobs** (`data/discover.json`): the rest of the directory's jobs for you. Scored on title, place and date only (no topic points without a description), linked to the careers page, never "new", and hidden after 30 days unless you ask.
+- **Hidden companies** (config `companies_muted:`, or Hide on a job): never shown, never checked.
+- Industries never filter on their own: a company's industries come from public lists and the seed list (`tags`); industries its job titles merely hire for (`title_tags`, e.g. "hires AI roles") are kept apart.
 
-Everything is scored on your computer, from shared public data. Your profile never leaves it.
+Everything is matched and scored on your computer, from shared public data. Your profile never leaves it. `pnpm jobhunter companies suggest` still ranks whole companies for you in the terminal.
 
 ### How the directory is built (no AI, `scripts/catalog/`)
 
@@ -130,7 +130,7 @@ Your config lists the companies you're targeting. If you run Job Hunter from Git
 
 ## Fair use
 
-Job Hunter only reads public job postings that companies publish for their own careers pages. It makes one request per company per run, spaces requests to the same host, identifies itself with a User-Agent, backs off on rate limits, links to the original posting and never touches apply endpoints or candidate data. Keep it that way: don't point it at hundreds of companies or run it more than a couple of times a day.
+Job Hunter only reads public job postings that companies publish for their own careers pages. It makes one request per company per run (your companies, plus up to 30 others it checks for you, each at most once a week), spaces requests to the same host, identifies itself with a User-Agent, backs off on rate limits, links to the original posting and never touches apply endpoints or candidate data. Keep it that way: keep your own list to the companies you really want (the Companies tab flags ones that never have anything for you), and don't run it more than a couple of times a day.
 
 ## Development
 

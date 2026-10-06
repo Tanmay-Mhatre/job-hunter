@@ -42,10 +42,10 @@ const COPY: Record<number, { title: string; intro: string }> = {
   [STEP.locations]: { title: "Where do you want to work?", intro: "Jobs outside these places are hidden. Remote roles can count too." },
   [STEP.industries]: {
     title: "Which industries are you in?",
-    intro: "Pick the industries you've worked in or want to move into. Companies in them are suggested first. This never hides a job.",
+    intro: "Pick the industries you've worked in or want to move into. You can narrow your Radar to them. This never hides a job on its own.",
   },
   [STEP.keywords]: { title: "What topics matter to you?", intro: "These don't hide jobs. They rank the ones that mention your topics higher." },
-  [STEP.review]: { title: "Review and save", intro: "Check everything reads right, then save. Next you'll add the companies to watch." },
+  [STEP.review]: { title: "Review and save", intro: "Check everything reads right, then save. We'll find matching jobs across thousands of companies right away." },
 };
 
 export function Wizard(props: Props) {
@@ -171,8 +171,8 @@ function Welcome({
 }) {
   const steps: [ReactNode, string, string][] = [
     [<Target className="size-5" />, "Tell us what you want", "Roles, places and the topics you care about."],
-    [<Building2 className="size-5" />, "Add the companies you'd join", "Paste their careers page links."],
-    [<ScanSearch className="size-5" />, "We scan and score every job", "Straight from their hiring systems, often before LinkedIn."],
+    [<ScanSearch className="size-5" />, "We find and score every matching job", "Across thousands of companies' hiring systems, often before LinkedIn."],
+    [<Building2 className="size-5" />, "Pick companies you'd love to join", "Optional: their jobs always go to the top, checked every scan."],
   ];
   const resuming = !existing && progress.started;
   return (
@@ -189,7 +189,7 @@ function Welcome({
             ? "Walk through each step to change anything, then save and rescan. Your current settings are filled in."
             : resuming
             ? "Your answers so far are saved. Pick up where you left off."
-            : "Job Hunter checks the careers pages of the companies you choose and ranks every opening against what you're looking for. Setup takes about 3 minutes, and you can skip it and come back any time."}
+            : "Job Hunter finds openings that fit you on thousands of companies' careers pages and ranks each one against what you're looking for. Setup takes about 3 minutes, and you can skip it and come back any time."}
         </p>
         {configErrors && (
           <div className="mt-5 rounded-xl border border-warn/40 bg-warn-soft/50 p-3 text-sm">
@@ -252,7 +252,6 @@ function Review({
   const [started, setStarted] = useState(false);
   const blockers = saveBlockers(draft);
   const companies = usableCompanies(draft);
-  const canScan = companies.some((c) => c.state === "saved");
   const topKeywords = Object.entries(draft.keywords)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6)
@@ -270,7 +269,7 @@ function Review({
         return;
       }
       await onSaved();
-      if (!canScan) return onFinish();
+      // No companies needed: the scan finds jobs for you across the company directory.
       setStarted(true);
       await startScan();
     } catch (err) {
@@ -305,7 +304,7 @@ function Review({
             </Button>
           </div>
         ) : (
-          <p className="text-sm text-muted">This usually takes under a minute. We wait a moment between requests to be polite to each company's site.</p>
+          <p className="text-sm text-muted">This takes a few minutes. We wait a moment between requests to be polite to each company's site.</p>
         )}
       </div>
     );
@@ -356,7 +355,7 @@ function Review({
       STEP.industries,
       draft.industries.length ? (
         <>
-          Suggest companies in <b>{draft.industries.map((id) => INDUSTRY_BY_ID.get(id)?.label ?? id).join(", ")}</b> first.
+          Interested in <b>{draft.industries.map((id) => INDUSTRY_BY_ID.get(id)?.label ?? id).join(", ")}</b>.
         </>
       ) : (
         <span className="text-muted">No industries picked (optional).</span>
@@ -393,7 +392,7 @@ function Review({
               .slice(0, 4)
               .map((c) => c.name)
               .join(", ")}${companies.length > 4 ? "…" : ""}). Manage them in the Companies tab.`
-          : "Companies: you'll add the ones to watch right after this, in the Companies tab."}
+          : "Companies: none yet (optional). Add ones you'd love to join in the Companies tab; their jobs go to the top."}
       </p>
 
       <div>
@@ -433,7 +432,7 @@ function Review({
           )}
           {canRunLocally && (
             <Button variant="primary" className="h-11 px-5 text-base" onClick={() => void saveAndScan()} disabled={saving || blockers.length > 0}>
-              {saving ? "Saving…" : canScan ? "Save & scan" : "Save setup"} <ArrowRight className="size-4" />
+              {saving ? "Saving…" : "Save & find my jobs"} <ArrowRight className="size-4" />
             </Button>
           )}
         </div>

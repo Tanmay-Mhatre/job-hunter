@@ -134,3 +134,33 @@ describe("location facet", () => {
     expect(activeChips(f({ locations: ["Dubai, United Arab Emirates"] }), ctx).map((c) => c.label)).toEqual(["Dubai"]);
   });
 });
+
+describe("your companies and directory jobs", () => {
+  const mine: Ctx = { ...ctx, isYours: (j) => j.company === "Rain" };
+  const directory = job({ id: "index:lever:far:1", company: "Far", score: 56, estimated: true, companyKey: "lever:far", postedAt: daysAgo(3), firstSeen: daysAgo(3) });
+  const stale = job({ id: "index:lever:old:1", company: "Old", score: 56, estimated: true, companyKey: "lever:old", postedAt: daysAgo(45), firstSeen: daysAgo(45) });
+
+  it("lists your companies' jobs first in every sort, then the rest in that sort", () => {
+    const list = applyFilters(jobs, f(), mine);
+    expect(sortJobs(list, "best", mine.isYours).map((j) => j.id)).toEqual(["b", "a", "c"]);
+    expect(sortJobs(list, "newest", mine.isYours).map((j) => j.id)).toEqual(["b", "a", "c"]);
+    expect(sortJobs(list, "best").map((j) => j.id)).toEqual(["a", "c", "b"]);
+  });
+
+  it("'My companies' shows only theirs", () => {
+    expect(applyFilters(jobs, f({ mine: true }), mine).map((j) => j.id)).toEqual(["b"]);
+    expect(applyFilters(jobs, f({ mine: true }), ctx)).toEqual([]);
+    expect(activeChips(f({ mine: true }), ctx).map((c) => c.label)).toContain("My companies");
+  });
+
+  it("hides directory jobs older than 30 days unless asked, and never calls them new", () => {
+    expect(applyFilters([directory, stale], f(), ctx).map((j) => j.id)).toEqual([directory.id]);
+    expect(applyFilters([directory, stale], f({ olderIndex: true }), ctx)).toHaveLength(2);
+    expect(applyFilters([directory], f({ status: "new" }), { ...ctx, cutoff: daysAgo(10) })).toEqual([]);
+  });
+
+  it("round-trips the new filters through the URL", () => {
+    const q = toQuery(f({ mine: true, olderIndex: true }), "best");
+    expect(fromQuery(q)!.filters).toMatchObject({ mine: true, olderIndex: true });
+  });
+});

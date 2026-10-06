@@ -2,13 +2,12 @@ import { COUNTRIES, countryTerms, placeOwner } from "@jobhunter/core/catalog/pla
 import { REMOTE } from "./filters";
 import type { Draft } from "./setup";
 
-/** What the Radar's place and industry filters say, as the Radar names things. */
+/** What the Radar's place filters say, as the Radar names things. */
 export type FilterPicks = {
   /** Country display names ("United Kingdom"), plus "Remote" for remote roles. */
   countries: string[];
   /** "City, Country" ("Dubai, United Arab Emirates"). */
   locations: string[];
-  industries: string[];
 };
 
 /**
@@ -54,7 +53,6 @@ export function profileFromPicks(draft: Draft, picks: FilterPicks): { patch: Par
       places: unique,
       remote,
       remoteOk: remote && !draft.remoteOk.length ? ["remote"] : draft.remoteOk,
-      industries: [...picks.industries],
     },
   };
 }

@@ -1,6 +1,6 @@
 import { INDUSTRY_BY_ID } from "@jobhunter/core/catalog/industries";
-import { ArrowUpDown, Check, LoaderCircle, Pencil, Plus, Search, SlidersHorizontal, Star, UserRound, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ArrowRight, ArrowUpDown, Building2, Check, LoaderCircle, Pencil, Plus, Search, SlidersHorizontal, Star, UserRound, X } from "lucide-react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useOtherJobs, type DataMeta, type Job, type Profile } from "../../lib/data";
 import {
   activeChips,
@@ -9,6 +9,7 @@ import {
   facetCounts,
   fromQuery,
   groupJobs,
+  INDEX_MAX_AGE_DAYS,
   isNewJob,
   profileFilters,
   profilePlaces,
@@ -48,10 +49,21 @@ type Props = {
   onRenameView: (id: string, name: string) => void;
   onDeleteView: (id: string) => void;
   onHideCompany: (company: string, hidden: boolean) => void;
+  /** Is this job at one of your companies? Their jobs always come first. */
+  isYours: (j: Job) => boolean;
+  /** How many companies you've added. */
+  companyCount: number;
+  /** When the directory index behind the estimated jobs was built. */
+  indexGeneratedAt?: string;
+  onCompanies: () => void;
+  /** Add (or remove) a job's company to your companies (local app only). Resolves to an error, or null. */
+  onTrack?: (job: Job, on: boolean) => Promise<string | null>;
+  /** Check a directory job's company live now (local app only). Resolves to an error, or null. */
+  onCheck?: (job: Job) => Promise<string | null>;
   /** Your saved profile now (Settings); falls back to the one from the last scan. */
   profile?: Profile;
   onEditProfile: () => void;
-  /** Save the Radar's place and industry picks to your profile, then rescan. Resolves to an error, or null. */
+  /** Save the Radar's place picks to your profile, then rescan. Resolves to an error, or null. */
   onSaveProfile?: (picks: FilterPicks) => Promise<string | null>;
 };
 
@@ -121,7 +133,12 @@ export function RadarPage(p: Props) {
   const other = useOtherJobs(filters.showFailed);
   const pool = useMemo(() => (filters.showFailed && other ? [...p.jobs, ...other] : p.jobs), [p.jobs, other, filters.showFailed]);
 
-  const industriesByCompany = useMemo(() => new Map(p.meta.companies.map((c) => [c.name, c.industries ?? []])), [p.meta.companies]);
+  // Industries per company: your companies (from the last scan), and any job that carries its company's.
+  const industriesByCompany = useMemo(() => {
+    const m = new Map(p.meta.companies.map((c) => [c.name, c.industries ?? []]));
+    for (const j of p.jobs) if (j.industries?.length && !m.get(j.company)?.length) m.set(j.company, j.industries);
+    return m;
+  }, [p.meta.companies, p.jobs]);
   const hidden = useMemo(() => new Set(p.prefs.hiddenCompanies), [p.prefs.hiddenCompanies]);
   const ctx: Ctx = useMemo(
     () => {
@@ -132,13 +149,15 @@ export function RadarPage(p: Props) {
         cutoff: p.cutoff,
         industriesOf: (c: string) => industriesByCompany.get(c) ?? [],
         hiddenCompanies: hidden,
+        isYours: p.isYours,
         mine: { countries: new Set([...places.countries, ...(places.remote ? ["Remote"] : [])]), locations: new Set(places.locations), industries: new Set(profile.industries) },
       };
     },
-    [p.user, min, p.cutoff, industriesByCompany, hidden, profileKey], // eslint-disable-line react-hooks/exhaustive-deps
+    [p.user, min, p.cutoff, industriesByCompany, hidden, profileKey, p.isYours], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
-  const visible = useMemo(() => sortJobs(applyFilters(pool, filters, ctx), sort), [pool, filters, ctx, sort]);
+  // Your companies' jobs always lead, whatever the sort.
+  const visible = useMemo(() => sortJobs(applyFilters(pool, filters, ctx), sort, p.isYours), [pool, filters, ctx, sort, p.isYours]);
   const groups = useMemo(() => groupJobs(visible), [visible]);
   const counts = useMemo(() => facetCounts(pool, filters, ctx), [pool, filters, ctx]);
   const chips = activeChips(filters, ctx, base);
@@ -148,6 +167,8 @@ export function RadarPage(p: Props) {
   const open = useMemo(() => applyFilters(p.jobs, base, ctx), [p.jobs, base, ctx]);
   const newCount = open.filter((j) => isNewJob(j, ctx)).length;
   const strongCount = open.filter((j) => j.score >= min).length;
+  const yourGroups = groups.filter((g) => p.isYours(g.lead)).length;
+  const noCompaniesYet = filters.mine && p.companyCount === 0;
 
   // ----- list paging and selection -----
   const [limit, setLimit] = useState(PAGE);
@@ -244,6 +265,10 @@ export function RadarPage(p: Props) {
       p.jobs.filter((j) => j.company === selected.company && j.group !== selected.group && j.status === "open"),
       "best",
     ).slice(0, 5),
+    yours: p.isYours(selected),
+    indexGeneratedAt: p.indexGeneratedAt,
+    onTrack: p.onTrack && ((on: boolean) => p.onTrack!(selected, on)),
+    onCheck: p.onCheck && selected.estimated ? () => p.onCheck!(selected) : undefined,
     companyHidden: hidden.has(selected.company),
     onUpdate: (patch: { status?: Status; note?: string }) => p.onUpdate(selected, patch),
     onApply: p.onApply,
@@ -255,7 +280,7 @@ export function RadarPage(p: Props) {
 
   // Have the place or industry filters moved away from your profile?
   const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
-  const changedFromProfile = !sameSet(filters.countries, base.countries) || !sameSet(filters.locations, base.locations) || !sameSet(filters.industries, base.industries);
+  const changedFromProfile = !sameSet(filters.countries, base.countries) || !sameSet(filters.locations, base.locations);
 
   return (
     <div className="space-y-3">
@@ -263,12 +288,12 @@ export function RadarPage(p: Props) {
         profile={profile}
         changed={changedFromProfile}
         onEdit={p.onEditProfile}
-        onReset={() => setFilters({ countries: base.countries, locations: base.locations, industries: base.industries })}
+        onReset={() => setFilters({ countries: base.countries, locations: base.locations })}
         onSave={
           p.onSaveProfile &&
           (() => {
             adoptNextProfile();
-            return p.onSaveProfile!({ countries: filters.countries, locations: filters.locations, industries: filters.industries }).then((err) => {
+            return p.onSaveProfile!({ countries: filters.countries, locations: filters.locations }).then((err) => {
               if (err) adoptNextProfile(false);
               return err;
             });
@@ -316,7 +341,7 @@ export function RadarPage(p: Props) {
           filters={filters}
           sort={sort}
           views={p.prefs.views}
-          counts={{ all: open.length, new: newCount, strong: strongCount, saved: open.filter((j) => p.user[j.id]?.status === "saved").length }}
+          counts={{ all: open.length, mine: open.filter(p.isYours).length, new: newCount, strong: strongCount, saved: open.filter((j) => p.user[j.id]?.status === "saved").length }}
           onPick={replace}
           onSave={(name) => p.onSaveView(name, filters, sort)}
           onRename={p.onRenameView}
@@ -367,7 +392,16 @@ export function RadarPage(p: Props) {
         )}
       </Card>
 
-      {groups.length === 0 ? (
+      {noCompaniesYet ? (
+        <Card className="px-6 py-14 text-center">
+          <Building2 className="mx-auto size-6 text-muted" />
+          <p className="mt-2 font-medium">You haven't picked any companies yet.</p>
+          <p className="mx-auto mt-1 max-w-md text-sm text-muted">Add the companies you'd love to work at: we check them every scan, and their jobs always come first here.</p>
+          <Button variant="primary" className="mt-4" onClick={p.onCompanies}>
+            Pick my companies <ArrowRight className="size-4" />
+          </Button>
+        </Card>
+      ) : groups.length === 0 ? (
         <Card className="px-6 py-14 text-center">
           <p className="font-medium">No jobs match these filters.</p>
           {relax.length > 0 ? (
@@ -379,7 +413,7 @@ export function RadarPage(p: Props) {
               ))}
             </div>
           ) : (
-            <p className="mt-1 text-sm text-muted">Try clearing the filters, or add more companies to watch.</p>
+            <p className="mt-1 text-sm text-muted">{filters.mine ? "None of your companies has a matching job right now. We'll keep checking." : "Try clearing the filters."}</p>
           )}
         </Card>
       ) : (
@@ -387,9 +421,12 @@ export function RadarPage(p: Props) {
           <Card className="overflow-hidden lg:sticky lg:top-[4.5rem] lg:h-[calc(100dvh-5.5rem)]">
             <div ref={listRef} className="lg:h-full lg:overflow-y-auto">
               <ul>
-                {groups.slice(0, limit).map((g) => (
+                {groups.slice(0, limit).map((g, i) => (
+                  <Fragment key={g.key}>
+                  {!filters.mine && yourGroups > 0 && (i === 0 || i === yourGroups) && (
+                    <ListHeading>{i === 0 ? `Your companies (${yourGroups})` : `All jobs for you (${groups.length - yourGroups})`}</ListHeading>
+                  )}
                   <JobCard
-                    key={g.key}
                     ref={(el) => {
                       if (el) rowRefs.current.set(g.key, el);
                       else rowRefs.current.delete(g.key);
@@ -401,7 +438,9 @@ export function RadarPage(p: Props) {
                     selected={!!selectedGroup && g.key === selectedGroup.key && (wide || p.overlayOpen)}
                     onSelect={() => select(g.lead)}
                     onStatus={(s) => p.onStatus(g.lead, s)}
+                    yours={p.isYours(g.lead)}
                   />
+                  </Fragment>
                 ))}
                 {limit < groups.length && (
                   <li ref={sentinel} className="flex items-center justify-center gap-2 py-4 text-xs text-muted">
@@ -467,16 +506,22 @@ export function RadarPage(p: Props) {
   );
 }
 
+/** A section title inside the job list ("Your companies", "All jobs for you"). */
+function ListHeading({ children }: { children: ReactNode }) {
+  return <li className="sticky top-0 z-10 border-b border-line bg-surface-2/95 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted backdrop-blur">{children}</li>;
+}
+
 // ---------- views ----------
 
 const BUILT_IN: { id: string; label: string; filters: Partial<Filters>; count: keyof ViewCounts }[] = [
   { id: "all", label: "All", filters: {}, count: "all" },
+  { id: "mine", label: "My companies", filters: { mine: true }, count: "mine" },
   { id: "new", label: "New", filters: { status: "new" }, count: "new" },
   { id: "strong", label: "Strong matches", filters: { match: "strong" }, count: "strong" },
   { id: "saved", label: "Saved", filters: { status: "saved" }, count: "saved" },
   { id: "applied", label: "Applied", filters: { status: "applied" }, count: "all" },
 ];
-type ViewCounts = { all: number; new: number; strong: number; saved: number };
+type ViewCounts = { all: number; mine: number; new: number; strong: number; saved: number };
 
 function ViewsBar(props: {
   /** Your profile's filters: the built-in views start from them. */
@@ -580,6 +625,7 @@ function MoreToggles({ filters, setFilters }: { filters: Filters; setFilters: (p
     ["showFailed", "Include jobs that failed your filters"],
     ["showClosed", "Include closed jobs"],
     ["showHidden", "Include hidden jobs and companies"],
+    ["olderIndex", `Include directory jobs older than ${INDEX_MAX_AGE_DAYS} days`],
   ];
   return (
     <div className="space-y-0.5">
@@ -606,7 +652,7 @@ function MoreMenu({
   hiddenCompanies: string[];
   onUnhide: (company: string) => void;
 }) {
-  const extra = [filters.salaryOnly, filters.showFailed, filters.showClosed, filters.showHidden].filter(Boolean).length + filters.ats.length;
+  const extra = [filters.salaryOnly, filters.showFailed, filters.showClosed, filters.showHidden, filters.olderIndex].filter(Boolean).length + filters.ats.length;
   return (
     <FacetMenu
       label={extra ? `More · ${extra}` : "More"}
@@ -725,7 +771,7 @@ function ProfileBar({
       {changed && (
         <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-warn/30 pt-2">
           <p className="min-w-0 flex-1 text-xs text-warn">
-            Your place or industry filters differ from your profile. This only changes what you see here; your scans and alerts still use your profile.
+            Your place filters differ from your profile. This only changes what you see here; your scans and alerts still use your profile.
           </p>
           <Button size="sm" variant="ghost" onClick={onReset} disabled={saving}>
             Reset to my profile

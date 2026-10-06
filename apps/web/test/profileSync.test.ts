@@ -20,26 +20,28 @@ describe("profile defaults for the Radar", () => {
     });
   });
 
-  it("starts the filters on your countries, remote and industries", () => {
-    expect(profileFilters(profile)).toMatchObject({ countries: ["United Arab Emirates", "United Kingdom", "Remote"], locations: [], industries: ["crypto", "brokerage"] });
+  it("starts the filters on your countries and remote, not your industries (most companies have none)", () => {
+    expect(profileFilters(profile)).toMatchObject({ countries: ["United Arab Emirates", "United Kingdom", "Remote"], locations: [], industries: [] });
   });
 });
 
 describe("profileFromPicks (Save to my profile)", () => {
   it("keeps your own terms for countries you already had, and adds new countries in full", () => {
-    const r = profileFromPicks(draft, { countries: ["United Arab Emirates", "Ireland", "Remote"], locations: [], industries: ["crypto"] });
+    const r = profileFromPicks(draft, { countries: ["United Arab Emirates", "Ireland", "Remote"], locations: [] });
     if ("error" in r) throw new Error(r.error);
     expect(r.patch.places).toEqual(["dubai", "abu dhabi", "uae", "united arab emirates", "ireland", "dublin", "cork", "galway", "limerick"]);
-    expect(r.patch).toMatchObject({ remote: true, remoteOk: ["emea", "remote"], industries: ["crypto"] });
+    expect(r.patch).toMatchObject({ remote: true, remoteOk: ["emea", "remote"] });
+    // Your industries are never changed from the Radar.
+    expect(r.patch).not.toHaveProperty("industries");
   });
 
   it("narrows a country to the cities you ticked, and drops remote when unticked", () => {
-    const r = profileFromPicks(draft, { countries: ["United Arab Emirates"], locations: ["Dubai, United Arab Emirates"], industries: [] });
+    const r = profileFromPicks(draft, { countries: ["United Arab Emirates"], locations: ["Dubai, United Arab Emirates"] });
     if ("error" in r) throw new Error(r.error);
-    expect(r.patch).toMatchObject({ places: ["dubai"], remote: false, industries: [] });
+    expect(r.patch).toMatchObject({ places: ["dubai"], remote: false });
   });
 
   it("refuses to save a profile with no place and no remote", () => {
-    expect(profileFromPicks(draft, { countries: [], locations: [], industries: [] })).toHaveProperty("error");
+    expect(profileFromPicks(draft, { countries: [], locations: [] })).toHaveProperty("error");
   });
 });

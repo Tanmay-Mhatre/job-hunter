@@ -1,4 +1,4 @@
-import { Bookmark, CircleCheck, EyeOff } from "lucide-react";
+import { Bookmark, CircleCheck, EyeOff, Star } from "lucide-react";
 import { forwardRef } from "react";
 import type { Job } from "../../lib/data";
 import type { JobGroup } from "../../lib/filters";
@@ -14,6 +14,8 @@ type Props = {
   selected: boolean;
   onSelect: () => void;
   onStatus: (s: Status) => void;
+  /** At one of your companies. */
+  yours?: boolean;
 };
 
 const SHORT_SENIORITY: Record<Job["seniority"], string> = { leadership: "Leadership", principal: "Principal/Lead", senior: "Senior", mid: "Mid-level", entry: "Entry" };
@@ -44,7 +46,7 @@ function Avatar({ name }: { name: string }) {
 }
 
 /** One role in the list: who, what, where, how good a match, and why. */
-export const JobCard = forwardRef<HTMLLIElement, Props>(function JobCard({ group, entry, min, isNew, selected, onSelect, onStatus }, ref) {
+export const JobCard = forwardRef<HTMLLIElement, Props>(function JobCard({ group, entry, min, isNew, selected, onSelect, onStatus, yours }, ref) {
   const job = group.lead;
   const salary = formatSalary(job.salary);
   const status = entry?.status;
@@ -71,18 +73,26 @@ export const JobCard = forwardRef<HTMLLIElement, Props>(function JobCard({ group
           {isNew && <span className="mt-1.5 size-2 shrink-0 rounded-full bg-accent" title="New since your last visit" />}
         </div>
         <p className="mt-0.5 truncate text-sm text-muted">
+          {yours && <Star className="mr-1 inline size-3.5 fill-accent text-accent" aria-label="Your company" />}
           <span className="font-medium text-fg">{job.company}</span> · {cityLine(job)}
           {group.jobs.length > 1 && <span className="text-accent"> · +{group.jobs.length - 1} more location{group.jobs.length > 2 ? "s" : ""}</span>}
         </p>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-          <span className={cx("tabular rounded-md px-1.5 py-0.5 font-semibold", PILL[scoreBand(job.score, min)])} title="Match score">
-            {job.score}
-          </span>
+          {job.estimated ? (
+            <span className="tabular rounded-md border border-dashed border-line px-1.5 py-0.5 font-semibold text-muted" title="Estimated: not checked live yet, so no topic points">
+              ~{job.score}
+            </span>
+          ) : (
+            <span className={cx("tabular rounded-md px-1.5 py-0.5 font-semibold", PILL[scoreBand(job.score, min)])} title="Match score">
+              {job.score}
+            </span>
+          )}
           <span className={cx(fresh ? "font-medium text-good" : "text-muted")}>{job.postedAt ? timeAgo(job.postedAt) : `seen ${timeAgo(job.firstSeen)}`}</span>
           {job.workplace !== "unknown" && <span className="capitalize text-muted">· {job.workplace}</span>}
           {salary && <span className="font-medium text-fg">· {salary}</span>}
           {job.status === "closed" && <span className="font-medium text-bad">· Closed</span>}
           {job.why.gate && <span className="font-medium text-warn">· Failed your {job.why.gate} filter</span>}
+          {job.estimated && <span className="text-muted">· From the directory, not checked yet</span>}
         </div>
         {reasons.length > 0 && !job.why.gate && <p className="mt-1 truncate text-xs text-muted">Matches: {reasons.join(" · ")}</p>}
       </div>

@@ -2,6 +2,7 @@ import { diagnoseNoMatches } from "@jobhunter/core/diagnose";
 import { ArrowRight, Bell, Check, ChevronRight, LoaderCircle, Radar as RadarIcon, RefreshCw, SearchX, TriangleAlert, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Config } from "@jobhunter/core/schema";
+import { keyOf } from "../lib/companies";
 import type { DataMeta, Job } from "../lib/data";
 import type { ScanState } from "../lib/scan";
 import { STEP, STEP_COUNT } from "../lib/setup";
@@ -9,13 +10,15 @@ import { load, save } from "../lib/storage";
 import { ScanProgress } from "./ScanProgress";
 import { Button, Card, Chip, cx } from "./ui";
 
-type Item = { key: string; label: string; detail: string; done: boolean; step?: number; soon?: boolean };
+type Item = { key: string; label: string; detail: string; done: boolean; step?: number; soon?: boolean; /** Nice to have: not counted in progress. */ optional?: boolean };
 
 /** What's set up and what's missing, from the saved config and the latest run. */
 export function checklistItems(config: Config | undefined, meta: DataMeta | undefined, hasResume = false): Item[] {
   const p = config?.profile;
   const last = meta?.runs[0];
-  const health = last?.health ?? [];
+  // Your companies only: a scan also checks companies you haven't added.
+  const yours = new Set((config?.companies ?? []).map(keyOf));
+  const health = (last?.health ?? []).filter((h) => yours.has(keyOf(h)));
   const working = health.filter((h) => h.ok).length;
   const failing = health.filter((h) => !h.ok && !h.unsupported).length;
   const companies = config?.companies.length ?? 0;
@@ -33,9 +36,10 @@ export function checklistItems(config: Config | undefined, meta: DataMeta | unde
     { key: "keywords", label: "Topics to rank by", detail: kw ? `${kw} keywords` : "Recommended", done: kw > 0, step: STEP.keywords },
     {
       key: "companies",
-      label: "Companies",
-      detail: last ? `${working} working${failing ? `, ${failing} failing` : ""}` : companies ? `${companies} added` : "None yet: add them in the Companies tab",
+      label: "Companies you'd like to work at",
+      detail: !companies ? "Optional: their jobs go to the top" : last && health.length ? `${working} working${failing ? `, ${failing} failing` : ""}` : `${companies} added`,
       done: companies > 0 && failing === 0,
+      optional: true,
     },
     { key: "scan", label: "First scan", detail: last ? "Done" : "Not run yet", done: !!last },
     { key: "daily", label: "Daily scan + Telegram alerts", detail: "Coming in the next update", done: false, soon: true },
@@ -79,7 +83,7 @@ function ChecklistRows({ items, onStep, onScan, onCompanies }: { items: Item[]; 
 }
 
 const countDone = (items: Item[]) => {
-  const core = items.filter((i) => !i.soon);
+  const core = items.filter((i) => !i.soon && !i.optional);
   return { done: core.filter((i) => i.done).length, total: core.length };
 };
 
@@ -172,7 +176,7 @@ export function SetupHero({
         <div className="min-w-0 flex-1">
           <h1 className="text-lg font-semibold">{started ? "Finish setting up your radar" : "Set up your radar"}</h1>
           <p className="mt-0.5 text-sm text-muted">
-            Tell us the roles and places you want, add the companies you'd join, and we'll find and rank their openings. About 3 minutes.
+            Tell us the roles and places you want, and we'll find and rank matching jobs across thousands of companies. About 3 minutes.
           </p>
           <div className="mt-3 flex items-center gap-3">
             <ProgressBar done={done} total={total} className="w-40" />
@@ -216,9 +220,9 @@ export function FirstScanCard({ scan, onScan }: { scan: ScanState; onScan: () =>
   const running = scan.phase === "running";
   return (
     <Card className="p-6 text-center sm:p-8">
-      <h2 className="text-lg font-semibold">{running ? "Scanning your companies…" : "Ready for your first scan"}</h2>
+      <h2 className="text-lg font-semibold">{running ? "Finding jobs for you…" : "Ready for your first scan"}</h2>
       <p className="mx-auto mt-1 max-w-md text-sm text-muted">
-        We'll fetch every open job from your companies and score each one against your profile.
+        We'll find every open job that fits your roles and places in the company directory, check the best companies live, and score each job against your profile.
       </p>
       {running ? (
         <div className="mx-auto mt-5 max-w-md text-left">
@@ -265,7 +269,7 @@ export function NoMatches({ jobs, onStep, onCompanies }: { jobs: Job[]; onStep: 
               ))}
             </ul>
           ) : (
-            <p className="mt-1 text-sm text-muted">None. Your companies may not be hiring for this role right now.</p>
+            <p className="mt-1 text-sm text-muted">None. Nobody is hiring for this role in the companies we checked right now.</p>
           )}
           <Button size="sm" className="mt-3" onClick={() => onStep(STEP.locations)}>
             Add locations or remote <ArrowRight className="size-3.5" />
@@ -282,7 +286,7 @@ export function NoMatches({ jobs, onStep, onCompanies }: { jobs: Job[]; onStep: 
               ))}
             </ul>
           ) : (
-            <p className="mt-1 text-sm text-muted">No openings in your places at these companies right now.</p>
+            <p className="mt-1 text-sm text-muted">No other openings in your places right now.</p>
           )}
           <Button size="sm" className="mt-3" onClick={() => onStep(STEP.roles)}>
             Widen job titles <ArrowRight className="size-3.5" />
@@ -292,9 +296,9 @@ export function NoMatches({ jobs, onStep, onCompanies }: { jobs: Job[]; onStep: 
       <p className="mt-4 text-sm text-muted">
         Or{" "}
         <button type="button" className="font-medium text-accent" onClick={onCompanies}>
-          add more companies
+          add companies you'd like to work at
         </button>
-        : the more you watch, the more you'll catch.
+        : we check them every scan, even ones the directory doesn't list.
       </p>
     </Card>
   );

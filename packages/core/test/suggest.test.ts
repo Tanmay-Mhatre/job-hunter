@@ -36,6 +36,14 @@ describe("suggestCompanies", () => {
     expect(r.scanned).toBe(3);
   });
 
+  it("counts row ages from when the index was built, not from now", () => {
+    // Posted 2 days before an index built 6 days ago: 8 days old today, so not "new this week".
+    const indexGeneratedAt = new Date(now.getTime() - 6 * 86_400_000);
+    const r = suggestCompanies(profile(), [co("greenhouse:one", [pm("Dubai", 2)])], { now, indexGeneratedAt });
+    expect(r.hiringNow[0]).toMatchObject({ matches: 1, new_matches: 0 });
+    expect(suggestCompanies(profile(), [co("greenhouse:one", [pm("Dubai", 2)])], { now }).hiringNow[0]).toMatchObject({ new_matches: 1 });
+  });
+
   it("puts right-title, nearby-place roles in Worth watching", () => {
     // profile() targets UAE places, so other GCC countries are "near"; Berlin is not.
     const r = suggestCompanies(profile(), [co("greenhouse:riyadh", [pm("Riyadh, Saudi Arabia")]), co("greenhouse:berlin", [pm("Berlin")])], { now });
@@ -140,6 +148,21 @@ describe("suggestCompanies", () => {
     expect(r.hiringNow[0]!.reasons[0]).toBe("Your industry: Crypto exchange");
     // Without industries picked, volume wins as before.
     expect(suggestCompanies(profile(), [media, exchange], { now }).hiringNow[0]!.key).toBe("greenhouse:media");
+  });
+
+  it("treats an industry only job titles point to as 'hires for', not as the company's industry", () => {
+    const label = co("lever:label", [pm("Dubai")], { title_tags: ["ai"] });
+    const lab = co("ashby:lab", [pm("Dubai")], { tags: ["ai"] });
+    const plain = co("greenhouse:plain", [pm("Dubai")]);
+    const r = suggestCompanies(profile({ industries: ["ai"] }), [plain, label, lab], { now });
+    expect(r.hiringNow.map((s) => s.key)).toEqual(["ashby:lab", "lever:label", "greenhouse:plain"]);
+    const byKey = Object.fromEntries(r.hiringNow.map((s) => [s.key, s]));
+    expect(byKey["lever:label"]).toMatchObject({ industries: [], hires_for: ["ai"] });
+    expect(byKey["lever:label"]!.reasons[0]).toBe("Hires for AI & machine learning roles");
+    expect(byKey["ashby:lab"]!.reasons[0]).toBe("Your industry: AI & machine learning");
+    // Hiring for it is worth something, but less than being in it.
+    expect(byKey["ashby:lab"]!.score).toBeGreaterThan(byKey["lever:label"]!.score);
+    expect(byKey["lever:label"]!.score).toBeGreaterThan(byKey["greenhouse:plain"]!.score);
   });
 
   it("lists industry companies on hiring systems we can't scan yet separately", () => {

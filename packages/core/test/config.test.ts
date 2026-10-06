@@ -50,3 +50,20 @@ describe("parseConfig", () => {
     expect(() => parseConfig("profile: [unclosed")).toThrow(/not valid YAML/);
   });
 });
+
+describe("jobs beyond your companies", () => {
+  const base = `
+profile:
+  titles: { include: ["product manager"] }
+  locations: { include: ["dubai"] }
+`;
+  it("defaults to checking 30 more companies per scan, with nothing hidden", () => {
+    expect(parseConfig(base)).toMatchObject({ discovery: { check_per_scan: 30 }, companies_muted: [] });
+  });
+
+  it("survives a save from the dashboard (YAML round trip)", async () => {
+    const { configToYaml } = await import("../src/yaml-writer");
+    const config = parseConfig(`${base}companies_muted: ["Lever:Foo"]\ndiscovery: { check_per_scan: 0 }\n`);
+    expect(parseConfig(configToYaml(config))).toMatchObject({ discovery: { check_per_scan: 0 }, companies_muted: ["lever:foo"] });
+  });
+});

@@ -629,8 +629,8 @@ export function IndustriesStep({ draft, update, suggest }: StepProps) {
 
       <p className="text-sm text-muted">
         {draft.industries.length === 0
-          ? "None picked. That's OK: suggestions will rank by your roles and places only."
-          : `${draft.industries.length} picked. Companies in ${draft.industries.length === 1 ? "this industry" : "these industries"} are suggested first.`}
+          ? "None picked. That's OK: your jobs are found by your roles and places."
+          : `${draft.industries.length} picked. You can narrow your Radar to ${draft.industries.length === 1 ? "this industry" : "these industries"}.`}
         {topics.length > 0 && <> Next we'll offer topics like {topics.slice(0, 5).join(", ")}.</>}
       </p>
     </div>

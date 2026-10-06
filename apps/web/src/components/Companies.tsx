@@ -1,161 +1,245 @@
-import { ExternalLink, Plus, TriangleAlert } from "lucide-react";
+import { Clock, ExternalLink, TriangleAlert, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ATS_LABEL, keyOf } from "../lib/companies";
 import type { CompanyHealth, DataMeta } from "../lib/data";
-import { formatDateTime, timeAgo } from "../lib/format";
-import { Button, Card, Chip, cx } from "./ui";
+import { formatDate, formatDateTime, timeAgo } from "../lib/format";
+import type { CompanyRow } from "../lib/setup";
+import { Button, Card, Chip, cx, Segmented } from "./ui";
 
-const key = (ats: string, slug: string) => `${ats}:${slug.toLowerCase()}`;
+/** A company with no jobs for you in at least this many scans in a row, over at least QUIET_DAYS, gets a "remove?" flag. */
+export const QUIET_SCANS = 10;
+/** ...so ten quick scans in one afternoon don't count. */
+export const QUIET_DAYS = 7;
 
-/** Runs in a row (newest first) where this company returned zero jobs. */
-function zeroStreak(meta: DataMeta, k: string): number {
-  let n = 0;
-  for (const run of meta.runs) {
-    const h = run.health.find((x) => key(x.ats, x.slug) === k);
-    if (!h) continue;
-    if (h.ok && h.jobsFound > 0) break;
-    n++;
+const isQuiet = (q: Row["quiet"], now = Date.now()) => q.scans >= QUIET_SCANS && !!q.since && now - Date.parse(q.since) >= QUIET_DAYS * 86_400_000;
+
+type Row = {
+  r: CompanyRow;
+  key: string;
+  /** Not saved yet. */
+  isNew: boolean;
+  forYou: number;
+  last?: { h: CompanyHealth; at: string };
+  history: (CompanyHealth | undefined)[];
+  /** Scans in a row (newest first) that found nothing for you, and since when. */
+  quiet: { scans: number; since?: string };
+};
+
+/** Newest first: the company's health in each scan that included it. */
+function healthOf(meta: DataMeta | undefined, key: string): { h: CompanyHealth; at: string }[] {
+  const out: { h: CompanyHealth; at: string }[] = [];
+  for (const run of meta?.runs ?? []) {
+    const h = run.health.find((x) => keyOf(x) === key);
+    if (h) out.push({ h, at: run.startedAt });
   }
-  return n;
+  return out;
 }
 
-function lastHealth(meta: DataMeta, k: string): { h: CompanyHealth; at: string } | undefined {
-  for (const run of meta.runs) {
-    const h = run.health.find((x) => key(x.ats, x.slug) === k);
-    if (h) return { h, at: run.startedAt };
+function quietOf(seen: { h: CompanyHealth; at: string }[]): Row["quiet"] {
+  let scans = 0;
+  let since: string | undefined;
+  for (const { h, at } of seen) {
+    if (!h.ok || h.matches > 0) break;
+    scans++;
+    since = at;
   }
-  return undefined;
+  return { scans, since };
 }
 
-export function Companies({ meta, onAdd }: { meta: DataMeta; onAdd: () => void }) {
-  const rows = meta.companies.map((c) => {
-    const k = key(c.ats, c.slug);
-    const last = lastHealth(meta, k);
-    const history = meta.runs
-      .slice(0, 14)
-      .map((r) => r.health.find((x) => key(x.ats, x.slug) === k))
-      .reverse();
-    return { c, last, history, zero: zeroStreak(meta, k) };
+const failing = (row: Row) => !!row.last && !row.last.h.ok && !row.last.h.unsupported;
+
+/**
+ * Your companies: what each has for you right now, whether its careers page still works, and which
+ * ones haven't had anything for you in a while (remove them, so scans stay quick and polite).
+ */
+export function MyCompanies({
+  rows: list,
+  savedKeys,
+  meta,
+  forYou,
+  onRemove,
+  onRemoveMany,
+}: {
+  rows: CompanyRow[];
+  savedKeys: Set<string>;
+  meta?: DataMeta;
+  forYou: ReadonlyMap<string, number>;
+  onRemove: (key: string) => void;
+  onRemoveMany: (keys: string[]) => void;
+}) {
+  const [sort, setSort] = useState<"jobs" | "name" | "attention">("jobs");
+  const rows = useMemo<Row[]>(
+    () =>
+      list.map((r) => {
+        const key = keyOf(r);
+        const seen = healthOf(meta, key);
+        const history = (meta?.runs ?? []).slice(0, 14).map((run) => run.health.find((x) => keyOf(x) === key)).reverse();
+        return { r, key, isNew: !savedKeys.has(key), forYou: forYou.get(key) ?? 0, last: seen[0], history, quiet: quietOf(seen) };
+      }),
+    [list, savedKeys, meta, forYou],
+  );
+  const quiet = rows.filter((x) => x.forYou === 0 && isQuiet(x.quiet));
+  const broken = rows.filter(failing).length;
+  const sorted = [...rows].sort((a, b) => {
+    if (sort === "name") return (a.r.name || "").localeCompare(b.r.name || "");
+    if (sort === "attention") return Number(failing(b)) - Number(failing(a)) || b.quiet.scans - a.quiet.scans || a.forYou - b.forYou;
+    return b.forYou - a.forYou || (b.last?.h.jobsFound ?? 0) - (a.last?.h.jobsFound ?? 0);
   });
-  const failing = rows.filter((r) => r.last && !r.last.h.ok && !r.last.h.unsupported).length;
-  const flagged = rows.filter((r) => r.zero >= 3).length;
-  const latest = meta.runs[0];
+  const oldestQuiet = quiet.map((x) => x.quiet.since).filter(Boolean).sort()[0];
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-2 sm:grid-cols-3 sm:gap-3">
-        <Card className="px-4 py-3">
-          <div className="tabular text-2xl font-semibold">{meta.companies.filter((c) => c.enabled).length}</div>
-          <div className="text-xs text-muted">Companies tracked</div>
-        </Card>
-        <Card className="px-4 py-3">
-          <div className={cx("tabular text-2xl font-semibold", failing > 0 && "text-bad")}>{failing}</div>
-          <div className="text-xs text-muted">Failed in their last run</div>
-        </Card>
-        <Card className="px-4 py-3">
-          <div className={cx("tabular text-2xl font-semibold", flagged > 0 && "text-warn")}>{flagged}</div>
-          <div className="text-xs text-muted">Zero jobs for 3+ runs (check the slug)</div>
-        </Card>
-      </div>
+    <Card className="overflow-hidden">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
+        <div>
+          <h2 className="text-base font-semibold">
+            Your companies <span className="tabular font-normal text-muted">({rows.length})</span>
+          </h2>
+          <p className="text-xs text-muted">
+            {rows.filter((x) => x.forYou > 0).length} with jobs for you now
+            {broken > 0 && <span className="text-bad"> · {broken} couldn't be checked</span>}
+          </p>
+        </div>
+        {rows.length > 1 && (
+          <Segmented
+            label="Sort your companies"
+            value={sort}
+            onChange={setSort}
+            options={[
+              { value: "jobs", label: "Most jobs for you" },
+              { value: "attention", label: "Needs attention" },
+              { value: "name", label: "A–Z" },
+            ]}
+          />
+        )}
+      </header>
 
-      <Card className="overflow-hidden">
-        <header className="flex items-center justify-between border-b border-line px-4 py-2.5">
-          <h2 className="text-sm font-semibold">Your companies</h2>
-          <Button size="sm" onClick={onAdd}>
-            <Plus className="size-3.5" /> Add companies
+      {quiet.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 border-b border-line bg-warn-soft/30 px-4 py-2.5 text-sm">
+          <Clock className="size-4 shrink-0 text-warn" />
+          <p className="min-w-0 flex-1">
+            <b>
+              {quiet.length} compan{quiet.length === 1 ? "y has" : "ies have"} had no jobs for you
+            </b>{" "}
+            <span className="text-muted">
+              in {QUIET_SCANS}+ scans in a row over {QUIET_DAYS}+ days{oldestQuiet ? ` (some since ${formatDate(oldestQuiet)})` : ""}. Removing them keeps scans quick; jobs there still
+              reach your Radar from the directory.
+            </span>
+          </p>
+          <Button size="sm" onClick={() => onRemoveMany(quiet.map((x) => x.key))}>
+            Remove {quiet.length}
           </Button>
-        </header>
+        </div>
+      )}
+
+      {rows.length === 0 ? (
+        <p className="px-4 py-6 text-sm text-muted">
+          None yet, and that's fine: your Radar already finds jobs across the directory. Add companies you'd love to work at and their jobs will always come first.
+        </p>
+      ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-sm">
             <thead className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
               <tr>
                 <th className="px-4 py-2.5 font-semibold">Company</th>
-                <th className="px-3 py-2.5 font-semibold">Source</th>
-                <th className="px-3 py-2.5 text-right font-semibold">Jobs</th>
-                <th className="px-3 py-2.5 text-right font-semibold">Matches</th>
-                <th className="px-3 py-2.5 font-semibold">Last {Math.min(14, meta.runs.length)} runs</th>
-                <th className="px-4 py-2.5 font-semibold">Status</th>
+                <th className="px-3 py-2.5 text-right font-semibold">For you</th>
+                <th className="px-3 py-2.5 text-right font-semibold">Open jobs</th>
+                <th className="px-3 py-2.5 font-semibold">Last {Math.min(14, meta?.runs.length ?? 0)} scans</th>
+                <th className="px-3 py-2.5 font-semibold">Status</th>
+                <th className="w-10 px-2 py-2.5" />
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ c, last, history, zero }) => (
-                <tr key={key(c.ats, c.slug)} className={cx("border-b border-line last:border-b-0", !c.enabled && "opacity-50")}>
+              {sorted.map((x) => (
+                <tr key={x.r.id} className={cx("border-b border-line last:border-b-0", x.isNew && "bg-accent-soft/20")}>
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-1.5 font-medium">
-                      {c.name}
-                      {c.careers_url && (
-                        <a href={c.careers_url} target="_blank" rel="noreferrer" className="text-muted hover:text-accent" aria-label={`${c.name} careers page`}>
+                      {x.r.name || x.r.slug}
+                      {/^https?:/.test(x.r.input) && (
+                        <a href={x.r.input} target="_blank" rel="noreferrer" className="text-muted hover:text-accent" aria-label={`${x.r.name} careers page`}>
                           <ExternalLink className="size-3.5" />
                         </a>
                       )}
+                      {x.isNew && <span className="text-xs font-normal text-accent">new</span>}
                     </div>
-                    <div className="font-mono text-[11px] text-muted">{c.slug}</div>
+                    <div className="text-[11px] text-muted">{x.r.ats ? (ATS_LABEL[x.r.ats] ?? x.r.ats) : ""}</div>
                   </td>
-                  <td className="px-3 py-2.5 capitalize text-muted">{c.ats}</td>
-                  <td className="tabular px-3 py-2.5 text-right">{last?.h.ok ? last.h.jobsFound : "—"}</td>
-                  <td className="tabular px-3 py-2.5 text-right">{last?.h.ok ? last.h.matches : "—"}</td>
+                  <td className={cx("tabular px-3 py-2.5 text-right", x.forYou > 0 ? "font-semibold text-accent" : "text-muted")}>{x.forYou || "—"}</td>
+                  <td className="tabular px-3 py-2.5 text-right text-muted">{x.last?.h.ok ? x.last.h.jobsFound : "—"}</td>
                   <td className="px-3 py-2.5">
-                    <div className="flex h-5 items-end gap-0.5" aria-label="Run history">
-                      {history.map((h, i) => (
+                    <div className="flex h-5 items-end gap-0.5" aria-label="Scan history">
+                      {x.history.map((h, i) => (
                         <span
                           key={i}
-                          title={!h ? "not run" : h.ok ? `${h.jobsFound} jobs` : h.error}
+                          title={!h ? "not in this scan" : h.ok ? `${h.jobsFound} jobs, ${h.matches} for you` : h.error}
                           className={cx(
                             "w-1.5 rounded-sm",
-                            !h ? "h-1 bg-line" : h.unsupported ? "h-1.5 bg-warn/50" : !h.ok ? "h-5 bg-bad" : h.jobsFound === 0 ? "h-1.5 bg-warn" : "h-5 bg-accent/70",
+                            !h ? "h-1 bg-line" : h.unsupported ? "h-1.5 bg-warn/50" : !h.ok ? "h-5 bg-bad" : h.matches > 0 ? "h-5 bg-accent/70" : "h-2.5 bg-line",
                           )}
                         />
                       ))}
                     </div>
                   </td>
-                  <td className="px-4 py-2.5">
-                    {!c.enabled ? (
-                      <Chip>disabled</Chip>
-                    ) : !last ? (
-                      <Chip>not run yet</Chip>
-                    ) : last.h.unsupported ? (
-                      <Chip tone="warn">{c.ats} support coming soon</Chip>
-                    ) : !last.h.ok ? (
-                      <div>
-                        <Chip tone="bad">
-                          <TriangleAlert className="size-3" /> failed
-                        </Chip>
-                        <p className="mt-1 max-w-80 text-xs text-muted">{last.h.error}</p>
-                      </div>
-                    ) : zero >= 3 ? (
-                      <Chip tone="warn">0 jobs for {zero} runs</Chip>
-                    ) : (
-                      <Chip tone="accent">ok · {timeAgo(last.at)}</Chip>
-                    )}
+                  <td className="px-3 py-2.5">
+                    <Status row={x} />
+                  </td>
+                  <td className="px-2 py-2.5 text-right">
+                    <button type="button" onClick={() => onRemove(x.key)} aria-label={`Remove ${x.r.name}`} title="Remove from your companies" className="rounded p-1 text-muted hover:text-bad">
+                      <X className="size-4" />
+                    </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </Card>
-
-      {latest && (
-        <Card className="overflow-hidden">
-          <header className="border-b border-line px-4 py-2.5 text-sm font-semibold">Recent runs</header>
-          <ul className="divide-y divide-line text-sm">
-            {meta.runs.slice(0, 10).map((r) => {
-              const failed = r.health.filter((h) => !h.ok && !h.unsupported).length;
-              const secs = (Date.parse(r.finishedAt) - Date.parse(r.startedAt)) / 1000;
-              return (
-                <li key={r.startedAt} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2">
-                  <span className="w-36 font-medium">{formatDateTime(r.startedAt)}</span>
-                  <span className="tabular text-muted">{r.jobsFound} jobs</span>
-                  <span className="tabular text-muted">{r.matches} matches</span>
-                  <span className={cx("tabular", r.newMatches > 0 ? "text-accent" : "text-muted")}>{r.newMatches} new</span>
-                  <span className="tabular text-muted">{r.closed} closed</span>
-                  <span className="tabular text-muted">{secs.toFixed(0)}s</span>
-                  {failed > 0 && <Chip tone="bad">{failed} failed</Chip>}
-                  {r.partial && <Chip>partial</Chip>}
-                </li>
-              );
-            })}
-          </ul>
-        </Card>
       )}
-    </div>
+    </Card>
+  );
+}
+
+function Status({ row }: { row: Row }) {
+  const { last, r, isNew, quiet } = row;
+  if (isNew) return <Chip>{r.state === "soon" ? "support coming soon" : "not saved yet"}</Chip>;
+  if (!last) return r.state === "soon" ? <Chip tone="warn">support coming soon</Chip> : <Chip>not scanned yet</Chip>;
+  if (last.h.unsupported) return <Chip tone="warn">{ATS_LABEL[last.h.ats] ?? last.h.ats} support coming soon</Chip>;
+  if (!last.h.ok)
+    return (
+      <div>
+        <Chip tone="bad">
+          <TriangleAlert className="size-3" /> failed
+        </Chip>
+        <p className="mt-1 max-w-80 text-xs text-muted">{last.h.error}</p>
+      </div>
+    );
+  if (isQuiet(quiet) && !row.forYou) return <Chip tone="warn">nothing for you since {formatDate(quiet.since)}</Chip>;
+  return <Chip tone="accent">ok · {timeAgo(last.at)}</Chip>;
+}
+
+/** The latest scans: how many jobs, matches, and companies checked beyond yours. */
+export function RecentRuns({ meta }: { meta: DataMeta }) {
+  if (!meta.runs.length) return null;
+  return (
+    <Card className="overflow-hidden">
+      <header className="border-b border-line px-4 py-2.5 text-sm font-semibold">Recent scans</header>
+      <ul className="divide-y divide-line text-sm">
+        {meta.runs.slice(0, 10).map((r) => {
+          const failed = r.health.filter((h) => !h.ok && !h.unsupported).length;
+          const secs = (Date.parse(r.finishedAt) - Date.parse(r.startedAt)) / 1000;
+          return (
+            <li key={r.startedAt} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2">
+              <span className="w-36 font-medium">{formatDateTime(r.startedAt)}</span>
+              <span className="tabular text-muted">{r.jobsFound} jobs</span>
+              <span className="tabular text-muted">{r.matches} matches</span>
+              <span className={cx("tabular", r.newMatches > 0 ? "text-accent" : "text-muted")}>{r.newMatches} new</span>
+              <span className="tabular text-muted">{r.closed} closed</span>
+              {!!r.checked && <span className="tabular text-muted">+{r.checked} companies checked</span>}
+              <span className="tabular text-muted">{secs.toFixed(0)}s</span>
+              {failed > 0 && <Chip tone="bad">{failed} failed</Chip>}
+              {r.partial && <Chip>partial</Chip>}
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
   );
 }
