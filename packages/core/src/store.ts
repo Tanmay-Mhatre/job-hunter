@@ -36,6 +36,7 @@ export function summarize(run: RunResult, merged: MergeResult): RunSummary {
     matches: current.filter((j) => !j.why.gate).length,
     newMatches: current.filter((j) => !j.why.gate && merged.newIds.has(j.id)).length,
     closed: merged.closedIds.size,
+    checked: run.checked,
     health: run.health,
   };
 }

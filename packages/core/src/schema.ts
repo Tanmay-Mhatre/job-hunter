@@ -103,6 +103,8 @@ export type RunSummary = {
   /** Matches seen for the first time in this run. */
   newMatches: number;
   closed: number;
+  /** Companies beyond yours checked live this run (their health is in `health` too). */
+  checked?: number;
   health: CompanyHealth[];
 };
 
@@ -121,6 +123,13 @@ export type DashboardJob = Omit<Job, "description" | "missedRuns"> & {
   group: string;
   /** A description is stored (descriptions.json). */
   hasDescription: boolean;
+  /**
+   * From the shared weekly index, not checked live (data/discover.json): no description, so the score
+   * is an estimate (title, location, freshness), and `url` is the company's careers page.
+   */
+  estimated?: boolean;
+  /** Directory key of the job's company ("ats:slug"); set on index jobs. */
+  companyKey?: string;
 };
 
 /** data/jobs.json (jobs that pass your filters) and data/jobs-other.json (the rest). */
@@ -193,6 +202,15 @@ export const ConfigSchema = z
     profile: ProfileSchema,
     /** Empty is allowed: setup saves your profile first, companies are added afterwards. */
     companies: z.array(CompanySchema).default([]),
+    /** Companies you never want to see, as "ats:slug" keys (Workday: "workday:tenant|shard|site"). */
+    companies_muted: z.array(z.string().trim().toLowerCase().min(1)).default([]),
+    /** Jobs beyond your companies: from the shared index, and a few more companies checked live each scan. */
+    discovery: z
+      .object({
+        /** Companies you haven't added that each scan also checks live (0 = off). */
+        check_per_scan: z.number().int().min(0).max(100).default(30),
+      })
+      .prefault({}),
     alerts: z
       .object({
         telegram: z.boolean().default(false),

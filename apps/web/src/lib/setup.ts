@@ -82,9 +82,20 @@ export async function checkCompanies(urls: string[]): Promise<CompanyCheck[]> {
 }
 
 export type RunEvent =
-  | { type: "start"; companies: string[] }
+  | { type: "start"; companies: string[]; /** The last `checking` companies aren't yours: checked because they're hiring for you. */ checking?: number }
   | ({ type: "company" } & CompanyHealth)
-  | { type: "done"; jobsFound: number; matches: number; strong: number; newMatches: number; failed: number }
+  | {
+      type: "done";
+      jobsFound: number;
+      matches: number;
+      strong: number;
+      newMatches: number;
+      failed: number;
+      /** Companies beyond yours checked live. */
+      checked?: number;
+      /** Jobs found in the directory index, not checked live yet. */
+      indexJobs?: number;
+    }
   | { type: "error"; message: string };
 
 /** Run a scan on this machine, reporting progress as it streams in. */
@@ -147,6 +158,10 @@ export type Draft = {
   alerts: Config["alerts"];
   /** Shared company directory: auto-update, share companies you add. */
   directory: Config["directory"];
+  /** Companies never shown ("ats:slug" keys). */
+  muted: string[];
+  /** Jobs beyond your companies: how many more companies each scan checks live. */
+  discovery: Config["discovery"];
   /** Furthest wizard step visited, so "Continue setup" can resume there. */
   furthestStep: number;
   /** Profile block from the AI master-resume answer, used for suggestions. */
@@ -174,6 +189,8 @@ export function emptyDraft(): Draft {
     minScore: 70,
     alerts: { telegram: false, email: false, only_new: true },
     directory: { auto_update: true, share_additions: true },
+    muted: [],
+    discovery: { check_per_scan: 30 },
     furthestStep: 0,
   };
 }
@@ -213,6 +230,7 @@ export function draftFromConfig(input: unknown): Draft {
   });
   const alerts = obj(c.alerts);
   const directory = obj(c.directory);
+  const discovery = obj(c.discovery);
   return {
     name: typeof p.name === "string" ? p.name : d.name,
     include: strings(t.include),
@@ -232,6 +250,11 @@ export function draftFromConfig(input: unknown): Draft {
       only_new: alerts.only_new !== false,
     },
     directory: { auto_update: directory.auto_update !== false, share_additions: directory.share_additions !== false },
+    muted: strings(c.companies_muted).map((k) => k.toLowerCase()),
+    discovery: {
+      check_per_scan:
+        typeof discovery.check_per_scan === "number" ? Math.min(100, Math.max(0, Math.round(discovery.check_per_scan))) : d.discovery.check_per_scan,
+    },
     furthestStep: STEPS.length,
     family: inferFamily(strings(t.include)),
   };
@@ -276,6 +299,8 @@ export function draftToConfig(d: Draft): Config {
       min_score: d.minScore,
     },
     companies,
+    companies_muted: d.muted,
+    discovery: d.discovery,
     alerts: d.alerts,
     directory: d.directory,
   };

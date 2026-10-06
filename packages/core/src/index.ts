@@ -12,6 +12,8 @@ export * from "./diagnose";
 export * from "./yaml-writer";
 export * from "./resume";
 export * from "./suggest";
+export * from "./discover";
+export * from "./scan";
 export * from "./resume-parse";
 export * from "./catalog/roles";
 export * from "./catalog/places";

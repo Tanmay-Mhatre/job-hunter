@@ -1,6 +1,6 @@
 import { getConnector } from "./connectors";
 import { HttpClient, HttpError } from "./http";
-import type { CompanyHealth, Config, Job } from "./schema";
+import type { CompanyHealth, CompanyRef, Config, Job } from "./schema";
 import { scoreJob } from "./score";
 
 export type RunResult = {
@@ -10,6 +10,8 @@ export type RunResult = {
   jobs: Job[];
   health: CompanyHealth[];
   partial: boolean;
+  /** Companies beyond yours checked live this run (see discover.ts). */
+  checked: number;
 };
 
 /** Description fetches per company per run, for ATSs that need one request per job. */
@@ -22,11 +24,13 @@ export type RunOptions = {
   only?: string[];
   /** Jobs from earlier runs; keeps firstSeen stable so freshness and "new" are right. */
   previous?: readonly Job[];
+  /** Companies you haven't added, checked live too; only their jobs that pass your gates are kept. */
+  checks?: readonly CompanyRef[];
   onCompanyDone?: (h: CompanyHealth) => void;
 };
 
 /**
- * One pass over every enabled company, one company at a time.
+ * One pass over every enabled company (then any extra `checks`), one company at a time.
  * A failing company never stops the run; it is recorded in health instead.
  */
 export async function runRadar(config: Config, opts: RunOptions = {}): Promise<RunResult> {
@@ -38,11 +42,13 @@ export async function runRadar(config: Config, opts: RunOptions = {}): Promise<R
     (c) => c.enabled && (!only?.length || only.includes(c.name.toLowerCase()) || only.includes(c.slug.toLowerCase())),
   );
   const previous = new Map((opts.previous ?? []).map((j) => [j.id, j]));
+  const checks = opts.checks ?? [];
 
   const jobs: Job[] = [];
   const health: CompanyHealth[] = [];
 
-  for (const company of companies) {
+  for (const [i, company] of [...companies, ...checks].entries()) {
+    const extra = i >= companies.length;
     const started = Date.now();
     const h: CompanyHealth = { company: company.name, ats: company.ats, slug: company.slug, ok: false, jobsFound: 0, matches: 0, durationMs: 0 };
     const connector = getConnector(company.ats);
@@ -67,7 +73,8 @@ export async function runRadar(config: Config, opts: RunOptions = {}): Promise<R
           }
           ({ score, why } = scoreJob(base, config.profile, now, new Date(firstSeen)));
         }
-        jobs.push({ ...base, firstSeen, lastSeen: nowIso, status: "open", score, why });
+        // Your companies keep every job (the Radar can show the rest); extra checks only matches.
+        if (!extra || !why.gate) jobs.push({ ...base, firstSeen, lastSeen: nowIso, status: "open", score, why });
         if (!why.gate) h.matches++;
       }
       h.jobsFound = raws.length;
@@ -84,7 +91,14 @@ export async function runRadar(config: Config, opts: RunOptions = {}): Promise<R
   }
 
   jobs.sort(byScore);
-  return { startedAt: nowIso, finishedAt: new Date().toISOString(), jobs, health, partial: companies.length < config.companies.filter((c) => c.enabled).length };
+  return {
+    startedAt: nowIso,
+    finishedAt: new Date().toISOString(),
+    jobs,
+    health,
+    partial: companies.length < config.companies.filter((c) => c.enabled).length,
+    checked: checks.length,
+  };
 }
 
 export function byScore(a: Job, b: Job): number {

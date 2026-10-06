@@ -46,7 +46,14 @@ Built from a code and data review, a two-agent debate (job-first vs company-firs
 - **One entry per company** in directory search ✅: `groupBoards` in `apps/web/src/lib/companies.ts`; best board
   leads, other live boards fold under "N other boards", dead boards hidden when a live one exists (unless watched).
 
-### 1. Core: discovery + live check ~2 days
+### 1. Core: discovery + live check ✅ done
+Built as `core/discover.ts` (candidates, `pickChecks`, ledger, `toIndexJobs`) and `core/scan.ts` (one scan for the
+CLI and "Scan now"). Config keys: `discovery.check_per_scan` (default 30) and `companies_muted`. Checked companies keep
+only jobs that pass the gates. A scan works with no companies of your own.
+First real scan (current profile, copy of data/): 194 matches (was 108), 50 strong (was 28); the 30 checked
+companies added 86 matches / 21 strong in 72 s; 582 index jobs written (190 posted in the last 30 days). Total 281 s (was 219 s).
+
+Original plan:
 - `packages/core/src/discover.ts` (new):
   - `findCandidates(profile, index, now)` → eligible rows with estimated score (`gateOf` + `scoreJob` without description).
   - `pickVerifyBatch(candidates, tracked, muted, ledger, limit)` → companies to live-check.

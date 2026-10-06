@@ -32,7 +32,7 @@ const job = (id: string, o: Partial<Job> = {}): Job => ({
 const health = (ok: boolean): CompanyHealth[] => [
   { company: "Acme", ats: "greenhouse", slug: "acme", ok, jobsFound: 0, matches: 0, durationMs: 1 },
 ];
-const run = (at: string, jobs: Job[], ok = true): RunResult => ({ startedAt: at, finishedAt: at, jobs, health: health(ok), partial: false });
+const run = (at: string, jobs: Job[], ok = true): RunResult => ({ startedAt: at, finishedAt: at, jobs, health: health(ok), partial: false, checked: 0 });
 const companies = [{ ats: "greenhouse" as const, slug: "acme" }];
 
 describe("mergeHistory", () => {

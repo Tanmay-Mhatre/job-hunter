@@ -9,13 +9,11 @@ import {
   connectors,
   detectCompany,
   loadConfig,
-  mergeHistory,
-  readJobs,
+  readIndex,
   readResume,
   saveResume,
-  runRadar,
   saveConfig,
-  saveRun,
+  scan,
   setupStatus,
   suggestCompanies,
   directoryAgeDays,
@@ -192,42 +190,50 @@ async function cmdRun(args: string[]): Promise<number> {
   });
   if (values.progress === "ndjson") return runNdjson(values);
   const { config, path } = loadConfig(values.config);
+  const dataDir = resolve(values.data);
   const count = config.companies.filter((c) => c.enabled).length;
-  if (!count) {
+  if (!count && (values.only?.length || !readIndex(dataDir))) {
     console.error(`Config: ${path}
-No companies yet. Add some in the dashboard (Companies tab) or with: pnpm jobhunter detect <careers url>`);
+No companies yet, and no company directory to find jobs in. Add companies in the dashboard (Companies tab),
+download the directory with: pnpm jobhunter directory update, or add one with: pnpm jobhunter detect <careers url>`);
     return 0;
   }
-  console.error(`Config: ${path}\nChecking ${values.only?.length ? values.only.join(", ") : `${count} companies`}...\n`);
+  console.error(`Config: ${path}`);
 
-  const dataDir = resolve(values.data);
-  const previous = readJobs(dataDir);
-  const result = await runRadar(config, {
+  const { result, merged, summary, checks, indexJobs } = await scan(config, {
+    dataDir,
     only: values.only,
-    previous,
+    dryRun: values["dry-run"],
+    onStart: (names, extra) =>
+      console.error(
+        `Checking ${values.only?.length ? values.only.join(", ") : `${names.length - extra.length} of your companies`}${extra.length ? ` and ${extra.length} more hiring for you` : ""}...
+`,
+      ),
     onCompanyDone: (h) => console.error(`  ${h.ok ? "ok " : "ERR"} ${h.company.padEnd(24)} ${healthLine(h)}`),
   });
 
-  const merged = mergeHistory(previous, result, config.companies);
   const min = config.profile.min_score;
   const shown = result.jobs.filter((j) => values.all || !j.why.gate).slice(0, Number.isFinite(Number(values.limit)) ? Number(values.limit) : 50);
   const matches = result.jobs.filter((j) => !j.why.gate);
   const fresh = matches.filter((j) => merged.newIds.has(j.id)).length;
   console.log(
-    `\n${matches.length} jobs passed your title and location gates (${fresh} new); ${matches.filter((j) => j.score >= min).length} scored ${min}+ (alert threshold).\n`,
+    `
+${matches.length} jobs passed your title and location gates (${fresh} new); ${matches.filter((j) => j.score >= min).length} scored ${min}+ (alert threshold).`,
   );
+  if (checks.length) console.log(`Also checked ${checks.length} companies you haven't added, because the directory says they're hiring for you.`);
+  if (indexJobs !== undefined) console.log(`${indexJobs} more jobs for you in the directory, not checked live yet (see the Radar).`);
+  console.log("");
   if (shown.length) printJobs(shown, min);
 
   const failed = result.health.filter((h) => !h.ok);
   if (failed.length) {
-    console.log(`\n${failed.length} compan${failed.length === 1 ? "y" : "ies"} failed:`);
+    console.log(`
+${failed.length} compan${failed.length === 1 ? "y" : "ies"} failed:`);
     for (const h of failed) console.log(`  ${h.company} (${h.ats}:${h.slug}): ${h.error}`);
   }
 
-  if (!values["dry-run"]) {
-    const summary = saveRun(dataDir, config, result, merged);
-    console.error(`\nSaved to ${dataDir} (${merged.jobs.length} jobs tracked, ${summary.closed} closed this run). Open the dashboard with: pnpm dev`);
-  }
+  if (summary) console.error(`
+Saved to ${dataDir} (${merged.jobs.length} jobs tracked, ${summary.closed} closed this run). Open the dashboard with: pnpm dev`);
 
   if (values.json) {
     const out = resolve(values.json);
@@ -245,13 +251,13 @@ const emit = (event: Record<string, unknown>) => process.stdout.write(`${JSON.st
 async function runNdjson(values: { config?: string; only?: string[]; data: string; "dry-run": boolean }): Promise<number> {
   try {
     const { config } = loadConfig(values.config);
-    const companies = config.companies.filter((c) => c.enabled).map((c) => c.name);
-    emit({ type: "start", companies });
-    const dataDir = resolve(values.data);
-    const previous = readJobs(dataDir);
-    const result = await runRadar(config, { only: values.only, previous, onCompanyDone: (h) => emit({ type: "company", ...h }) });
-    const merged = mergeHistory(previous, result, config.companies);
-    const summary = values["dry-run"] ? undefined : saveRun(dataDir, config, result, merged);
+    const { result, merged, summary, checks, indexJobs } = await scan(config, {
+      dataDir: resolve(values.data),
+      only: values.only,
+      dryRun: values["dry-run"],
+      onStart: (companies, extra) => emit({ type: "start", companies, checking: extra.length }),
+      onCompanyDone: (h) => emit({ type: "company", ...h }),
+    });
     const matches = result.jobs.filter((j) => !j.why.gate);
     emit({
       type: "done",
@@ -260,6 +266,8 @@ async function runNdjson(values: { config?: string; only?: string[]; data: strin
       strong: matches.filter((j) => j.score >= config.profile.min_score).length,
       newMatches: summary?.newMatches ?? matches.filter((j) => merged.newIds.has(j.id)).length,
       failed: result.health.filter((h) => !h.ok && !h.unsupported).length,
+      checked: checks.length,
+      indexJobs: indexJobs ?? 0,
     });
     return 0;
   } catch (err) {
