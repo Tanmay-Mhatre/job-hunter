@@ -1,0 +1,95 @@
+# Every Monday: rebuild the whole shared directory from the public lists plus users'
+# contributions, re-check boards, refresh the job index, and publish a new release.
+# Setup: docs/shared-directory.md
+name: Directory · weekly rebuild
+
+on:
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: directory
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  DATA_REPO: ${{ vars.DATA_REPO || 'Tanmay-Mhatre/job-hunter-directory' }}
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Check out the public directory repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.DATA_REPO }}
+          token: ${{ secrets.DATA_REPO_TOKEN }}
+          path: directory-repo
+
+      - name: Restore the catalog's working state
+        env:
+          GH_TOKEN: ${{ secrets.DATA_REPO_TOKEN }}
+        run: |
+          if gh release download state -R "$DATA_REPO" -p catalog-state.tar.gz -D "$RUNNER_TEMP"; then
+            tar xzf "$RUNNER_TEMP/catalog-state.tar.gz" -C scripts/catalog
+          else
+            echo "No saved state: this run checks every board from scratch (slow, once)."
+          fi
+
+      - name: Build the directory
+        env:
+          CONTRIBUTIONS_FILE: ${{ github.workspace }}/directory-repo/contributions.json
+        run: |
+          [ -f directory-repo/contributions.json ] || echo '{"companies":[]}' > directory-repo/contributions.json
+          pnpm catalog:sources
+          pnpm exec tsx scripts/catalog/resolve.ts
+          pnpm exec tsx scripts/catalog/merge.ts
+          pnpm exec tsx scripts/catalog/check.ts --recheck-days 30
+          pnpm exec tsx scripts/catalog/build.ts
+          pnpm exec tsx scripts/catalog/index.ts --max-age-days 7
+          pnpm exec tsx scripts/catalog/publish.ts --data dist-data
+          pnpm exec tsx scripts/catalog/coverage.ts --data dist-data
+          pnpm exec tsx scripts/catalog/release.ts --data dist-data --out dist
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.DATA_REPO_TOKEN }}
+        run: |
+          tag="directory-$(date -u +%Y-%m-%d)"
+          version=$(jq -r .version dist/manifest.json)
+          companies=$(jq -r .companies dist/manifest.json)
+          gh release create "$tag" dist/* -R "$DATA_REPO" --latest --title "Directory $(date -u +%Y-%m-%d)" \
+            --notes "Version $version · $companies companies. Download manifest.json first; files are checked against its SHA-256."
+
+      - name: Save the working state
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.DATA_REPO_TOKEN }}
+        run: |
+          [ -d scripts/catalog/out ] || exit 0
+          pnpm exec tsx scripts/catalog/compact.ts
+          tar czf "$RUNNER_TEMP/catalog-state.tar.gz" -C scripts/catalog out/checks.jsonl out/index-all.jsonl $( [ -f scripts/catalog/out/resolved.json ] && echo out/resolved.json ) $( [ -f scripts/catalog/raw/commoncrawl/boards.json ] && echo raw/commoncrawl/boards.json )
+          gh release view state -R "$DATA_REPO" > /dev/null 2>&1 || gh release create state -R "$DATA_REPO" --prerelease --title "Catalog working state" --notes "Internal: lets the weekly rebuild skip boards checked recently."
+          gh release upload state "$RUNNER_TEMP/catalog-state.tar.gz" -R "$DATA_REPO" --clobber
+
+      - name: Commit the coverage report
+        working-directory: directory-repo
+        run: |
+          cp ../scripts/catalog/out/coverage.md coverage.md
+          cp ../dist/manifest.json manifest.json
+          git config user.name "job-hunter-bot"
+          git config user.email "job-hunter-bot@users.noreply.github.com"
+          git add coverage.md manifest.json
+          git diff --cached --quiet || (git commit -m "Weekly directory $(date -u +%Y-%m-%d)" && git push)

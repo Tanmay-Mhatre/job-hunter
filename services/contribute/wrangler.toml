@@ -8,7 +8,7 @@ compatibility_date = "2026-09-01"
 # and paste the id it prints below.
 [[kv_namespaces]]
 binding = "INBOX"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "4f1d60f6a7644dfe9a93db87c9560fd0"
 
 # 20 submissions per minute per IP address.
 [[ratelimits]]

@@ -1,0 +1,117 @@
+# Every 3 hours: take companies users shared from the inbox, live-check them, add the good ones to
+# the public directory repo's contributions.json, and publish an updated directory right away.
+# Setup: docs/shared-directory.md
+name: Directory · contributions
+
+on:
+  schedule:
+    - cron: "17 */3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: directory
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  DATA_REPO: ${{ vars.DATA_REPO || 'Tanmay-Mhatre/job-hunter-directory' }}
+
+jobs:
+  accept:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check the inbox
+        id: inbox
+        env:
+          INBOX_URL: ${{ secrets.INBOX_URL }}
+          INBOX_TOKEN: ${{ secrets.INBOX_TOKEN }}
+        run: |
+          curl -fsS -H "Authorization: Bearer $INBOX_TOKEN" "$INBOX_URL/v1/pending" -o "$RUNNER_TEMP/inbox.json"
+          echo "count=$(jq '.items | length' "$RUNNER_TEMP/inbox.json")" >> "$GITHUB_OUTPUT"
+
+      - if: steps.inbox.outputs.count != '0'
+        uses: actions/checkout@v4
+
+      - if: steps.inbox.outputs.count != '0'
+        uses: pnpm/action-setup@v4
+
+      - if: steps.inbox.outputs.count != '0'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - if: steps.inbox.outputs.count != '0'
+        run: pnpm install --frozen-lockfile
+
+      - if: steps.inbox.outputs.count != '0'
+        name: Check out the public directory repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.DATA_REPO }}
+          token: ${{ secrets.DATA_REPO_TOKEN }}
+          path: directory-repo
+
+      - if: steps.inbox.outputs.count != '0'
+        name: Restore the catalog's working state
+        id: state
+        env:
+          GH_TOKEN: ${{ secrets.DATA_REPO_TOKEN }}
+        run: |
+          if gh release download state -R "$DATA_REPO" -p catalog-state.tar.gz -D "$RUNNER_TEMP"; then
+            tar xzf "$RUNNER_TEMP/catalog-state.tar.gz" -C scripts/catalog
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No saved state yet: contributions are recorded now and published at the weekly rebuild."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.inbox.outputs.count != '0'
+        name: Accept contributions
+        id: accept
+        run: |
+          [ -f directory-repo/contributions.json ] || echo '{"companies":[]}' > directory-repo/contributions.json
+          pnpm exec tsx scripts/catalog/contributions.ts --inbox "$RUNNER_TEMP/inbox.json" --into directory-repo/contributions.json > "$RUNNER_TEMP/summary.json"
+          cat "$RUNNER_TEMP/summary.json"
+          echo "accepted=$(jq .accepted "$RUNNER_TEMP/summary.json")" >> "$GITHUB_OUTPUT"
+
+      - if: steps.accept.outputs.accepted != '0' && steps.accept.outputs.accepted != '' && steps.state.outputs.ready == 'true'
+        name: Publish an updated directory
+        env:
+          GH_TOKEN: ${{ secrets.DATA_REPO_TOKEN }}
+          CONTRIBUTIONS_FILE: ${{ github.workspace }}/directory-repo/contributions.json
+        run: |
+          pnpm catalog:sources
+          pnpm exec tsx scripts/catalog/merge.ts
+          pnpm exec tsx scripts/catalog/check.ts
+          pnpm exec tsx scripts/catalog/build.ts
+          pnpm exec tsx scripts/catalog/index.ts --max-age-days 9999
+          pnpm exec tsx scripts/catalog/publish.ts --data dist-data
+          pnpm exec tsx scripts/catalog/release.ts --data dist-data --out dist
+          tag=$(gh release view -R "$DATA_REPO" --json tagName -q .tagName)
+          gh release upload "$tag" dist/* -R "$DATA_REPO" --clobber
+          pnpm exec tsx scripts/catalog/compact.ts
+          tar czf "$RUNNER_TEMP/catalog-state.tar.gz" -C scripts/catalog out/checks.jsonl out/index-all.jsonl out/resolved.json $( [ -f scripts/catalog/raw/commoncrawl/boards.json ] && echo raw/commoncrawl/boards.json )
+          gh release upload state "$RUNNER_TEMP/catalog-state.tar.gz" -R "$DATA_REPO" --clobber
+
+      - if: steps.accept.outputs.accepted != '0' && steps.accept.outputs.accepted != ''
+        name: Commit contributions.json
+        working-directory: directory-repo
+        run: |
+          git config user.name "job-hunter-bot"
+          git config user.email "job-hunter-bot@users.noreply.github.com"
+          git add contributions.json
+          git commit -m "Add ${{ steps.accept.outputs.accepted }} companies shared by users"
+          git push
+
+      - if: steps.inbox.outputs.count != '0'
+        name: Acknowledge processed contributions
+        env:
+          INBOX_URL: ${{ secrets.INBOX_URL }}
+          INBOX_TOKEN: ${{ secrets.INBOX_TOKEN }}
+        run: |
+          jq '{ids: .processed}' "$RUNNER_TEMP/summary.json" > "$RUNNER_TEMP/ack.json"
+          curl -fsS -X POST -H "Authorization: Bearer $INBOX_TOKEN" -H "content-type: application/json" --data @"$RUNNER_TEMP/ack.json" "$INBOX_URL/v1/ack"

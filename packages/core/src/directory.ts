@@ -9,8 +9,8 @@ import { gunzipSync } from "node:zlib";
  * directory and inbox; set JOBHUNTER_DIRECTORY_URL / JOBHUNTER_CONTRIBUTE_URL to use your own.
  */
 export const DEFAULT_DIRECTORY_URL = "https://github.com/Tanmay-Mhatre/job-hunter-directory/releases/latest/download";
-/** Filled in once the inbox is deployed (services/contribute); empty means sharing is off. */
-export const DEFAULT_CONTRIBUTE_URL = "";
+/** The contribution inbox (services/contribute); empty turns sharing off. */
+export const DEFAULT_CONTRIBUTE_URL = "https://job-hunter-contribute.tanmay-jobhunter.workers.dev";
 
 export const directoryUrl = () => (process.env.JOBHUNTER_DIRECTORY_URL ?? DEFAULT_DIRECTORY_URL).replace(/\/$/, "");
 export const contributeUrl = () => (process.env.JOBHUNTER_CONTRIBUTE_URL ?? DEFAULT_CONTRIBUTE_URL).replace(/\/$/, "");
