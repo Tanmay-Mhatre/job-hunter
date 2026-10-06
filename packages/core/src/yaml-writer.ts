@@ -65,5 +65,12 @@ export function configToYaml(config: Config): string {
     `  email: ${config.alerts.email}`,
     `  only_new: ${config.alerts.only_new}`,
     "",
+    "# The shared company directory (used for suggestions and Browse).",
+    "directory:",
+    "  # Download the latest directory when your copy is a week old.",
+    `  auto_update: ${config.directory.auto_update}`,
+    "  # Share companies you add by link (hiring system, slug and name only) so everyone's directory grows.",
+    `  share_additions: ${config.directory.share_additions}`,
+    "",
   ].join("\n");
 }

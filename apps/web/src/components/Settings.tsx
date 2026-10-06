@@ -7,7 +7,7 @@ import { ResumeStep } from "../setup/ResumeStep";
 import type { Prefs } from "../lib/prefs";
 import { exportState, readStateFile, type UserState } from "../lib/userState";
 import { IndustriesStep, KeywordsStep, LocationsStep, RolesStep, ThresholdPicker } from "../setup/steps";
-import { Button, Card } from "./ui";
+import { Button, Card, Toggle } from "./ui";
 
 type Props = {
   draft: Draft;
@@ -81,6 +81,19 @@ export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanni
       </Section>
       <Section id="threshold" title="Strong match threshold" hint="Jobs at or above this get a star, and alerts once those arrive.">
         <ThresholdPicker draft={draft} update={update} />
+      </Section>
+      <Section id="directory" title="Company directory" hint="The shared list of companies behind suggestions and Browse, rebuilt weekly from public lists and what users add.">
+        <div className="space-y-3">
+          <Toggle checked={draft.directory.auto_update} onChange={(v) => update({ directory: { ...draft.directory, auto_update: v } })}>
+            Download the latest directory automatically (checked weekly)
+          </Toggle>
+          <Toggle checked={draft.directory.share_additions} onChange={(v) => update({ directory: { ...draft.directory, share_additions: v } })}>
+            Share companies I add by link with everyone
+          </Toggle>
+          <p className="text-xs text-muted">
+            Sharing sends only the company's hiring system, board name and company name. Never your profile, resume, searches or which jobs you look at.
+          </p>
+        </div>
       </Section>
       <TrackingData user={user} prefs={prefs} onImport={onImport} />
 

@@ -145,6 +145,8 @@ export type Draft = {
   companies: CompanyRow[];
   minScore: number;
   alerts: Config["alerts"];
+  /** Shared company directory: auto-update, share companies you add. */
+  directory: Config["directory"];
   /** Furthest wizard step visited, so "Continue setup" can resume there. */
   furthestStep: number;
   /** Profile block from the AI master-resume answer, used for suggestions. */
@@ -171,6 +173,7 @@ export function emptyDraft(): Draft {
     companies: [],
     minScore: 70,
     alerts: { telegram: false, email: false, only_new: true },
+    directory: { auto_update: true, share_additions: true },
     furthestStep: 0,
   };
 }
@@ -209,6 +212,7 @@ export function draftFromConfig(input: unknown): Draft {
     ];
   });
   const alerts = obj(c.alerts);
+  const directory = obj(c.directory);
   return {
     name: typeof p.name === "string" ? p.name : d.name,
     include: strings(t.include),
@@ -227,6 +231,7 @@ export function draftFromConfig(input: unknown): Draft {
       email: alerts.email === true,
       only_new: alerts.only_new !== false,
     },
+    directory: { auto_update: directory.auto_update !== false, share_additions: directory.share_additions !== false },
     furthestStep: STEPS.length,
     family: inferFamily(strings(t.include)),
   };
@@ -272,6 +277,7 @@ export function draftToConfig(d: Draft): Config {
     },
     companies,
     alerts: d.alerts,
+    directory: d.directory,
   };
 }
 

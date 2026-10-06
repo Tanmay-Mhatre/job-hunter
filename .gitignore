@@ -20,3 +20,8 @@ data/
 # Downloaded source datasets for the company catalogue (large; rebuilt by scripts)
 scripts/catalog/raw/
 scripts/catalog/out/
+
+# Directory workflow outputs and the inbox service's local files
+dist-data/
+directory-repo/
+.wrangler/

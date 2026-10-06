@@ -18,6 +18,11 @@ import {
   saveRun,
   setupStatus,
   suggestCompanies,
+  directoryAgeDays,
+  directoryStatus,
+  queueContributions,
+  sendContributions,
+  updateDirectory,
   type CompanyCheck,
   type CompanyHealth,
   type DirectoryCompany,
@@ -119,6 +124,7 @@ Usage:
   jobhunter validate            Check your config file
   jobhunter setup <status|save|check>   Used by the dashboard's setup wizard (JSON in/out)
   jobhunter companies suggest   Companies from the directory that fit your profile (industries, roles, places)
+  jobhunter directory <status|update|share>   The shared company directory: download the latest, share additions
 
 Options for companies suggest:
   -c, --config <path>   Config file (as for run)
@@ -151,6 +157,8 @@ async function main(argv: string[]): Promise<number> {
       return cmdSetup(rest);
     case "companies":
       return cmdCompanies(rest);
+    case "directory":
+      return cmdDirectory(rest);
     case undefined:
     case "help":
     case "-h":
@@ -265,6 +273,71 @@ function readStdin(): Promise<string> {
   });
 }
 
+/** The shared company directory: status, download the latest copy, share waiting additions. */
+async function cmdDirectory(args: string[]): Promise<number> {
+  const { values, positionals } = parseArgs({
+    args,
+    allowPositionals: true,
+    options: {
+      data: { type: "string", short: "d", default: "data" },
+      json: { type: "boolean", default: false },
+      force: { type: "boolean", default: false },
+      "if-older": { type: "string" },
+      /** Background update: skipped when auto_update is off in your settings. */
+      auto: { type: "boolean", default: false },
+    },
+  });
+  const dataDir = resolve(values.data);
+  const out = (o: object, text: string) => console.log(values.json ? JSON.stringify(o) : text);
+  switch (positionals[0] ?? "status") {
+    case "status": {
+      const s = directoryStatus(dataDir);
+      const age = directoryAgeDays(dataDir);
+      out(
+        { ...s, age_days: Number.isFinite(age) ? Math.round(age * 10) / 10 : null },
+        s.local
+          ? `Shared directory ${s.local.version}: ${s.local.companies.toLocaleString()} companies, downloaded ${Math.round(age)} day(s) ago.`
+          : s.present
+            ? "Using a directory built on this computer (not downloaded)."
+            : "No company directory yet. Run: pnpm jobhunter directory update",
+      );
+      return 0;
+    }
+    case "update": {
+      if (values.auto) {
+        const autoOn = (() => {
+          try {
+            return loadConfig().config.directory.auto_update;
+          } catch {
+            return true;
+          }
+        })();
+        if (!autoOn) {
+          out({ updated: false, message: "Automatic updates are off." }, "Automatic updates are off in your settings.");
+          return 0;
+        }
+      }
+      const olderThan = values["if-older"] ? Number(values["if-older"]) : undefined;
+      if (olderThan !== undefined && directoryAgeDays(dataDir) < olderThan) {
+        out({ updated: false, message: "Recent enough." }, "Directory is recent enough.");
+        return 0;
+      }
+      const shared = await sendContributions(dataDir);
+      const result = await updateDirectory(dataDir, { force: values.force }).catch((err: Error) => ({ updated: false, message: `Update failed: ${err.message}` }));
+      out({ ...result, shared: shared.sent }, `${result.message}${shared.sent ? ` ${shared.message}` : ""}`);
+      return 0;
+    }
+    case "share": {
+      const result = await sendContributions(dataDir);
+      out(result, result.message);
+      return 0;
+    }
+    default:
+      console.error("Usage: jobhunter directory <status|update|share> [--force] [--if-older <days>] [--json]");
+      return 2;
+  }
+}
+
 /** JSON in (stdin) / JSON out (stdout), for the dashboard's local setup API. */
 async function cmdSetup(args: string[]): Promise<number> {
   const { values, positionals } = parseArgs({ args, allowPositionals: true, options: { data: { type: "string", short: "d", default: "data" } } });
@@ -294,6 +367,18 @@ async function cmdSetup(args: string[]): Promise<number> {
       const directory = new Map(readDirectory(values.data).map((c) => [c.key, c]));
       const results = await checkCompanies(body.urls ?? [], { profile: status.config?.profile, directory });
       recordAdditions(values.data, results);
+      // Share new boards with the directory (unless turned off in settings). Best effort: the
+      // outbox keeps anything that couldn't be sent, and the next update retries it.
+      if (status.config?.directory.share_additions !== false) {
+        const fresh = results.filter((r) => (r.status === "live" || r.status === "dormant") && !r.in_directory && r.ats && r.slug);
+        if (fresh.length) {
+          queueContributions(
+            values.data,
+            fresh.map((r) => ({ ats: r.ats!, slug: r.slug!, ...(r.region === "eu" ? { region: "eu" } : {}), ...(r.shard ? { shard: r.shard, site: r.site } : {}), ...(r.name ? { name: r.name } : {}) })),
+          );
+          await sendContributions(values.data);
+        }
+      }
       console.log(JSON.stringify(results));
       return 0;
     }

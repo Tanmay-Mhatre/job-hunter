@@ -9,7 +9,8 @@
 import { appendFileSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { HttpClient, HttpError } from "../../packages/core/src/index";
+import { HttpClient } from "../../packages/core/src/index";
+import { checkBoard } from "./lib/live-check";
 
 const here = dirname(fileURLToPath(import.meta.url));
 /** `--ats greenhouse,lever` limits this process to those systems; each process writes its own file. */
@@ -31,54 +32,6 @@ const WORKERS: Record<string, number> = { workday: 4, greenhouse: 2, lever: 2 };
 
 type Board = { key: string; ats: string; slug: string; region?: string; shard?: string; site?: string; confidence: "high" | "single" };
 type Result = { key: string; status: "live" | "dormant" | "dead" | "error"; jobs: number | null; name?: string; http?: number; error?: string; checked_at: string };
-
-const enc = encodeURIComponent;
-
-async function checkOne(b: Board): Promise<Omit<Result, "key" | "checked_at">> {
-  try {
-    switch (b.ats) {
-      case "greenhouse": {
-        const d = await http.getJson<{ jobs?: { company_name?: string }[] }>(`https://boards-api.greenhouse.io/v1/boards/${enc(b.slug)}/jobs`);
-        const n = d.jobs?.length ?? 0;
-        return { status: n ? "live" : "dormant", jobs: n, name: d.jobs?.[0]?.company_name };
-      }
-      case "lever": {
-        const host = b.region === "eu" ? "https://api.eu.lever.co" : "https://api.lever.co";
-        const d = await http.getJson<unknown>(`${host}/v0/postings/${enc(b.slug)}?mode=json&limit=1`);
-        if (!Array.isArray(d)) return { status: "dead", jobs: null };
-        return { status: d.length ? "live" : "dormant", jobs: null };
-      }
-      case "ashby": {
-        const d = await http.getJson<{ jobs?: { isListed?: boolean }[] }>(`https://api.ashbyhq.com/posting-api/job-board/${enc(b.slug)}`);
-        if (!Array.isArray(d.jobs)) return { status: "dead", jobs: null };
-        const n = d.jobs.filter((j) => j.isListed !== false).length;
-        return { status: n ? "live" : "dormant", jobs: n };
-      }
-      case "smartrecruiters": {
-        const d = await http.getJson<{ totalFound: number; content: { company?: { name?: string } }[] }>(
-          `https://api.smartrecruiters.com/v1/companies/${enc(b.slug)}/postings?limit=1`,
-        );
-        // Unknown ids answer 200 with totalFound 0: indistinguishable from dormant, so call it dead.
-        return d.totalFound ? { status: "live", jobs: d.totalFound, name: d.content[0]?.company?.name } : { status: "dead", jobs: 0 };
-      }
-      case "workday": {
-        const d = await http.postJson<{ total?: number }>(`https://${b.slug}.${b.shard}.myworkdayjobs.com/wday/cxs/${enc(b.slug)}/${enc(b.site!)}/jobs`, {
-          appliedFacets: {},
-          limit: 1,
-          offset: 0,
-          searchText: "",
-        });
-        const n = d.total ?? 0;
-        return { status: n ? "live" : "dormant", jobs: n };
-      }
-    }
-    return { status: "error", jobs: null, error: "unknown ats" };
-  } catch (err) {
-    if (err instanceof HttpError && err.status && [404, 410, 422].includes(err.status)) return { status: "dead", jobs: null, http: err.status };
-    const e = err as HttpError;
-    return { status: "error", jobs: null, http: e.status, error: e.message.slice(0, 120) };
-  }
-}
 
 async function main() {
   const merged = JSON.parse(readFileSync(join(here, "out", "merged.json"), "utf8")) as { boards: Board[] };
@@ -108,7 +61,7 @@ async function main() {
     [...lanes.entries()].flatMap(([ats, list]) =>
       Array.from({ length: WORKERS[ats] ?? 1 }, async () => {
       for (let b = list.shift(); b; b = list.shift()) {
-        const r = await checkOne(b);
+        const r = await checkBoard(http, b);
         const row: Result = { key: b.key, ...r, checked_at: new Date().toISOString() };
         appendFileSync(OUT, `${JSON.stringify(row)}\n`);
         tally[r.status] = (tally[r.status] ?? 0) + 1;

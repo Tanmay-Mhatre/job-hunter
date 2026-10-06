@@ -6,6 +6,7 @@ export * from "./run";
 export * from "./diff";
 export * from "./store";
 export * from "./dashboard";
+export * from "./directory";
 export * from "./setup";
 export * from "./diagnose";
 export * from "./yaml-writer";

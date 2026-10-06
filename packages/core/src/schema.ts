@@ -200,6 +200,13 @@ export const ConfigSchema = z
         only_new: z.boolean().default(true),
       })
       .prefault({}),
+    /** The shared company directory: keep the local copy fresh, and share companies you add. */
+    directory: z
+      .object({
+        auto_update: z.boolean().default(true),
+        share_additions: z.boolean().default(true),
+      })
+      .prefault({}),
   })
   .superRefine((cfg, ctx) => {
     const seen = new Set<string>();

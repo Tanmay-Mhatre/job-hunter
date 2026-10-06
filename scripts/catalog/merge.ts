@@ -27,6 +27,8 @@ const SOURCES = {
   cryptojobs: { family: "cryptojobs", publishable: true },
   // Our own: the industry seed list and the boards resolve.ts found on those companies' websites.
   seeds: { family: "seeds", publishable: true },
+  // Boards users added with "Add by link": the shared contributions list, and your own local additions.
+  contrib: { family: "contributions", publishable: true },
   feashliaa: { family: "commoncrawl", publishable: false },
   // Votes carried inside upstreamit's slug store (CC BY-SA): cross-check only.
   "up:commoncrawl": { family: "commoncrawl", publishable: false },
@@ -103,6 +105,12 @@ function csvRows(path: string): string[][] {
 const counts: Record<string, number> = {};
 const count = (src: string, n: number) => (counts[src] = (counts[src] ?? 0) + n);
 
+/** Run `use` on a source file if it was downloaded (pnpm catalog:sources); skip it with a note if not. */
+function withFile(path: string, use: (path: string) => void) {
+  if (existsSync(path)) use(path);
+  else console.error(`! ${path.slice(here.length + 1)} missing, skipped (run: pnpm catalog:sources)`);
+}
+
 // --- publishable sources ---
 if (existsSync(raw("commoncrawl", "boards.json"))) {
   const cc = JSON.parse(readFileSync(raw("commoncrawl", "boards.json"), "utf8")) as { boards: { ats: string; slug: string; region?: string; shard?: string; site?: string }[] };
@@ -110,11 +118,11 @@ if (existsSync(raw("commoncrawl", "boards.json"))) {
   count("ourcrawl", cc.boards.length);
 } else console.error("! commoncrawl/boards.json missing (run commoncrawl.ts first)");
 
-{
-  const rows = csvRows(raw("latmay", "ats_career_page_urls.csv"));
+withFile(raw("latmay", "ats_career_page_urls.csv"), (p) => {
+  const rows = csvRows(p);
   for (const [url] of rows) if (url) fromUrl("latmay", url);
   count("latmay", rows.length);
-}
+});
 for (const f of ["greenhouse", "lever", "ashby", "smartrecruiters", "workday"]) {
   const p = raw("kalil0321", `${f}.csv`);
   if (!existsSync(p)) continue;
@@ -122,14 +130,14 @@ for (const f of ["greenhouse", "lever", "ashby", "smartrecruiters", "workday"]) 
   for (const [name, , url] of rows) if (url) fromUrl("kalil", url, name);
   count("kalil", rows.length);
 }
-{
-  const rows = JSON.parse(readFileSync(raw("conorscode", "companies.json"), "utf8")) as { name: string; platform: string; slug?: string; workday?: { tenant: string; site: string; shard: string } }[];
+withFile(raw("conorscode", "companies.json"), (p) => {
+  const rows = JSON.parse(readFileSync(p, "utf8")) as { name: string; platform: string; slug?: string; workday?: { tenant: string; site: string; shard: string } }[];
   for (const r of rows) {
     if (r.platform === "workday" && r.workday) add("conors", { ats: "workday", slug: r.workday.tenant, shard: r.workday.shard, site: r.workday.site, name: r.name });
     else if (r.slug) add("conors", { ats: r.platform, slug: r.slug, name: r.name });
   }
   count("conors", rows.length);
-}
+});
 {
   const rows = (JSON.parse(readFileSync(join(here, "..", "curate", "sources", "crypto-jobs-fyi.companies.json"), "utf8")) as { companies: { name: string; jobs_url: string }[] }).companies;
   for (const r of rows) fromUrl("cryptojobs", r.jobs_url, r.name);
@@ -147,6 +155,19 @@ for (const f of ["greenhouse", "lever", "ashby", "smartrecruiters", "workday"]) 
   count("seeds", seeds.length);
 }
 
+{
+  // Shared contributions (CONTRIBUTIONS_FILE, set by the directory workflow) and this install's own additions.
+  type Contribution = { name?: string; ats: string; slug: string; region?: string; shard?: string; site?: string };
+  const files = [process.env.CONTRIBUTIONS_FILE, join(here, "..", "..", "data", "catalog", "additions.json")].filter((f): f is string => !!f && existsSync(f));
+  let n = 0;
+  for (const f of files) {
+    const list = (JSON.parse(readFileSync(f, "utf8")) as { companies: Contribution[] }).companies;
+    for (const c of list) add("contrib", c);
+    n += list.length;
+  }
+  count("contrib", n);
+}
+
 // --- restricted sources: votes only, never new boards ---
 const publishableKeys = new Set([...boards.values()].filter((b) => [...b.sources].some((s) => SOURCES[s].publishable)).map((b) => b.key));
 function vote(src: SourceId, ats: string, slug: string, shard?: string, site?: string) {
@@ -154,20 +175,27 @@ function vote(src: SourceId, ats: string, slug: string, shard?: string, site?: s
   if (publishableKeys.has(key)) boards.get(key)!.sources.add(src);
 }
 for (const f of ["greenhouse", "lever", "ashby"]) {
-  const list = JSON.parse(readFileSync(raw("feashliaa", `${f}_companies.json`), "utf8")) as string[];
-  for (const slug of list) vote("feashliaa", f, slug);
-  count("feashliaa", list.length);
+  withFile(raw("feashliaa", `${f}_companies.json`), (p) => {
+    const list = JSON.parse(readFileSync(p, "utf8")) as string[];
+    for (const slug of list) vote("feashliaa", f, slug);
+    count("feashliaa", list.length);
+  });
 }
-{
-  const list = JSON.parse(readFileSync(raw("feashliaa", "workday_companies.json"), "utf8")) as string[];
+withFile(raw("feashliaa", "workday_companies.json"), (p) => {
+  const list = JSON.parse(readFileSync(p, "utf8")) as string[];
   for (const s of list) {
     const [tenant, shard, site] = s.split("|");
     if (tenant && shard && site) vote("feashliaa", "workday", tenant, shard, site);
   }
   count("feashliaa", list.length);
-}
+});
 for (const f of ["greenhouse", "lever", "ashby", "workday"]) {
-  const j = JSON.parse(readFileSync(raw("upstreamit", `${f}.json`), "utf8")) as { slugs: Record<string, { sources: string[] }> };
+  const p = raw("upstreamit", `${f}.json`);
+  if (!existsSync(p)) {
+    console.error(`! upstreamit/${f}.json missing, skipped (run: pnpm catalog:sources)`);
+    continue;
+  }
+  const j = JSON.parse(readFileSync(p, "utf8")) as { slugs: Record<string, { sources: string[] }> };
   for (const [slug, v] of Object.entries(j.slugs)) {
     for (const s of v.sources) {
       const id = `up:${s}` as SourceId;
@@ -202,9 +230,9 @@ const out = [...boards.values()]
 
 const stats: Record<string, Record<string, number>> = {};
 for (const b of out) {
-  stats[b.ats] ??= { total: 0, high: 0, single: 0 };
-  stats[b.ats]!.total++;
-  stats[b.ats]![b.confidence]++;
+  const s = (stats[b.ats] ??= { total: 0, high: 0, single: 0 });
+  s.total = (s.total ?? 0) + 1;
+  s[b.confidence] = (s[b.confidence] ?? 0) + 1;
 }
 mkdirSync(join(here, "out"), { recursive: true });
 writeFileSync(join(here, "out", "merged.json"), JSON.stringify({ generated_at: new Date().toISOString(), input_rows: counts, stats, boards: out }));

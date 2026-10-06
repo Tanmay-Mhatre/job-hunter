@@ -6,6 +6,7 @@ import { canRunLocally } from "../lib/data";
 import type { Draft } from "../lib/setup";
 import { load, save } from "../lib/storage";
 import { AddByLink } from "./AddByLink";
+import { DirectoryBar } from "./DirectoryBar";
 import { AddAll, AddButton } from "./CompanyButtons";
 import { Button, Card, Chip, cx, Pagination, Segmented } from "./ui";
 
@@ -67,6 +68,8 @@ export function CompanyFinder({ draft, update, tab, setTab }: Props) {
   const [hidden, setHidden] = useState<string[]>(() => load<string[]>(HIDDEN_KEY, []));
   useEffect(() => save(HIDDEN_KEY, hidden), [hidden]);
   const watched = useMemo(() => new Set(draft.companies.map(keyOf)), [draft.companies]);
+  /** Bumped after the directory updates, so suggestions and Browse reload. */
+  const [rev, setRev] = useState(0);
 
   /** Add companies not already watched; returns the keys actually added. */
   const addMany = (list: CompanyRef[]): string[] => {
@@ -104,7 +107,8 @@ export function CompanyFinder({ draft, update, tab, setTab }: Props) {
           ]}
         />
       </div>
-      <div className="mt-5">
+      <div className="mt-5" key={rev}>
+        <DirectoryBar onUpdated={() => setRev((r) => r + 1)} />
         {tab === "suggested" && (
           <Suggested
             industries={draft.industries}

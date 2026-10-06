@@ -65,6 +65,8 @@ async function respondJson(res: ServerResponse, args: string[], stdin?: string) 
  *   POST /api/setup/check     detect + live-check careers URLs
  *   GET/POST /api/setup/resume  read / save the master resume (profile/resume.md, gitignored)
  *   POST /api/companies/suggest companies from the directory hiring for the saved profile
+ *   GET  /api/directory       the shared company directory's local copy (and what's waiting to be shared)
+ *   POST /api/directory/update download the latest shared directory and share waiting additions
  *   POST /api/run             run the radar; streams NDJSON progress
  * Not part of the static build; the dev server listens on 127.0.0.1 only.
  */
@@ -84,6 +86,8 @@ function localApi(): Plugin {
     name: "jobhunter-local-api",
     apply: "serve",
     configureServer(server) {
+      // Keep the shared company directory fresh: a weekly check in the background, off if you turned it off.
+      cli(["directory", "update", "--auto", "--if-older", "7", "--data", dataDir]).on("error", () => {});
       server.middlewares.use(async (req, res, next) => {
         const url = req.url?.split("?")[0] ?? "";
         if (!url.startsWith("/api/")) return next();
@@ -107,6 +111,8 @@ function localApi(): Plugin {
             res.end(suggestCache.body);
             return;
           }
+          if (url === "/api/directory" && req.method === "GET") return await respondJson(res, ["directory", "status", "--json", "--data", dataDir]);
+          if (url === "/api/directory/update" && req.method === "POST") return await respondJson(res, ["directory", "update", "--json", "--data", dataDir]);
           if (url === "/api/run" && req.method === "POST") {
             res.setHeader("content-type", "application/x-ndjson");
             res.setHeader("cache-control", "no-cache");

@@ -1,0 +1,20 @@
+# Job Hunter contribution inbox. Setup steps: services/contribute/README.md
+name = "job-hunter-contribute"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+# Waiting contributions (kept 30 days at most). Create it with:
+#   npx wrangler kv namespace create INBOX
+# and paste the id it prints below.
+[[kv_namespaces]]
+binding = "INBOX"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# 20 submissions per minute per IP address.
+[[ratelimits]]
+name = "LIMITER"
+namespace_id = "1001"
+simple = { limit = 20, period = 60 }
+
+# Secret (not in this file): INBOX_TOKEN, shared with the GitHub workflow.
+#   npx wrangler secret put INBOX_TOKEN
