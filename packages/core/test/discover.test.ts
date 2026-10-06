@@ -36,6 +36,14 @@ describe("findCandidates", () => {
     expect(c[0]!.estimate).toBeGreaterThan(c[1]!.estimate);
     expect(c[0]!.why.keywordPoints).toBe(0);
   });
+
+  it("counts a company's ages from when it was fetched, which can be before the index was built", () => {
+    const fetched = new Date(now.getTime() - 3 * DAY);
+    const company = { ...co("lever:a", [pm("Dubai", 4)]), fetched_at: fetched.toISOString() };
+    const [c] = findCandidates(profile(), index([company], now), now);
+    // 4 days old when fetched 3 days ago: posted 7 days ago.
+    expect(c!.postedAt).toBe(new Date(now.getTime() - 7 * DAY).toISOString());
+  });
 });
 
 describe("pickChecks", () => {

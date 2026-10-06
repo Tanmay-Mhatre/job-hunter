@@ -1,6 +1,9 @@
 import { citiesIn } from "@jobhunter/core/catalog/places";
 import { toDashboardJob } from "@jobhunter/core/dashboard";
 import type { DashboardJob, DashboardJobsFile, DataMeta, Job as FullJob, JobsFile } from "@jobhunter/core/schema";
+
+/** data/discover.json (see core discover.ts); declared here so the browser bundle needs no Node code. */
+type DiscoverFile = { version: 1; generatedAt: string; indexGeneratedAt: string; jobs: DashboardJob[] };
 import { useCallback, useEffect, useState } from "react";
 
 export type { CompanyHealth, DataMeta, Profile, RunSummary } from "@jobhunter/core/schema";
@@ -11,7 +14,14 @@ export type DataState =
   | { kind: "loading" }
   | { kind: "empty" }
   | { kind: "error"; message: string }
-  | { kind: "ready"; jobs: Job[]; meta: DataMeta };
+  | {
+      kind: "ready";
+      /** Your scanned jobs that pass your filters, then the directory's jobs for you (`estimated`). */
+      jobs: Job[];
+      meta: DataMeta;
+      /** When the directory index behind the estimated jobs was built, if there are any. */
+      indexGeneratedAt?: string;
+    };
 
 async function getJson<T>(path: string): Promise<T | null> {
   const res = await fetch(path, { cache: "no-store" });
@@ -45,12 +55,22 @@ export function useData() {
 
   const reload = useCallback(async () => {
     try {
-      const [jobsFile, meta] = await Promise.all([getJson<DashboardJobsFile | JobsFile>("./jobs.json"), getJson<DataMeta>("./meta.json")]);
+      const [jobsFile, meta, discover] = await Promise.all([
+        getJson<DashboardJobsFile | JobsFile>("./jobs.json"),
+        getJson<DataMeta>("./meta.json"),
+        // Written by scans since the jobs-first Radar; older data has none.
+        getJson<DiscoverFile>("./discover.json").catch(() => null),
+      ]);
       otherJobs = undefined;
       descriptions = undefined;
       legacy = null;
       if (!jobsFile || !meta) setState({ kind: "empty" });
-      else setState({ kind: "ready", jobs: fromFile(jobsFile), meta });
+      else {
+        const live = fromFile(jobsFile);
+        const ids = new Set(live.map((j) => j.id));
+        const estimated = (discover?.jobs ?? []).filter((j) => !ids.has(j.id)).map(upgrade);
+        setState({ kind: "ready", jobs: [...live, ...estimated], meta, indexGeneratedAt: discover?.indexGeneratedAt });
+      }
     } catch (err) {
       setState({ kind: "error", message: (err as Error).message });
     }

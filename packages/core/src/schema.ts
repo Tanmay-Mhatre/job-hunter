@@ -130,6 +130,8 @@ export type DashboardJob = Omit<Job, "description" | "missedRuns"> & {
   estimated?: boolean;
   /** Directory key of the job's company ("ats:slug"); set on index jobs. */
   companyKey?: string;
+  /** Industry ids the company directory puts the job's company in. */
+  industries?: string[];
 };
 
 /** data/jobs.json (jobs that pass your filters) and data/jobs-other.json (the rest). */

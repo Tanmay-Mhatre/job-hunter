@@ -1,10 +1,11 @@
 import { INDUSTRY_BY_ID } from "@jobhunter/core/catalog/industries";
 import { SENIORITY_LEVELS } from "@jobhunter/core/catalog/seniority";
-import { ArrowLeft, Building2, Check, ChevronDown, ChevronUp, CircleCheck, Copy, EyeOff, ExternalLink, LoaderCircle, MapPin, X } from "lucide-react";
+import { ArrowLeft, Building2, Check, ChevronDown, ChevronUp, CircleCheck, Copy, EyeOff, ExternalLink, Info, LoaderCircle, MapPin, Plus, RefreshCw, Star, X } from "lucide-react";
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { copyText } from "../lib/clipboard";
 import { useDescription, type Job, type Profile } from "../lib/data";
 import { formatDate, formatSalary, postedOrSeen, timeAgo } from "../lib/format";
+import { INDEX_MAX_AGE_DAYS } from "../lib/filters";
 import { PIPELINE, STATUS_LABEL, type Entry, type Status } from "../lib/userState";
 import { Button, Chip, cx, IconButton, ScoreBadge } from "./ui";
 
@@ -25,6 +26,14 @@ export type JobDetailProps = {
   onNext?: () => void;
   /** Shown as an overlay (phones, Pipeline): a close / back button. */
   onClose?: () => void;
+  /** The job is at one of your companies. */
+  yours?: boolean;
+  /** When the directory index behind an estimated job was built. */
+  indexGeneratedAt?: string;
+  /** Add or remove the job's company from your companies. Resolves to an error, or null. */
+  onTrack?: (on: boolean) => Promise<string | null>;
+  /** Check an estimated job's company live now. Resolves to an error, or null. */
+  onCheck?: () => Promise<string | null>;
 };
 
 const SENIORITY_LABEL = Object.fromEntries(SENIORITY_LEVELS.map((s) => [s.id, s.label]));
@@ -61,10 +70,20 @@ export function JobDetail(p: JobDetailProps) {
               <ArrowLeft className="size-5" />
             </IconButton>
           )}
-          <ScoreBadge score={job.score} min={profile.min_score} size="lg" />
+          {job.estimated ? (
+            <span
+              className="tabular flex size-12 shrink-0 items-center justify-center rounded-xl border border-dashed border-line text-lg font-semibold text-muted"
+              title="Estimated: not checked live yet, so no topic points"
+            >
+              ~{job.score}
+            </span>
+          ) : (
+            <ScoreBadge score={job.score} min={profile.min_score} size="lg" />
+          )}
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-semibold leading-6">{job.title}</h2>
             <p className="mt-0.5 text-sm text-muted">
+              {p.yours && <Star className="mr-1 inline size-3.5 fill-accent text-accent" aria-label="Your company" />}
               <span className="font-medium text-fg">{job.company}</span>
               {p.industries?.length ? <> · {p.industries.map((i) => INDUSTRY_BY_ID.get(i)?.label ?? i).join(", ")}</> : null}
             </p>
@@ -107,8 +126,9 @@ export function JobDetail(p: JobDetailProps) {
             onClick={() => p.onApply?.(job)}
             className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-accent px-3 text-sm font-medium text-accent-fg hover:opacity-90"
           >
-            Apply on company site <ExternalLink className="size-4" />
+            {job.estimated ? "Open careers page" : "Apply on company site"} <ExternalLink className="size-4" />
           </a>
+          {p.onTrack && <TrackButton yours={!!p.yours} onTrack={p.onTrack} />}
           <Button onClick={() => p.onUpdate({ status: status === "saved" ? undefined : "saved" })} aria-pressed={status === "saved"} className={cx(status === "saved" && "border-accent text-accent")}>
             {status === "saved" ? <Check className="size-4" /> : null}
             {status === "saved" ? "Saved" : "Save"}
@@ -124,6 +144,7 @@ export function JobDetail(p: JobDetailProps) {
       </header>
 
       <div ref={scrollRef} className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4 sm:p-5">
+        {job.estimated && <NotCheckedYet indexGeneratedAt={p.indexGeneratedAt} onCheck={p.onCheck} />}
         <section>
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Your status</h3>
           <div className="flex flex-wrap gap-1.5">
@@ -178,7 +199,9 @@ export function JobDetail(p: JobDetailProps) {
           ) : description ? (
             <Highlighted text={description} terms={job.why.keywords} />
           ) : (
-            <p className="text-sm text-muted">{job.why.gate ? "Not stored for jobs that fail your filters." : "No description in the feed."} Open the job page to read it.</p>
+            <p className="text-sm text-muted">
+              {job.estimated ? "Not checked yet, so no description." : job.why.gate ? "Not stored for jobs that fail your filters." : "No description in the feed."} Open the job page to read it.
+            </p>
           )}
         </section>
 
@@ -235,6 +258,62 @@ export function JobDetail(p: JobDetailProps) {
         )}
       </div>
     </div>
+  );
+}
+
+/** Add the job's company to your companies (or remove it), with a short busy state and any error. */
+function TrackButton({ yours, onTrack }: { yours: boolean; onTrack: (on: boolean) => Promise<string | null> }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => setError(null), [yours]);
+  const click = async () => {
+    setBusy(true);
+    setError(await onTrack(!yours));
+    setBusy(false);
+  };
+  return (
+    <>
+      <Button onClick={() => void click()} disabled={busy} aria-pressed={yours} className={cx(yours && "border-accent text-accent")} title={yours ? "Remove from your companies" : "Add to your companies: checked every scan, its jobs listed first"}>
+        {busy ? <LoaderCircle className="size-4 animate-spin" /> : yours ? <Star className="size-4 fill-current" /> : <Plus className="size-4" />}
+        {yours ? "Your company" : "Add company"}
+      </Button>
+      {error && <p className="w-full text-xs text-bad">{error}</p>}
+    </>
+  );
+}
+
+/** An index job: what that means, and "Check now" to get the real job. */
+function NotCheckedYet({ indexGeneratedAt, onCheck }: { indexGeneratedAt?: string; onCheck?: () => Promise<string | null> }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const check = async () => {
+    if (!onCheck) return;
+    setBusy(true);
+    setError(await onCheck());
+    setBusy(false);
+  };
+  return (
+    <section className="rounded-xl border border-line bg-surface-2/50 p-3 text-sm">
+      <p className="flex items-start gap-2">
+        <Info className="mt-0.5 size-4 shrink-0 text-muted" />
+        <span className="min-w-0">
+          <b>Found in the company directory{indexGeneratedAt ? ` (updated ${timeAgo(indexGeneratedAt)})` : ""}, not checked yet.</b>{" "}
+          <span className="text-muted">
+            The score is an estimate from the title, place and date only: topics need the description. The link opens the company's careers page. Scans check the best of
+            these companies a few at a time; directory jobs older than {INDEX_MAX_AGE_DAYS} days are hidden unless you ask for them.
+          </span>
+        </span>
+      </p>
+      {onCheck && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 pl-6">
+          <Button size="sm" onClick={() => void check()} disabled={busy}>
+            {busy ? <LoaderCircle className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+            {busy ? "Checking…" : "Check this company now"}
+          </Button>
+          {error && <span className="text-xs text-bad">{error}</span>}
+        </div>
+      )}
+    </section>
   );
 }
 

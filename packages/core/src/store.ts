@@ -55,7 +55,7 @@ function directoryIndustries(dir: string): Map<string, string[]> {
  *   descriptions.json  dashboard: id -> description, loaded when a job is opened
  *   meta.json, runs/<time>.json
  */
-export function saveRun(dir: string, config: Config, run: RunResult, merged: MergeResult): RunSummary {
+export function saveRun(dir: string, config: Config, run: RunResult, merged: MergeResult, opts: { /** Add this run to the run history (not for a one-company "Check now"). */ record?: boolean } = {}): RunSummary {
   mkdirSync(join(dir, "runs"), { recursive: true });
   const summary = summarize(run, merged);
   const generatedAt = run.finishedAt;
@@ -64,13 +64,17 @@ export function saveRun(dir: string, config: Config, run: RunResult, merged: Mer
   const history: JobsFile = { version: 1, generatedAt, jobs };
   writeFileSync(join(dir, "history.json"), JSON.stringify(history));
 
-  const dashboard = jobs.map(toDashboardJob);
+  const industries = directoryIndustries(dir);
+  // Industries for every job's company, so the Radar can filter by industry beyond your own companies.
+  const dashboard = jobs.map((j) => {
+    const tags = industries.get(j.id.split(":").slice(0, 2).join(":").toLowerCase());
+    return tags ? { ...toDashboardJob(j), industries: tags } : toDashboardJob(j);
+  });
   const file = (list: DashboardJob[]): DashboardJobsFile => ({ version: 2, generatedAt, jobs: list });
   writeFileSync(join(dir, "jobs.json"), JSON.stringify(file(dashboard.filter((j) => !j.why.gate))));
   writeFileSync(join(dir, "jobs-other.json"), JSON.stringify(file(dashboard.filter((j) => j.why.gate))));
   writeFileSync(join(dir, "descriptions.json"), JSON.stringify(Object.fromEntries(jobs.filter((j) => j.description).map((j) => [j.id, j.description]))));
 
-  const industries = directoryIndustries(dir);
   const prevRuns = readMeta(dir)?.runs ?? [];
   const meta: DataMeta = {
     version: 1,
@@ -80,10 +84,11 @@ export function saveRun(dir: string, config: Config, run: RunResult, merged: Mer
       const tags = industries.get(companyKey({ ats, slug, shard, site }));
       return { name, ats, slug, enabled, careers_url, ...(tags ? { industries: tags } : {}) };
     }),
-    runs: [summary, ...prevRuns].slice(0, KEEP_RUNS),
+    runs: opts.record === false ? prevRuns : [summary, ...prevRuns].slice(0, KEEP_RUNS),
   };
   writeFileSync(join(dir, "meta.json"), JSON.stringify(meta, null, 2));
 
+  if (opts.record === false) return summary;
   const stamp = run.startedAt.replace(/:/g, "-").replace(/\.\d+Z$/, "Z");
   writeFileSync(join(dir, "runs", `${stamp}.json`), JSON.stringify(summary, null, 2));
   return summary;

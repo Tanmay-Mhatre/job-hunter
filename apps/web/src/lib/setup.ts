@@ -98,6 +98,16 @@ export type RunEvent =
     }
   | { type: "error"; message: string };
 
+/** "Check now": fetch just these directory companies ("ats:slug") on this machine. */
+export async function checkNow(keys: string[]): Promise<Extract<RunEvent, { type: "done" | "error" }>> {
+  try {
+    const res = await fetch("/api/check", { method: "POST", body: JSON.stringify({ keys }) });
+    return (await res.json()) as Extract<RunEvent, { type: "done" | "error" }>;
+  } catch (err) {
+    return { type: "error", message: (err as Error).message };
+  }
+}
+
 /** Run a scan on this machine, reporting progress as it streams in. */
 export async function runScan(onEvent: (e: RunEvent) => void): Promise<void> {
   const res = await fetch("/api/run", { method: "POST" });

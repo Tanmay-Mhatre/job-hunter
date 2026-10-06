@@ -1,7 +1,7 @@
 import { ArrowRight, Building2, Keyboard, KanbanSquare, LoaderCircle, Moon, Radar as RadarIcon, RefreshCw, Settings as SettingsIcon, Sun, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CompaniesTab } from "./components/CompaniesTab";
-import { EmptyState, SetupBanner } from "./components/EmptyState";
+import { SetupBanner } from "./components/EmptyState";
 import { checklistItems, ConfigProblemCard, FailingBanner, FirstScanCard, NoMatches, ScanningBar, SetupChecklist, SetupHero } from "./components/Guidance";
 import { ApplyPrompt } from "./components/ApplyPrompt";
 import { JobDrawer } from "./components/JobDrawer";
@@ -9,12 +9,13 @@ import { Pipeline } from "./components/Pipeline";
 import { RadarPage } from "./components/radar/RadarPage";
 import { Settings } from "./components/Settings";
 import { Button, Card, cx, IconButton, Kbd } from "./components/ui";
+import { jobCompanyKey, keyOf, refOfJob, toRow } from "./lib/companies";
 import { canRunLocally, useData, useOtherJobs, type Job } from "./lib/data";
 import { usePrefs } from "./lib/prefs";
 import { useScan } from "./lib/scan";
 import { useResume } from "./lib/resume";
 import { profileFromPicks, type FilterPicks } from "./lib/profileSync";
-import { draftFromConfig, draftToConfig, emptyDraft, saveConfig, setupProgress, STEP, STEP_COUNT, useSetupStatus, type Draft } from "./lib/setup";
+import { checkNow, draftFromConfig, draftToConfig, emptyDraft, saveConfig, setupProgress, STEP, STEP_COUNT, useSetupStatus, type Draft } from "./lib/setup";
 import { buildSuggestions } from "./lib/suggest";
 import { load, save } from "./lib/storage";
 import { timeAgo } from "./lib/format";
@@ -111,6 +112,52 @@ export function App() {
     [saved, setup, startScan],
   );
 
+  // ----- your companies, from the Radar: add, remove, mute, check now -----
+  const canSave = canRunLocally && personal && setupState === "configured";
+  /** Your companies' keys: from your config, or (hosted build) from the last scan. */
+  const yourKeys = useMemo(() => new Set((status?.config?.companies ?? meta?.companies ?? []).map(keyOf)), [status, meta]);
+  const isYours = useCallback((j: Job) => yourKeys.has(jobCompanyKey(j)), [yourKeys]);
+  const saveCompanies = useCallback(
+    async (patch: (d: Draft) => Partial<Draft>): Promise<string | null> => {
+      const res = await saveConfig(draftToConfig({ ...saved, ...patch(saved) }));
+      if (!res.ok) return res.errors;
+      await setup.refresh();
+      return null;
+    },
+    [saved, setup],
+  );
+  const trackJob = useCallback(
+    (job: Job, on: boolean) => {
+      const ref = refOfJob(job);
+      const key = keyOf(ref);
+      return saveCompanies((d) => ({
+        companies: on ? (d.companies.some((r) => keyOf(r) === key) ? d.companies : [...d.companies, toRow(ref)]) : d.companies.filter((r) => keyOf(r) !== key),
+        muted: d.muted.filter((k) => k !== key),
+      }));
+    },
+    [saveCompanies],
+  );
+  /** Hide a company's jobs here, and (local app) stop scans from checking it: mute it in your config. */
+  const hideCompany = useCallback(
+    (company: string, hidden: boolean) => {
+      prefs.setCompanyHidden(company, hidden);
+      const job = state.kind === "ready" ? state.jobs.find((j) => j.company === company) : undefined;
+      if (!canSave || !job) return;
+      const key = jobCompanyKey(job);
+      void saveCompanies((d) => ({ muted: hidden ? [...new Set([...d.muted, key])] : d.muted.filter((k) => k !== key) }));
+    },
+    [prefs, state, canSave, saveCompanies],
+  );
+  const checkJob = useCallback(
+    async (job: Job): Promise<string | null> => {
+      const e = await checkNow([jobCompanyKey(job)]);
+      if (e.type === "error") return e.message;
+      await reload();
+      return null;
+    },
+    [reload],
+  );
+
   // ----- routing -----
   useEffect(() => {
     const onHash = () => setRoute(parseHash());
@@ -140,7 +187,6 @@ export function App() {
     save(WELCOME_SEEN_KEY, true);
     go({ tab: "radar" });
   }, [go]);
-  const companyCount = status?.config?.companies.length ?? 0;
   const goCompanies = useCallback(() => go({ tab: "companies" }), [go]);
   /** Where a "set up" CTA should take the user right now. */
   const toSetup = useCallback(
@@ -182,7 +228,8 @@ export function App() {
   }, [openId, inSetup, go]);
 
   const lastRun = meta?.runs[0];
-  const failing = lastRun?.health.filter((h) => !h.ok && !h.unsupported).length ?? 0;
+  // Only your companies: the extra ones a scan checks aren't yours to fix.
+  const failing = lastRun?.health.filter((h) => !h.ok && !h.unsupported && yourKeys.has(keyOf(h))).length ?? 0;
   const matched = jobs.filter((j) => !j.why.gate && j.status === "open").length;
   // "Why no matches?" needs the jobs that failed the filters too; fetched only then.
   const otherJobs = useOtherJobs(state.kind === "ready" && !!lastRun && matched === 0);
@@ -224,13 +271,8 @@ export function App() {
                     {setupState === "invalid" ? "Fix setup" : progress.started ? "Finish setup" : "Set up radar"} <ArrowRight className="size-3.5" />
                   </Button>
                 )}
-                {canRunLocally && setupState === "configured" && personal && companyCount === 0 && (
-                  <Button size="sm" variant="primary" onClick={goCompanies}>
-                    Add companies <ArrowRight className="size-3.5" />
-                  </Button>
-                )}
-                {canRunLocally && setupState === "configured" && (!personal || companyCount > 0) && (
-                  <Button size="sm" onClick={() => void startScan()} disabled={scanning} title="Scan your companies now">
+                {canRunLocally && setupState === "configured" && (
+                  <Button size="sm" onClick={() => void startScan()} disabled={scanning} title="Find and score jobs for you now">
                     {scanning ? <LoaderCircle className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
                     {scanning ? "Scanning…" : "Scan now"}
                   </Button>
@@ -291,23 +333,10 @@ export function App() {
                 {notSetUp && <SetupHero items={items} started={progress.started} nextStep={progress.nextStep} onStep={goStep} onCompanies={goCompanies} />}
                 {setupState === "invalid" && <ConfigProblemCard errors={status?.errors} onFix={() => goStep(0)} />}
                 {setupState === "configured" && personal && (
-                  <SetupChecklist items={items} onStep={goStep} onScan={companyCount ? () => void startScan() : goCompanies} onCompanies={goCompanies} />
-                )}
-                {setupState === "configured" && personal && companyCount === 0 && (
-                  <EmptyState
-                    icon={<Building2 className="size-6" />}
-                    title="Next: add the companies you'd like to work at"
-                    actions={
-                      <Button variant="primary" onClick={goCompanies}>
-                        See companies hiring for you <ArrowRight className="size-4" />
-                      </Button>
-                    }
-                  >
-                    Your profile is saved. We've picked companies that are hiring for your roles and places right now: add the ones you like, and we'll scan them and rank every opening for you.
-                  </EmptyState>
+                  <SetupChecklist items={items} onStep={goStep} onScan={() => void startScan()} onCompanies={goCompanies} />
                 )}
                 {state.kind === "ready" && <ScanningBar scan={scan} />}
-                {setupState === "configured" && personal && companyCount > 0 && state.kind === "empty" && <FirstScanCard scan={scan} onScan={() => void startScan()} />}
+                {setupState === "configured" && personal && state.kind === "empty" && <FirstScanCard scan={scan} onScan={() => void startScan()} />}
                 {state.kind === "ready" && failing > 0 && <FailingBanner count={failing} onOpen={() => go({ tab: "companies" })} />}
                 {state.kind === "ready" && lastRun && matched === 0 && <NoMatches jobs={otherJobs ? [...jobs, ...otherJobs] : jobs} onStep={goStep} onCompanies={goCompanies} />}
                 {state.kind === "ready" && (matched > 0 || !lastRun) && (
@@ -326,7 +355,13 @@ export function App() {
                     onSaveView={prefs.saveView}
                     onRenameView={prefs.renameView}
                     onDeleteView={prefs.deleteView}
-                    onHideCompany={prefs.setCompanyHidden}
+                    onHideCompany={hideCompany}
+                    isYours={isYours}
+                    companyCount={yourKeys.size}
+                    indexGeneratedAt={state.indexGeneratedAt}
+                    onCompanies={goCompanies}
+                    onTrack={canSave ? trackJob : undefined}
+                    onCheck={canSave ? checkJob : undefined}
                     profile={status?.config?.profile}
                     onEditProfile={() => go({ tab: "settings" })}
                     onSaveProfile={canRunLocally && personal && setupState === "configured" ? saveProfileFromRadar : undefined}
@@ -429,7 +464,11 @@ export function App() {
           entry={user.state[openJob.id]}
           profile={meta.profile}
           postings={jobs.filter((j) => j.group === openJob.group)}
-          industries={meta.companies.find((c) => c.name === openJob.company)?.industries}
+          industries={meta.companies.find((c) => c.name === openJob.company)?.industries ?? openJob.industries}
+          yours={isYours(openJob)}
+          indexGeneratedAt={state.kind === "ready" ? state.indexGeneratedAt : undefined}
+          onTrack={canSave ? (on) => trackJob(openJob, on) : undefined}
+          onCheck={canSave && openJob.estimated ? () => checkJob(openJob) : undefined}
           onClose={() => setOpenId(null)}
           onUpdate={(patch) => user.update(openJob, patch)}
           onApply={onApply}

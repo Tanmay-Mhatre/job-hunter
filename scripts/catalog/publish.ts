@@ -173,6 +173,8 @@ for (const [key, v] of index) {
     ...(d.shard ? { shard: d.shard, site: d.site } : {}),
     careers_url: d.careers_url,
     open_jobs: v.open_jobs,
+    // Row ages count from this fetch, which can be up to a week older than the index itself.
+    fetched_at: v.fetched_at,
     rows: v.rows,
     // Seed companies count as hand-reviewed, like the curated list.
     tier: seedBoards.has(key) ? "curated" : d.tier,

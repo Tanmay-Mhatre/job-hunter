@@ -30,7 +30,14 @@ export type Filters = {
   showFailed: boolean;
   showClosed: boolean;
   showHidden: boolean;
+  /** Only jobs at your companies ("My companies"). */
+  mine: boolean;
+  /** Include directory jobs posted more than INDEX_MAX_AGE_DAYS ago (often filled already). */
+  olderIndex: boolean;
 };
+
+/** Directory jobs older than this are hidden unless asked for: the index is a week old at most, and old postings are often filled. */
+export const INDEX_MAX_AGE_DAYS = 30;
 
 export const DEFAULT_FILTERS: Filters = {
   q: "",
@@ -49,6 +56,8 @@ export const DEFAULT_FILTERS: Filters = {
   showFailed: false,
   showClosed: false,
   showHidden: false,
+  mine: false,
+  olderIndex: false,
 };
 
 /** Facets with option counts. */
@@ -63,6 +72,8 @@ export type Ctx = {
   /** Industry ids per company name. */
   industriesOf: (company: string) => string[];
   hiddenCompanies: ReadonlySet<string>;
+  /** Is this job at one of your companies? (They're always listed first.) */
+  isYours?: (j: Job) => boolean;
   /** The user's own countries, cities and industries (from their profile): listed first in the menus. */
   mine?: { countries: ReadonlySet<string>; locations: ReadonlySet<string>; industries: ReadonlySet<string> };
   now?: number;
@@ -71,7 +82,8 @@ export type Ctx = {
 export const REMOTE = "Remote";
 const APPLIED_STAGES: Status[] = ["applied", "interviewing", "offer", "rejected"];
 
-export const isNewJob = (j: Job, ctx: Ctx) => j.status === "open" && (!ctx.cutoff || j.firstSeen > ctx.cutoff);
+/** New since your last visit. Directory jobs never are: nobody has checked them yet. */
+export const isNewJob = (j: Job, ctx: Ctx) => !j.estimated && j.status === "open" && (!ctx.cutoff || j.firstSeen > ctx.cutoff);
 /** Remote jobs, and jobs that matched one of your remote regions ("EMEA"), count as "Remote". */
 const isRemoteLike = (j: Job) => j.workplace === "remote" || j.why.location === 15 || /\bremote\b/i.test(j.location);
 const countriesOf = (j: Job) => (isRemoteLike(j) ? [...j.countries, REMOTE] : j.countries);
@@ -82,6 +94,8 @@ function passes(j: Job, f: Filters, ctx: Ctx, terms: string[], skip?: FacetKey):
   if (!f.showFailed && j.why.gate) return false;
   if (!f.showClosed && j.status === "closed") return false;
   if (!f.showHidden && (entry?.status === "dismissed" || ctx.hiddenCompanies.has(j.company))) return false;
+  if (f.mine && !ctx.isYours?.(j)) return false;
+  if (!f.olderIndex && j.estimated && ageDays(postedOrSeen(j), ctx.now) > INDEX_MAX_AGE_DAYS) return false;
   if (f.status === "new" && !isNewJob(j, ctx)) return false;
   if (f.status === "saved" && entry?.status !== "saved") return false;
   if (f.status === "applied" && !(entry?.status && APPLIED_STAGES.includes(entry.status))) return false;
@@ -171,7 +185,8 @@ export function facetCounts(jobs: Job[], f: Filters, ctx: Ctx): Record<FacetKey,
 
 const salaryOf = (j: Job) => j.salary?.max ?? j.salary?.min ?? -1;
 
-export function sortJobs(jobs: Job[], sort: Sort): Job[] {
+/** Sort the list; with `isYours`, jobs at your companies come first whatever the order. */
+export function sortJobs(jobs: Job[], sort: Sort, isYours?: (j: Job) => boolean): Job[] {
   const by: Record<Sort, (a: Job, b: Job) => number> = {
     best: (a, b) => b.score - a.score || postedOrSeen(b).localeCompare(postedOrSeen(a)),
     newest: (a, b) => postedOrSeen(b).localeCompare(postedOrSeen(a)) || b.score - a.score,
@@ -179,7 +194,8 @@ export function sortJobs(jobs: Job[], sort: Sort): Job[] {
     salary: (a, b) => salaryOf(b) - salaryOf(a) || b.score - a.score,
     company: (a, b) => a.company.localeCompare(b.company) || b.score - a.score,
   };
-  return [...jobs].sort(by[sort]);
+  const order = by[sort];
+  return [...jobs].sort(isYours ? (a, b) => Number(isYours(b)) - Number(isYours(a)) || order(a, b) : order);
 }
 
 /** One role posted in several places: the best posting leads, the others ride along. */
@@ -227,6 +243,8 @@ function chipsOf(f: Filters, ctx: Pick<Ctx, "min">): { key: string; label: strin
   if (f.showFailed) chips.push({ key: "failed", label: "Including jobs that failed your filters", remove: { showFailed: false } });
   if (f.showClosed) chips.push({ key: "closed", label: "Including closed", remove: { showClosed: false } });
   if (f.showHidden) chips.push({ key: "hidden", label: "Including hidden", remove: { showHidden: false } });
+  if (f.mine) chips.push({ key: "mine", label: "My companies", remove: { mine: false } });
+  if (f.olderIndex) chips.push({ key: "olderIndex", label: `Including directory jobs older than ${INDEX_MAX_AGE_DAYS} days`, remove: { olderIndex: false } });
   return chips;
 }
 
@@ -246,14 +264,14 @@ export function profilePlaces(profile: Profile): { countries: string[]; location
 
 /**
  * The Radar's starting filters, from your profile: your countries (plus remote, if you take remote
- * roles) and your industries. Jobs already had to pass your profile to get here; these make that visible.
+ * roles). Jobs already had to pass your profile to get here; this makes it visible. Industries are not
+ * a starting filter: we only know them for some companies, so it would hide most of the directory's jobs.
  */
 export function profileFilters(profile: Profile): Filters {
   const places = profilePlaces(profile);
   return {
     ...DEFAULT_FILTERS,
     countries: places.countries.length || places.remote ? [...places.countries, ...(places.remote ? [REMOTE] : [])] : [],
-    industries: [...profile.industries],
   };
 }
 

@@ -68,6 +68,7 @@ async function respondJson(res: ServerResponse, args: string[], stdin?: string) 
  *   GET  /api/directory       the shared company directory's local copy (and what's waiting to be shared)
  *   POST /api/directory/update download the latest shared directory and share waiting additions
  *   POST /api/run             run the radar; streams NDJSON progress
+ *   POST /api/check           check directory companies now ({ keys: ["ats:slug"] }); answers with the done event
  * Not part of the static build; the dev server listens on 127.0.0.1 only.
  */
 /** File modification time, or 0 if missing (cache key for suggestions). */
@@ -113,6 +114,30 @@ function localApi(): Plugin {
           }
           if (url === "/api/directory" && req.method === "GET") return await respondJson(res, ["directory", "status", "--json", "--data", dataDir]);
           if (url === "/api/directory/update" && req.method === "POST") return await respondJson(res, ["directory", "update", "--json", "--data", dataDir]);
+          if (url === "/api/check" && req.method === "POST") {
+            // "Check now" on a directory job: fetch just that company, answer with the final event.
+            res.setHeader("content-type", "application/json");
+            const keys = ((JSON.parse((await readBody(req)) || "{}") as { keys?: unknown }).keys ?? []) as unknown[];
+            const valid = keys.filter((k): k is string => typeof k === "string" && /^[a-z]+:[^\s]+$/i.test(k)).slice(0, 5);
+            if (!valid.length) {
+              res.statusCode = 400;
+              res.end(JSON.stringify({ type: "error", message: "No company to check." }));
+              return;
+            }
+            if (running) {
+              res.end(JSON.stringify({ type: "error", message: "A scan is running; try again when it's done." }));
+              return;
+            }
+            running = true;
+            try {
+              const r = await collect(["run", "--progress", "ndjson", "--data", dataDir, ...valid.flatMap((k) => ["--check", k])]);
+              const last = r.stdout.trim().split("\n").pop() ?? "";
+              res.end(last.startsWith("{") ? last : JSON.stringify({ type: "error", message: (r.stderr || "check failed").trim().slice(-500) }));
+            } finally {
+              running = false;
+            }
+            return;
+          }
           if (url === "/api/run" && req.method === "POST") {
             res.setHeader("content-type", "application/x-ndjson");
             res.setHeader("cache-control", "no-cache");

@@ -1,4 +1,4 @@
-import { companyKey } from "@jobhunter/core/detect";
+import { careersUrl, companyKey } from "@jobhunter/core/detect";
 import { rowId, type CompanyRow } from "./setup";
 
 /** Hiring systems we can scan today. The rest are recognised and kept as "coming soon". */
@@ -33,8 +33,21 @@ export const ATS_LABEL: Record<string, string> = {
 /** Directory key for a watched company or a directory entry: "ats:slug" (Workday adds shard and site). */
 export const keyOf = (c: { ats?: string; slug?: string; shard?: string; site?: string }) => companyKey({ ats: c.ats ?? "", slug: c.slug ?? "", shard: c.shard, site: c.site });
 
+/** A job's company key: index jobs carry it; scanned job ids start with "ats:slug:". */
+export const jobCompanyKey = (j: { id: string; companyKey?: string }) => j.companyKey ?? j.id.split(":").slice(0, 2).join(":").toLowerCase();
+
 /** What the watchlist needs to know about a company, from any source (suggestion, directory, link). */
 export type CompanyRef = { name: string; ats: string; slug: string; region?: string; shard?: string; site?: string; careers_url: string };
+
+/**
+ * The company behind a job, to add or mute it from the Radar. A directory job links to the careers
+ * page already; a scanned one gets the board's address. (Workday jobs aren't scanned yet, so no shard/site.)
+ */
+export function refOfJob(j: { id: string; ats: string; company: string; url: string; companyKey?: string; estimated?: boolean }): CompanyRef {
+  const key = jobCompanyKey(j);
+  const slug = key.slice(key.indexOf(":") + 1);
+  return { name: j.company, ats: j.ats, slug, careers_url: j.estimated ? j.url : careersUrl({ ats: j.ats as never, slug }) || j.url };
+}
 
 /** A directory entry as far as grouping needs it. */
 type Board = { key: string; name: string; ats: string; status: string; open_jobs: number | null };

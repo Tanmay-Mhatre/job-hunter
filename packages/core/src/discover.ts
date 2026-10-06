@@ -72,10 +72,11 @@ export function findCandidates(profile: Profile, index: IndexFile, now = new Dat
   const generatedAt = new Date(index.generated_at);
   const out: Candidate[] = [];
   for (const company of index.companies) {
+    const fetchedAt = company.fetched_at ? new Date(company.fetched_at) : generatedAt;
     for (const [title, location, wp, age, count] of company.rows) {
       const workplace = wp as Workplace;
       if (gateOf({ title, location, workplace }, profile)) continue;
-      const postedAt = rowPostedAt(age, generatedAt)?.toISOString();
+      const postedAt = rowPostedAt(age, fetchedAt)?.toISOString();
       const { score, why } = scoreJob({ title, location, workplace, description: "", postedAt }, profile, now);
       out.push({ company, title, location, workplace, postedAt, count, estimate: score, why });
     }
@@ -123,10 +124,13 @@ export function pickChecks(
     if (opts.tracked.has(key) || opts.muted.has(key) || !connectors[c.company.ats as CompanyRef["ats"]]) continue;
     const last = opts.ledger.companies[key]?.lastChecked;
     if (last && now - Date.parse(last) < CHECK_AGAIN_AFTER_DAYS * DAY_MS) continue;
-    out.push(toRef({ ...c.company, ats: c.company.ats as CompanyRef["ats"], region: c.company.region as CompanyRef["region"] }));
+    out.push(companyRefOf(c.company));
   }
   return out;
 }
+
+/** An index company as a company to fetch. */
+export const companyRefOf = (c: IndexedCompany): CompanyRef => toRef({ ...c, ats: c.ats as CompanyRef["ats"], region: c.region as CompanyRef["region"] });
 
 /** Record this scan's live checks in the ledger (failures too, so a broken board isn't retried every scan). */
 export function recordChecks(
@@ -195,6 +199,7 @@ export function toIndexJobs(
       }),
       estimated: true,
       companyKey: key,
+      ...(c.company.tags?.length ? { industries: c.company.tags } : {}),
     });
   }
   return out;

@@ -186,6 +186,8 @@ async function cmdRun(args: string[]): Promise<number> {
       data: { type: "string", short: "d", default: "data" },
       "dry-run": { type: "boolean", default: false },
       progress: { type: "string" },
+      /** Check just this directory company now ("ats:slug"); repeatable. */
+      check: { type: "string", multiple: true },
     },
   });
   if (values.progress === "ndjson") return runNdjson(values);
@@ -203,6 +205,7 @@ download the directory with: pnpm jobhunter directory update, or add one with: p
   const { result, merged, summary, checks, indexJobs } = await scan(config, {
     dataDir,
     only: values.only,
+    checkKeys: values.check,
     dryRun: values["dry-run"],
     onStart: (names, extra) =>
       console.error(
@@ -248,12 +251,13 @@ const emit = (event: Record<string, unknown>) => process.stdout.write(`${JSON.st
 `);
 
 /** Machine-readable run for the dashboard: start, one line per company, done (or error). */
-async function runNdjson(values: { config?: string; only?: string[]; data: string; "dry-run": boolean }): Promise<number> {
+async function runNdjson(values: { config?: string; only?: string[]; check?: string[]; data: string; "dry-run": boolean }): Promise<number> {
   try {
     const { config } = loadConfig(values.config);
     const { result, merged, summary, checks, indexJobs } = await scan(config, {
       dataDir: resolve(values.data),
       only: values.only,
+      checkKeys: values.check,
       dryRun: values["dry-run"],
       onStart: (companies, extra) => emit({ type: "start", companies, checking: extra.length }),
       onCompanyDone: (h) => emit({ type: "company", ...h }),

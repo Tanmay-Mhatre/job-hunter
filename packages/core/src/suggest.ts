@@ -5,14 +5,15 @@ import type { Profile } from "./schema";
 import { gateOf, scoreJob } from "./score";
 import { matchesAny, matchesTerm, termRegex } from "./text";
 
-/** [title, location, workplace, ageDays, count] — one merged row per (title, location). ageDays is as of the index's generated_at. */
+/** [title, location, workplace, ageDays, count] — one merged row per (title, location). ageDays is as of the company's fetched_at. */
 export type IndexRow = [string, string, string, number | null, number];
 
 const DAY_MS = 86_400_000;
 
 /**
- * When an index row was posted. Ages are counted at build time, so they are anchored to the index's
- * generated_at (not to now): a row "2 days old" in an index built 5 days ago is 7 days old today.
+ * When an index row was posted. Ages are counted when the company was fetched, so they are anchored
+ * to that (not to now): a row "2 days old" fetched 5 days ago is 7 days old today. Pass the company's
+ * fetched_at, or the index's generated_at for indexes published without it.
  */
 export function rowPostedAt(ageDays: number | null, generatedAt: Date): Date | undefined {
   return ageDays === null ? undefined : new Date(generatedAt.getTime() - ageDays * DAY_MS);
@@ -29,6 +30,8 @@ export type IndexedCompany = BoardPlace & {
   careers_url: string;
   open_jobs: number;
   rows: IndexRow[];
+  /** When its jobs were fetched (row ages count from here); older indexes don't have it. */
+  fetched_at?: string;
   /** Topic word -> share of the company's jobs mentioning it (only when descriptions were indexed). */
   terms?: Record<string, number>;
   tier?: "curated" | "dump";
@@ -122,7 +125,7 @@ export function suggestCompanies(
     exclude?: ReadonlySet<string>;
     limit?: number;
     now?: Date;
-    /** When the index was built; row ages count from here. Defaults to now. */
+    /** When the index was built; row ages count from here unless a company has its own fetched_at. Defaults to now. */
     indexGeneratedAt?: Date;
     others?: readonly DirectoryCompany[];
     supported?: ReadonlySet<string>;
@@ -176,12 +179,13 @@ export function suggestCompanies(
     const elsewhereExamples: string[] = [];
     const elsewherePlaces = new Map<string, number>();
     const ownPlaces = new Map<string, number>();
+    const fetchedAt = c.fetched_at ? new Date(c.fetched_at) : generatedAt;
     for (const [title, location, workplace, age, count] of c.rows) {
       // Cheap gate check first; full scoring only for the few jobs that pass.
       const gate = gateOf({ title, location, workplace: workplace as never }, profile);
       const example = location ? `${title} (${location})` : title;
       if (!gate) {
-        const posted = rowPostedAt(age, generatedAt);
+        const posted = rowPostedAt(age, fetchedAt);
         matches += count;
         if (posted && now.getTime() - posted.getTime() <= 7 * DAY_MS) fresh += count;
         scores.push(scoreJob({ title, location, workplace: workplace as never, description: "", postedAt: posted?.toISOString() }, profile, now).score);

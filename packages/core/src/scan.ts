@@ -1,6 +1,6 @@
 import { companyKey } from "./connectors";
 import { mergeHistory, type MergeResult } from "./diff";
-import { findCandidates, keptChecked, pickChecks, readIndex, readLedger, recordChecks, toIndexJobs, writeDiscover, writeLedger } from "./discover";
+import { companyRefOf, findCandidates, keptChecked, pickChecks, readIndex, readLedger, recordChecks, toIndexJobs, writeDiscover, writeLedger } from "./discover";
 import type { HttpClient } from "./http";
 import { runRadar, type RunResult } from "./run";
 import type { CompanyHealth, CompanyRef, Config, RunSummary } from "./schema";
@@ -10,6 +10,8 @@ export type ScanOptions = {
   dataDir: string;
   /** Only these companies (name or slug); skips discovery. */
   only?: string[];
+  /** Check just these directory companies ("ats:slug" keys), nothing else ("Check now" on the Radar). */
+  checkKeys?: string[];
   /** Run and report, save nothing. */
   dryRun?: boolean;
   http?: HttpClient;
@@ -39,18 +41,24 @@ export async function scan(config: Config, opts: ScanOptions): Promise<ScanResul
   const previous = readJobs(opts.dataDir);
   const tracked = new Set(config.companies.map(companyKey));
   const muted = new Set(config.companies_muted);
+  const checkOnly = !!opts.checkKeys?.length;
   const discover = !opts.only?.length;
   const index = discover ? readIndex(opts.dataDir) : undefined;
   let ledger = readLedger(opts.dataDir);
 
   const candidates = index ? findCandidates(config.profile, index, now) : [];
-  const checks = pickChecks(candidates, { tracked, muted, ledger, limit: index ? config.discovery.check_per_scan : 0, now });
+  const wanted = new Set(opts.checkKeys?.map((k) => k.toLowerCase()));
+  const checks = checkOnly
+    ? (index?.companies ?? []).filter((c) => wanted.has(c.key) && !tracked.has(c.key)).map(companyRefOf)
+    : pickChecks(candidates, { tracked, muted, ledger, limit: index ? config.discovery.check_per_scan : 0, now });
 
   const only = opts.only?.map((s) => s.toLowerCase());
-  const yours = config.companies.filter((c) => c.enabled && (!only?.length || only.includes(c.name.toLowerCase()) || only.includes(c.slug.toLowerCase())));
+  const yours = checkOnly ? [] : config.companies.filter((c) => c.enabled && (!only?.length || only.includes(c.name.toLowerCase()) || only.includes(c.slug.toLowerCase())));
   opts.onStart?.([...yours.map((c) => c.name), ...checks.map((c) => c.name)], checks);
 
-  const result = await runRadar(config, { http: opts.http, now, only: opts.only, previous, checks, onCompanyDone: opts.onCompanyDone });
+  // "Check now" fetches only the asked-for companies; your own jobs are left as they are.
+  const result = await runRadar(checkOnly ? { ...config, companies: [] } : config, { http: opts.http, now, only: opts.only, previous, checks, onCompanyDone: opts.onCompanyDone });
+  if (checkOnly) result.partial = true;
 
   ledger = recordChecks(ledger, checks, result.health, now);
   // Checked companies keep their jobs between checks, unless you've added (or muted) them since.
@@ -58,7 +66,7 @@ export async function scan(config: Config, opts: ScanOptions): Promise<ScanResul
   const merged = mergeHistory(previous, result, [...config.companies, ...kept]);
   if (opts.dryRun) return { result, merged, checks };
 
-  const summary = saveRun(opts.dataDir, config, result, merged);
+  const summary = saveRun(opts.dataDir, config, result, merged, { record: !checkOnly });
   writeLedger(opts.dataDir, ledger);
   let indexJobs: number | undefined;
   if (index) {
