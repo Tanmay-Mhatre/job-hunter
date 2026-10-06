@@ -116,7 +116,21 @@ for (const [key, v] of index) {
 }
 /** The seed list's hand-written name beats one from a source list or the board's address ("Saxobank" -> "Saxo Bank"). */
 const nameOf = (d: Dir) => seedBoards.get(d.key)?.name || d.name;
-const tagsOf = (key: string) => (tags.has(key) ? { tags: [...tags.get(key)!.keys()].sort() } : {});
+/**
+ * `tags`: industries a list or the seed list puts the company in. `title_tags`: industries only its job
+ * titles point to. Titles say what a company hires for, not what it is: Anthropic's say "Inference", not
+ * "AI", while a label with an AI product team has "AI" in many titles. So the two are kept apart.
+ */
+const tagsOf = (key: string) => {
+  const m = tags.get(key);
+  if (!m) return {};
+  const fromLists = [...m].filter(([, src]) => [...src].some((s) => s !== "job titles")).map(([id]) => id);
+  const fromTitles = [...m].filter(([, src]) => [...src].every((s) => s === "job titles")).map(([id]) => id);
+  return {
+    ...(fromLists.length ? { tags: fromLists.sort() } : {}),
+    ...(fromTitles.length ? { title_tags: fromTitles.sort() } : {}),
+  };
+};
 
 // ---- user additions (Add by link) ----
 const additions = readJson<{ companies: Addition[] }>(join(OUT, "additions.json"), { companies: [] }).companies.filter((a) => !byKey.has(a.key));
@@ -197,9 +211,12 @@ writeFileSync(
 const perIndustry = INDUSTRIES.map((i) => {
   const n = slim.filter((c) => c.tags?.includes(i.id)).length;
   const scannable = slim.filter((c) => c.tags?.includes(i.id) && supported.has(c.ats)).length;
-  return `${i.id} ${n} (${scannable} scannable)`;
+  const hiring = slim.filter((c) => c.title_tags?.includes(i.id)).length;
+  return `${i.id} ${n} (${scannable} scannable) + ${hiring} from job titles only`;
 });
 console.log(
   `Published to ${OUT}: directory ${slim.length} companies (${additions.length} added by you, ${unverified.length} seed companies not scannable yet), index ${indexed.length} companies (${indexed.reduce((s, c) => s + c.rows.length, 0)} job rows).`,
 );
-console.log(`Tagged ${slim.filter((c) => c.tags?.length).length} companies by industry:\n  ${perIndustry.join("\n  ")}`);
+console.log(
+  `Tagged ${slim.filter((c) => c.tags?.length).length} companies by industry (+${slim.filter((c) => !c.tags?.length && c.title_tags?.length).length} from job titles only):\n  ${perIndustry.join("\n  ")}`,
+);

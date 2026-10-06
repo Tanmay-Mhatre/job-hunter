@@ -5,8 +5,18 @@ import type { Profile } from "./schema";
 import { gateOf, scoreJob } from "./score";
 import { matchesAny, matchesTerm, termRegex } from "./text";
 
-/** [title, location, workplace, ageDays, count] — one merged row per (title, location). */
+/** [title, location, workplace, ageDays, count] — one merged row per (title, location). ageDays is as of the index's generated_at. */
 export type IndexRow = [string, string, string, number | null, number];
+
+const DAY_MS = 86_400_000;
+
+/**
+ * When an index row was posted. Ages are counted at build time, so they are anchored to the index's
+ * generated_at (not to now): a row "2 days old" in an index built 5 days ago is 7 days old today.
+ */
+export function rowPostedAt(ageDays: number | null, generatedAt: Date): Date | undefined {
+  return ageDays === null ? undefined : new Date(generatedAt.getTime() - ageDays * DAY_MS);
+}
 
 /** Where a board lives, beyond ats + slug (EU region; Workday shard and site). */
 type BoardPlace = { region?: string; shard?: string; site?: string };
@@ -22,8 +32,10 @@ export type IndexedCompany = BoardPlace & {
   /** Topic word -> share of the company's jobs mentioning it (only when descriptions were indexed). */
   terms?: Record<string, number>;
   tier?: "curated" | "dump";
-  /** Industry ids (catalog/industries.ts) from source lists, job titles and the seed list. */
+  /** Industry ids (catalog/industries.ts) a source list or the seed list puts the company in. */
   tags?: string[];
+  /** Industry ids only the company's job titles point to: what it hires for, not necessarily what it is. */
+  title_tags?: string[];
 };
 
 /** A directory company without job rows: no openings right now, or not indexed yet. */
@@ -54,6 +66,8 @@ export type CompanySuggestion = BoardPlace & {
   topics: string[];
   /** The user's industries this company is in (taxonomy ids). */
   industries: string[];
+  /** The user's industries only its job titles point to ("hires for AI roles"); weaker than `industries`. */
+  hires_for: string[];
   reasons: string[];
 };
 
@@ -104,9 +118,18 @@ function top(counts: Map<string, number>, n: number): string[] {
 export function suggestCompanies(
   profile: Profile,
   companies: readonly IndexedCompany[],
-  opts: { exclude?: ReadonlySet<string>; limit?: number; now?: Date; others?: readonly DirectoryCompany[]; supported?: ReadonlySet<string> } = {},
+  opts: {
+    exclude?: ReadonlySet<string>;
+    limit?: number;
+    now?: Date;
+    /** When the index was built; row ages count from here. Defaults to now. */
+    indexGeneratedAt?: Date;
+    others?: readonly DirectoryCompany[];
+    supported?: ReadonlySet<string>;
+  } = {},
 ): SuggestResult {
   const now = opts.now ?? new Date();
+  const generatedAt = opts.indexGeneratedAt ?? now;
   const near = nearRegionTerms(profile);
   const places = profile.locations.include;
   const keywords = Object.keys(profile.keywords);
@@ -118,8 +141,12 @@ export function suggestCompanies(
   const topicShare = (topics: string[]) => (topWeights > 0 ? Math.min(1, topics.reduce((s, k) => s + (profile.keywords[k] ?? 0), 0) / topWeights) : 0);
   const supported = opts.supported ?? new Set(Object.keys(connectors));
   const wanted = new Set(profile.industries);
-  /** The user's industries a company is in. */
-  const fitOf = (tags: readonly string[] | undefined) => (tags ?? []).filter((t) => wanted.has(t));
+  /** The user's industries a company is in, and the ones only its job titles point to. */
+  const fitOf = (c: { tags?: readonly string[]; title_tags?: readonly string[] }) => {
+    const industries = (c.tags ?? []).filter((t) => wanted.has(t));
+    return { industries, hires_for: (c.title_tags ?? []).filter((t) => wanted.has(t) && !industries.includes(t)) };
+  };
+  const allTags = (c: { tags?: readonly string[]; title_tags?: readonly string[] }) => [...(c.tags ?? []), ...(c.title_tags ?? [])];
   /** For each industry tag, the user's highest-weighted keyword it stands for (one per tag, so synonyms don't stack). */
   const tagTopics = (tags: readonly string[] | undefined) => {
     const out: string[] = [];
@@ -154,10 +181,10 @@ export function suggestCompanies(
       const gate = gateOf({ title, location, workplace: workplace as never }, profile);
       const example = location ? `${title} (${location})` : title;
       if (!gate) {
-        const postedAt = age === null ? undefined : new Date(now.getTime() - age * 86_400_000).toISOString();
+        const posted = rowPostedAt(age, generatedAt);
         matches += count;
-        if (age !== null && age <= 7) fresh += count;
-        scores.push(scoreJob({ title, location, workplace: workplace as never, description: "", postedAt }, profile, now).score);
+        if (posted && now.getTime() - posted.getTime() <= 7 * DAY_MS) fresh += count;
+        scores.push(scoreJob({ title, location, workplace: workplace as never, description: "", postedAt: posted?.toISOString() }, profile, now).score);
         if (examples.length < 3) examples.push(example);
       } else if (gate === "location") {
         if (workplace === "remote" || matchesAny(location, near)) {
@@ -184,12 +211,12 @@ export function suggestCompanies(
     const titles = c.rows.map((r) => r[0]).join(" | ");
     const minHits = Math.max(1, Math.ceil(c.rows.length * 0.05));
     const titleTopics = keywordRes.filter(([, re]) => (titles.match(re)?.length ?? 0) >= minHits).map(([k]) => k);
-    const topics = [...new Set([...keywords.filter((k) => (c.terms?.[k] ?? 0) > 0), ...titleTopics, ...tagTopics(c.tags)])].sort(
+    const topics = [...new Set([...keywords.filter((k) => (c.terms?.[k] ?? 0) > 0), ...titleTopics, ...tagTopics(allTags(c))])].sort(
       (a, b) => (profile.keywords[b] ?? 0) - (profile.keywords[a] ?? 0),
     );
 
-    const industries = fitOf(c.tags);
-    const base = { ...boardOf(c), open_jobs: c.open_jobs, tier: c.tier, topics, industries };
+    const { industries, hires_for } = fitOf(c);
+    const base = { ...boardOf(c), open_jobs: c.open_jobs, tier: c.tier, topics, industries, hires_for };
     const counts = { new_matches: fresh, near_misses: nearMisses, elsewhere, in_your_places: inPlaces };
 
     if (matches) {
@@ -200,11 +227,13 @@ export function suggestCompanies(
         [10 * Math.min(1, nearMisses / 3), 10],
       ];
       if ((c.terms || topics.length) && topWeights > 0) parts.push([20 * topicShare(topics), 20]);
-      // Being in an industry the user picked is worth as much as a strong match count.
-      if (wanted.size) parts.push([industries.length ? 30 : 0, 30]);
+      // Being in an industry the user picked is worth as much as a strong match count; only hiring
+      // for it (job titles) is worth a third of that.
+      if (wanted.size) parts.push([industries.length ? 30 : hires_for.length ? INDUSTRY_FROM_TITLES_POINTS : 0, 30]);
       const score = Math.round((parts.reduce((s, [p]) => s + p, 0) / parts.reduce((s, [, m]) => s + m, 0)) * 100);
       const reasons = [`${plural(matches, "open role")} ${matches === 1 ? "matches" : "match"} you`];
       if (industries.length) reasons.unshift(industryReason(industries));
+      else if (hires_for.length) reasons.unshift(hiresReason(hires_for));
       if (fresh) reasons.push(`${fresh} new this week`);
       if (topics.length) reasons.push(`Your topics: ${topics.slice(0, 3).join(", ")}`);
       hiring.push({ ...base, ...counts, score, matches, examples, reasons });
@@ -223,8 +252,8 @@ export function suggestCompanies(
   const notScannable: CompanySuggestion[] = [];
   for (const c of opts.others ?? []) {
     if (opts.exclude?.has(c.key)) continue;
-    const topics = tagTopics(c.tags);
-    const industries = fitOf(c.tags);
+    const topics = tagTopics(allTags(c));
+    const { industries, hires_for } = fitOf(c);
     const s = watchSuggestion(
       {
         ...boardOf(c),
@@ -232,6 +261,7 @@ export function suggestCompanies(
         tier: c.tier,
         topics,
         industries,
+        hires_for,
         matches: 0,
         new_matches: 0,
         near_misses: 0,
@@ -258,7 +288,11 @@ export function suggestCompanies(
   };
 }
 
-const industryReason = (ids: string[]) => `Your industry: ${ids.map((id) => INDUSTRY_BY_ID.get(id)?.label ?? id).join(", ")}`;
+const industryLabels = (ids: string[]) => ids.map((id) => INDUSTRY_BY_ID.get(id)?.label ?? id).join(", ");
+const industryReason = (ids: string[]) => `Your industry: ${industryLabels(ids)}`;
+const hiresReason = (ids: string[]) => `Hires for ${industryLabels(ids)} roles`;
+/** Points (of 30) for an industry only the job titles point to. */
+const INDUSTRY_FROM_TITLES_POINTS = 10;
 
 /** Identity fields a suggestion carries over (enough to add the company to a watchlist). */
 function boardOf(c: DirectoryCompany | IndexedCompany) {
@@ -280,9 +314,10 @@ function watchSuggestion(
 ): CompanySuggestion | null {
   const shortlist = s.tier === "curated";
   const industry = s.industries.length > 0;
-  if (!industry && !shortlist && !s.topics.length && !s.near_misses && !s.elsewhere && !s.in_your_places) return null;
+  const hires = s.hires_for.length > 0;
+  if (!industry && !hires && !shortlist && !s.topics.length && !s.near_misses && !s.elsewhere && !s.in_your_places) return null;
   const raw =
-    (industry ? 30 : 0) +
+    (industry ? 30 : hires ? INDUSTRY_FROM_TITLES_POINTS : 0) +
     (shortlist ? 25 : 0) +
     (s.topics.length ? 25 * Math.max(0.4, extra.topicShare) : 0) +
     15 * logScale(s.elsewhere, 5) +
@@ -291,6 +326,7 @@ function watchSuggestion(
   const score = Math.min(100, Math.round(raw));
   const reasons: string[] = [];
   if (industry) reasons.push(industryReason(s.industries));
+  else if (hires) reasons.push(hiresReason(s.hires_for));
   if (shortlist) reasons.push("On your shortlist");
   if (s.near_misses) reasons.push(`${plural(s.near_misses, "similar role")} nearby or remote`);
   if (s.elsewhere) reasons.push(`Hires for your roles in ${extra.elsewherePlaces.join(", ")}`);

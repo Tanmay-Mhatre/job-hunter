@@ -1,7 +1,7 @@
 import { INDUSTRY_BY_ID } from "@jobhunter/core/catalog/industries";
 import { ChevronDown, Clock, ExternalLink, EyeOff, LoaderCircle, Search, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ATS_LABEL, keyOf, SUPPORTED, toRow, type CompanyRef } from "../lib/companies";
+import { ATS_LABEL, groupBoards, keyOf, SUPPORTED, toRow, type CompanyRef } from "../lib/companies";
 import { canRunLocally } from "../lib/data";
 import type { Draft } from "../lib/setup";
 import { load, save } from "../lib/storage";
@@ -413,6 +413,50 @@ function SuggestionCard({ s, added, onAdd, onRemove, onHide }: { s: Suggestion; 
 
 // ---------- browse the whole directory ----------
 
+function BoardLine({ c, watched, onAdd, onRemove, sub }: { c: DirCompany; watched: Set<string>; onAdd: (c: DirCompany) => void; onRemove: (key: string) => void; sub?: boolean }) {
+  const soon = !SUPPORTED.has(c.ats);
+  return (
+    <div className={cx("flex items-center gap-3", sub && "pl-4")}>
+      <div className="min-w-0 flex-1">
+        <p className={cx("flex items-center gap-1.5 text-sm", sub ? "text-muted" : "font-semibold")}>
+          <span className="truncate">{sub ? `${c.name} on ${ATS_LABEL[c.ats] ?? c.ats}` : c.name}</span>
+          <a href={c.careers_url} target="_blank" rel="noreferrer" className="shrink-0 text-muted hover:text-accent" aria-label={`${c.name} careers page`}>
+            <ExternalLink className="size-3.5" />
+          </a>
+        </p>
+        <p className="text-xs text-muted">
+          {[
+            !sub && (ATS_LABEL[c.ats] ?? c.ats),
+            c.open_jobs ? `${c.open_jobs.toLocaleString()} open jobs` : c.status === "dormant" ? "no open jobs right now" : c.status === "unverified" ? "not checked yet" : null,
+            c.origin === "user" && "added by you",
+            soon && "support coming soon",
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
+      </div>
+      <AddButton added={watched.has(c.key)} onAdd={() => onAdd(c)} onRemove={() => onRemove(c.key)} soon={soon} />
+    </div>
+  );
+}
+
+/** A company and, folded under it, its other live boards (or ones you watch). */
+function BrowseRow({ lead, others, ...line }: { lead: DirCompany; others: DirCompany[]; watched: Set<string>; onAdd: (c: DirCompany) => void; onRemove: (key: string) => void }) {
+  const [open, setOpen] = useState(() => others.some((o) => line.watched.has(o.key)));
+  return (
+    <li className="space-y-2 px-3 py-2.5">
+      <BoardLine c={lead} {...line} />
+      {others.length > 0 && (
+        <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="inline-flex items-center gap-1 text-xs font-medium text-accent">
+          <ChevronDown className={cx("size-3.5 transition-transform", !open && "-rotate-90")} />
+          {others.length} other board{others.length === 1 ? "" : "s"}
+        </button>
+      )}
+      {open && others.map((o) => <BoardLine key={o.key} c={o} sub {...line} />)}
+    </li>
+  );
+}
+
 function Browse({ watched, onAdd, onRemove }: { watched: Set<string>; onAdd: (c: DirCompany) => void; onRemove: (key: string) => void }) {
   const [all, setAll] = useState<DirCompany[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -438,7 +482,7 @@ function Browse({ watched, onAdd, onRemove }: { watched: Set<string>; onAdd: (c:
   const results = useMemo(() => {
     if (!all) return [];
     const s = q.trim().toLowerCase();
-    return all
+    const sorted = all
       .filter((c) => (!onlyHiring || c.status === "live") && (system === "all" || (system === "supported") === SUPPORTED.has(c.ats)))
       .filter((c) => !s || c.name.toLowerCase().includes(s) || c.slug.toLowerCase().includes(s))
       .sort(
@@ -447,7 +491,9 @@ function Browse({ watched, onAdd, onRemove }: { watched: Set<string>; onAdd: (c:
           Number(b.tier === "curated") - Number(a.tier === "curated") ||
           (b.open_jobs ?? 0) - (a.open_jobs ?? 0),
       );
-  }, [all, q, onlyHiring, system]);
+    // One row per company: its other boards fold under it.
+    return groupBoards(sorted, watched);
+  }, [all, q, onlyHiring, system, watched]);
 
   // Back to page 1 whenever the search or filters change.
   useEffect(() => setPage(1), [q, onlyHiring, system]);
@@ -496,33 +542,9 @@ function Browse({ watched, onAdd, onRemove }: { watched: Set<string>; onAdd: (c:
       </div>
       <Pagination page={page} pageSize={BROWSE_PAGE} total={results.length} onPage={goTo} />
       <ul className="divide-y divide-line rounded-xl border border-line">
-        {pageItems.map((c) => {
-          const soon = !SUPPORTED.has(c.ats);
-          return (
-            <li key={c.key} className="flex items-center gap-3 px-3 py-2.5">
-              <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-1.5 text-sm font-semibold">
-                  <span className="truncate">{c.name}</span>
-                  <a href={c.careers_url} target="_blank" rel="noreferrer" className="shrink-0 text-muted hover:text-accent" aria-label={`${c.name} careers page`}>
-                    <ExternalLink className="size-3.5" />
-                  </a>
-                </p>
-                <p className="text-xs text-muted">
-                  {[
-                    ATS_LABEL[c.ats] ?? c.ats,
-                    c.open_jobs ? `${c.open_jobs.toLocaleString()} open jobs` : c.status === "dormant" ? "no open jobs right now" : c.status === "unverified" ? "not checked yet" : null,
-                    c.tier === "curated" && "on your shortlist",
-                    c.origin === "user" && "added by you",
-                    soon && "support coming soon",
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-              </div>
-              <AddButton added={watched.has(c.key)} onAdd={() => onAdd(c)} onRemove={() => onRemove(c.key)} soon={soon} />
-            </li>
-          );
-        })}
+        {pageItems.map((g) => (
+          <BrowseRow key={g.lead.key} lead={g.lead} others={g.others} watched={watched} onAdd={onAdd} onRemove={onRemove} />
+        ))}
         {results.length === 0 && <li className="px-3 py-6 text-center text-sm text-muted">No company matches “{q}”. Try Add by link.</li>}
       </ul>
       {results.length > BROWSE_PAGE && <Pagination page={page} pageSize={BROWSE_PAGE} total={results.length} onPage={goTo} />}

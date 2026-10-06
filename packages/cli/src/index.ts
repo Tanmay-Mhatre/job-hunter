@@ -99,7 +99,12 @@ async function cmdCompanies(args: string[]): Promise<number> {
   // Leave out companies already watched and ones the user said no to.
   const exclude = new Set([...config.companies.map(companyKey), ...hidden.map((h) => h.toLowerCase())]);
   const started = Date.now();
-  const result = suggestCompanies(config.profile, index.companies, { exclude, others, limit: Number(values.limit) || 30 });
+  const result = suggestCompanies(config.profile, index.companies, {
+    exclude,
+    others,
+    limit: Number(values.limit) || 30,
+    indexGeneratedAt: new Date(index.generated_at),
+  });
   if (values.json) {
     console.log(JSON.stringify({ ...result, index_generated_at: index.generated_at, took_ms: Date.now() - started }));
     return 0;
