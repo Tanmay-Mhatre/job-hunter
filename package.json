@@ -13,6 +13,7 @@
     "dev": "pnpm --filter @jobhunter/web dev",
     "build": "pnpm --filter @jobhunter/web build",
     "jobhunter": "tsx packages/cli/src/index.ts",
+    "hooks:install": "git config core.hooksPath scripts/hooks",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit && tsc --noEmit -p apps/web && tsc --noEmit -p tsconfig.scripts.json",

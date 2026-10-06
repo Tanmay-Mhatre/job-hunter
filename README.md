@@ -137,7 +137,10 @@ Job Hunter only reads public job postings that companies publish for their own c
 ```bash
 pnpm check        # typecheck + tests
 pnpm test:watch
+pnpm hooks:install  # once per clone: no direct pushes to main, and pnpm check before every push
 ```
+
+Changes go through pull requests. Label a PR `automerge` and the Automerge workflow merges it once CI's `check` passes on its latest commit (a free stand-in for branch protection, which private repos on GitHub Free don't get). It never merges a red or running PR, but doesn't stop a manual merge.
 
 ```
 packages/core   connectors, normalise, score, run, history (shared Job types)
