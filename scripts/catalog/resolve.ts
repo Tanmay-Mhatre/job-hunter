@@ -6,6 +6,11 @@
  *
  *   pnpm exec tsx scripts/catalog/resolve.ts [--force] [--only "eToro,Plus500"]
  *     -> scripts/catalog/out/resolved.json (kept between runs; results younger than 30 days are reused)
+ *
+ * --bulk resolves the broad Wikidata list (seeds-bulk.ts) instead, a rotating batch per run
+ * (--limit, default 2000): never-resolved companies first, in a fixed pseudo-random order so every
+ * batch is a fair sample, then the oldest results. Results are reused for 90 days.
+ *     -> scripts/catalog/out/resolved-bulk.json
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -13,13 +18,18 @@ import { fileURLToPath } from "node:url";
 import { atsHints, careersLinks, findBoards, HttpClient, HttpError, type FoundBoard } from "../../packages/core/src/index";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const OUT = join(here, "out", "resolved.json");
+const BULK = process.argv.includes("--bulk");
+const OUT = join(here, "out", BULK ? "resolved-bulk.json" : "resolved.json");
+const SEEDS = BULK ? join(here, "raw", "wikidata", "companies.json") : join(here, "seeds", "industries.json");
+const limitArg = process.argv.indexOf("--limit");
+const LIMIT = limitArg > 0 ? Number(process.argv[limitArg + 1]) : BULK ? 2000 : Infinity;
 const FORCE = process.argv.includes("--force");
 const onlyArg = process.argv.indexOf("--only");
 const ONLY = onlyArg > 0 ? new Set(process.argv[onlyArg + 1]!.split(",").map((s) => s.trim().toLowerCase())) : null;
 const MAX_PAGES = 8;
-const WORKERS = 6;
-const REUSE_DAYS = 30;
+// Every company is a different website, so bulk runs can use more workers without loading any one host.
+const WORKERS = BULK ? 16 : 6;
+const REUSE_DAYS = BULK ? 90 : 30;
 // Some sites only serve a full page to browser-like clients; say who we are anyway.
 const UA = "Mozilla/5.0 (compatible; JobHunter-resolver/0.1; open-source job radar; reads public careers pages)";
 const http = new HttpClient({ retries: 1, hostDelayMs: 1_000, timeoutMs: 15_000, backoffMs: 2_000, userAgent: UA });
@@ -96,6 +106,8 @@ async function resolveSeed(seed: Seed): Promise<Resolved> {
   const fallbacks = [`https://${bare}/careers`, `https://www.${bare}/careers`, `https://careers.${bare}/`, `https://${bare}/en/careers`, `https://${bare}/jobs`, `https://jobs.${bare}/`, `https://${bare}/company/careers`, `https://${bare}/about/careers`];
 
   let pages = 0;
+  /** Pages that answered: a site that loaded but had no careers page is "none", not "error". */
+  let loaded = 0;
   let careersPage: string | undefined;
   let lastError: string | undefined;
   const found: FoundBoard[] = [];
@@ -112,6 +124,7 @@ async function resolveSeed(seed: Seed): Promise<Resolved> {
       pages++;
     }
     if (!page) continue;
+    loaded++;
     const boards = findBoards(page.html, page.url);
     if (/career|jobs|join|vacanc/i.test(page.url)) for (const h of atsHints(page.html)) hints.add(h);
     for (const b of boards) if (!found.some((f) => f.key === b.key)) found.push(b);
@@ -135,17 +148,30 @@ async function resolveSeed(seed: Seed): Promise<Resolved> {
     };
   }
   if (careersPage) return { ...base, status: "custom", careers_url: careersPage, ...(hints.size ? { hints: [...hints] } : {}), pages };
-  return { ...base, status: lastError && pages >= MAX_PAGES - 1 ? "error" : "none", ...(lastError ? { error: lastError.slice(0, 160) } : {}), pages };
+  return { ...base, status: lastError && !loaded ? "error" : "none", ...(lastError ? { error: lastError.slice(0, 160) } : {}), pages };
+}
+
+/** A fixed pseudo-random rank per name (FNV-1a), so batches are a fair sample and stable across runs. */
+function sampleOrder(name: string): number {
+  let h = 0x811c9dc5;
+  for (const ch of name.toLowerCase()) h = Math.imul(h ^ ch.charCodeAt(0), 0x01000193) >>> 0;
+  return h;
 }
 
 async function main() {
-  const seeds = (JSON.parse(readFileSync(join(here, "seeds", "industries.json"), "utf8")) as { companies: Seed[] }).companies;
+  if (!existsSync(SEEDS)) throw new Error(`${SEEDS} missing${BULK ? " (run: pnpm catalog:seeds-bulk)" : ""}`);
+  const seeds = (JSON.parse(readFileSync(SEEDS, "utf8")) as { companies: Seed[] }).companies;
   const previous = existsSync(OUT) ? (JSON.parse(readFileSync(OUT, "utf8")) as { companies: Resolved[] }).companies : [];
   const byName = new Map(previous.map((r) => [r.name.toLowerCase(), r]));
   const fresh = (r: Resolved | undefined) => r && r.status !== "error" && Date.now() - Date.parse(r.resolved_at) < REUSE_DAYS * 86_400_000;
 
-  const todo = seeds.filter((s) => (ONLY ? ONLY.has(s.name.toLowerCase()) : FORCE || !fresh(byName.get(s.name.toLowerCase()))));
-  console.error(`${seeds.length} seeds, ${todo.length} to resolve`);
+  const due = seeds.filter((s) => (ONLY ? ONLY.has(s.name.toLowerCase()) : FORCE || !fresh(byName.get(s.name.toLowerCase()))));
+  const age = (s: Seed) => {
+    const r = byName.get(s.name.toLowerCase());
+    return r ? Date.parse(r.resolved_at) : 0;
+  };
+  const todo = due.sort((a, b) => age(a) - age(b) || sampleOrder(a.name) - sampleOrder(b.name)).slice(0, LIMIT);
+  console.error(`${seeds.length} seeds, ${due.length} due, resolving ${todo.length}`);
   let done = 0;
   const queue = [...todo];
   await Promise.all(

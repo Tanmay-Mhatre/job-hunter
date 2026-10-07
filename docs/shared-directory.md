@@ -20,7 +20,9 @@ user is ever uploaded.
                                                    directory.json.gz, index.json.gz
                                                    ▲ every Monday
                                                 Weekly rebuild workflow
-                                                   public lists + contributions + seed list
+                                                   public lists + our crawls (Common Crawl, Wayback)
+                                                   + contributions + seeds (industry list, Wikidata)
+                                                   + boards found by trying known companies elsewhere
                                                    → check → index → tag → publish → release
 ```
 
@@ -33,9 +35,30 @@ user is ever uploaded.
 | Contribution inbox | `services/contribute` | Cloudflare Worker. `POST /v1/contributions` (public, rate-limited, shape-checked); `GET /v1/pending` and `POST /v1/ack` for the workflow (token). |
 | Contributions workflow | `.github/workflows/directory-contributions.yml` | Every 3 hours: accept, publish incrementally, commit `contributions.json`, acknowledge. |
 | Weekly rebuild | `.github/workflows/directory-rebuild.yml` | Full rebuild and a dated release; saves its working state as the `state` release so the next run skips recently checked boards. |
+| Finding more companies | `scripts/catalog/` | See [Coverage](#coverage) below. |
 | Public directory repo | `Tanmay-Mhatre/job-hunter-directory` | Releases (the files apps download), `contributions.json`, `coverage.md`, attribution. |
 
 Overrides: `JOBHUNTER_DIRECTORY_URL` (download base) and `JOBHUNTER_CONTRIBUTE_URL` (inbox) point an install at your own copies.
+
+## Coverage
+
+The goal is to hold at least 90% of the companies on each hiring system the directory tracks
+(Greenhouse, Lever, Ashby; at least 80% for SmartRecruiters and Workday). The weekly rebuild grows the list from five directions:
+
+| Step | Script | What it adds | Per run |
+|---|---|---|---|
+| Common Crawl URL index | `commoncrawl.ts --per-run 3` | Board URLs in the last ~24 crawls, including the boards' API URLs. Incremental: only crawls not read yet. | ≤ 3 crawls |
+| Wayback Machine URL index | `wayback.ts --max-minutes 60` | Board URLs the Internet Archive kept (snapshots from the last 3 years). Resumable; a full pass takes a few weeks, then starts again after 30 days. | 60 min |
+| Wikidata companies | `seeds-bulk.ts`, `resolve.ts --bulk --limit 1500` | About 18k companies (50+ staff or listed, CC0), resolved from their own websites. Results are reused for 90 days. | 1,500 companies |
+| Try known companies elsewhere | `crossprobe.ts --max-minutes 45` | Dead or empty boards (the company usually moved systems), companies whose site had no readable board, and Workday tenants whose site is dead. A board counts only if it is live and its own name matches the company. Attempts are kept for 90 days. | 45 min |
+| Add by link | contributions | Boards users add (see above). | – |
+
+`coverage.md` (in the directory repo) opens with the **Universe** table:
+- **Sample coverage** is the figure the target is measured on: the share of Wikidata companies' live boards that our URL sources already had.
+- **Estimate** is a lower bound from how often the URL sources agree (Chao2).
+- A **hold-one-out** table shows how many live boards only one source lists.
+
+Restricted lists (share-alike or no licence) are only counted, never published. yc-oss/api was left out because it has no licence.
 
 ## What is shared, and what isn't
 
@@ -61,5 +84,5 @@ Never shared: profile, resume, searches, statuses, which jobs you open, IP addre
 ## Cost
 
 Free tiers cover it: Cloudflare Workers + KV (well under the daily limits), GitHub Releases for the
-files (about 7 MB per release), and GitHub Actions minutes for a private repo (roughly 10 hours a
-month: a 1–2 hour weekly rebuild plus short contribution runs).
+files (about 7 MB per release), and GitHub Actions minutes for a private repo (roughly 20 hours a
+month: a 3–5 hour weekly rebuild, most of it the time-boxed discovery steps, plus short contribution runs).

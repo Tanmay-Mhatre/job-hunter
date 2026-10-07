@@ -3,12 +3,16 @@
  * resolve.ts found for each seed, and the published directory; writes out/coverage.md with
  * per-industry coverage and the hiring systems worth building a connector for next.
  *
+ * First section: the Universe (lib/universe.ts), how much of each hiring system the directory
+ * holds, measured on an independent Wikidata sample (resolve.ts --bulk).
+ *
  *   pnpm exec tsx scripts/catalog/coverage.ts [--data <dir>]
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { companyKey, connectors, detectCompany, INDUSTRY_BY_ID } from "../../packages/core/src/index";
+import { SYSTEMS, universe, universeMarkdown } from "./lib/universe";
 import type { Resolved, Seed } from "./resolve";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -46,10 +50,30 @@ const rows: Row[] = seeds.map((seed) => {
   return { seed, outcome: "not found", detail: "no careers page found" };
 });
 
+// ---- universe ----
+const mergedFile = readJson<{ restricted_only?: Record<string, number>; boards: { key: string; ats: string; families: string[] }[] }>(join(here, "out", "merged.json"), { boards: [] });
+const bulk = readJson<{ companies: Resolved[] }>(join(here, "out", "resolved-bulk.json"), { companies: [] }).companies;
+const tracked = new Set<string>(SYSTEMS);
+const universeLines = universeMarkdown(
+  universe({
+    boards: mergedFile.boards,
+    status: new Map(dirList.map((c) => [c.key, c.status])),
+    // Workday counts: the directory lists it though the app has no connector for it yet.
+    sample: bulk.flatMap((r) => (r.board && tracked.has(r.board.ats) ? [companyKey(r.board)] : [])),
+    restrictedOnly: mergedFile.restricted_only ?? {},
+  }),
+);
+const sampleNote = `Independent sample: ${bulk.length.toLocaleString()} Wikidata companies resolved, ${bulk.filter((r) => r.board && tracked.has(r.board.ats)).length} on a system the directory tracks, ${bulk.filter((r) => r.board && !tracked.has(r.board.ats)).length} on another system, ${bulk.filter((r) => r.status === "custom").length} with a careers page we can't read.`;
+
 const OUTCOMES = ["trackable", "not scannable", "custom site", "not found", "unreachable"] as const;
 const industries = [...new Set(seeds.flatMap((s) => s.industries))].sort((a, b) => rows.filter((r) => r.seed.industries.includes(b)).length - rows.filter((r) => r.seed.industries.includes(a)).length);
 
 const lines: string[] = [
+  "# Directory coverage",
+  "",
+  sampleNote,
+  "",
+  ...universeLines,
   "# Coverage of must-have companies",
   "",
   `Seed list: ${seeds.length} companies (scripts/catalog/seeds/industries.json). Resolved ${resolvedList.generated_at?.slice(0, 10) ?? "never"}.`,
@@ -100,5 +124,5 @@ for (const r of rows.filter((x) => x.outcome !== "trackable").sort((a, b) => a.o
   lines.push(`| ${r.seed.name} | ${r.seed.industries.join(", ")} | ${r.outcome}${r.ats ? ` (${r.ats})` : ""} | ${r.detail.replace(/\|/g, "/")} |`);
 }
 writeFileSync(join(here, "out", "coverage.md"), `${lines.join("\n")}\n`);
-console.log(lines.slice(0, 12 + industries.length).join("\n"));
+console.log(lines.slice(0, 16 + universeLines.length + industries.length).join("\n"));
 console.log(`\nWrote ${join(here, "out", "coverage.md")}`);
