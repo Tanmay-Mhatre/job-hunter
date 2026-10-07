@@ -2,40 +2,68 @@
  * Our own independent board list: ask the Common Crawl URL index which job-board URLs it saw,
  * and reduce them to (ats, slug). No page content is downloaded, only index lines.
  *
- *   pnpm exec tsx scripts/catalog/commoncrawl.ts   -> scripts/catalog/raw/commoncrawl/boards.json
+ * Incremental: crawls already read are listed in boards.json and skipped, so the first run reads
+ * the last CRAWLS_TO_USE crawls (slow, once) and each weekly run reads only crawls published since.
+ *
+ * --per-run caps how many new crawls one run reads (the weekly rebuild uses 3, so the first
+ * full backlog spreads over a few weeks).
+ *
+ *   pnpm catalog:crawl [--crawls 24] [--per-run 3]   -> scripts/catalog/raw/commoncrawl/boards.json
  */
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { detectCompany, HttpClient } from "../../packages/core/src/index";
+import { HttpClient } from "../../packages/core/src/index";
+import { BoardSet, type SeenBoard } from "./lib/url-boards";
 
 const here = dirname(fileURLToPath(import.meta.url));
+const OUT = join(here, "raw", "commoncrawl", "boards.json");
 const http = new HttpClient({ retries: 4, hostDelayMs: 1500, timeoutMs: 120_000, backoffMs: 10_000 });
 const INDEX = "https://index.commoncrawl.org";
-const CRAWLS_TO_USE = 2;
+const crawlsArg = process.argv.indexOf("--crawls");
+/** About two years of crawls: boards seen once in that window may still be live. */
+const CRAWLS_TO_USE = crawlsArg > 0 ? Number(process.argv[crawlsArg + 1]) : 24;
+const perRunArg = process.argv.indexOf("--per-run");
+const PER_RUN = perRunArg > 0 ? Number(process.argv[perRunArg + 1]) : Infinity;
 
-/** URL patterns per host; workday tenants are subdomains so they use a domain match. */
+/** URL patterns per host, including the boards' public APIs; workday tenants are subdomains so they use a domain match. */
 const QUERIES: { url: string; matchType?: "domain" }[] = [
   { url: "boards.greenhouse.io/*" },
   { url: "job-boards.greenhouse.io/*" },
   { url: "job-boards.eu.greenhouse.io/*" },
+  { url: "boards-api.greenhouse.io/v1/boards/*" },
   { url: "jobs.lever.co/*" },
   { url: "jobs.eu.lever.co/*" },
+  { url: "api.lever.co/v0/postings/*" },
   { url: "jobs.ashbyhq.com/*" },
+  { url: "api.ashbyhq.com/posting-api/job-board/*" },
   { url: "jobs.smartrecruiters.com/*" },
   { url: "careers.smartrecruiters.com/*" },
+  { url: "api.smartrecruiters.com/v1/companies/*" },
   { url: "myworkdayjobs.com", matchType: "domain" },
 ];
 
-const IGNORE = new Set(["embed", "v1", "api", "jobs", "favicon.ico", "robots.txt", "sitemap.xml", "assets", "static", "_next", "search", "oauth", "login", "privacy", "terms"]);
+type Saved = { generated_at: string; crawls: string[]; index_lines: number; boards: (SeenBoard & { crawls?: string[] })[] };
 
 async function main() {
-  const crawls = (await http.getJson<{ id: string }[]>(`${INDEX}/collinfo.json`)).slice(0, CRAWLS_TO_USE).map((c) => c.id);
-  console.error(`Crawls: ${crawls.join(", ")}`);
-  const boards = new Map<string, { ats: string; slug: string; region?: string; shard?: string; site?: string; crawls: Set<string> }>();
-  let lines = 0;
+  const prev: Saved | undefined = existsSync(OUT) ? JSON.parse(readFileSync(OUT, "utf8")) : undefined;
+  // Older files listed crawls per board as `crawls`.
+  const boards = new BoardSet((prev?.boards ?? []).map(({ crawls, seen, ...b }) => ({ ...b, seen: seen ?? crawls ?? [] })));
+  const done = new Set(prev?.crawls ?? []);
+  const recent = (await http.getJson<{ id: string }[]>(`${INDEX}/collinfo.json`)).slice(0, CRAWLS_TO_USE).map((c) => c.id);
+  // Newest first, so a capped run always picks up the latest crawl.
+  const todo = recent.filter((c) => !done.has(c)).slice(0, PER_RUN);
+  console.error(`Crawls: ${recent.length} recent, reading ${todo.length} this run${todo.length ? `: ${todo.join(", ")}` : ""}`);
+  let lines = prev?.index_lines ?? 0;
 
-  for (const crawl of crawls) {
+  const save = () => {
+    mkdirSync(dirname(OUT), { recursive: true });
+    const saved: Saved = { generated_at: new Date().toISOString(), crawls: [...done].sort().reverse(), index_lines: lines, boards: boards.list() };
+    writeFileSync(OUT, JSON.stringify(saved));
+  };
+
+  for (const crawl of todo) {
+    let complete = true;
     for (const q of QUERIES) {
       const base = `${INDEX}/${crawl}-index?url=${encodeURIComponent(q.url)}${q.matchType ? `&matchType=${q.matchType}` : ""}&fl=url&filter=!status:404&output=json`;
       let pages = 1;
@@ -43,6 +71,7 @@ async function main() {
         pages = (await http.getJson<{ pages: number }>(`${base}&showNumPages=true`)).pages;
       } catch (err) {
         console.error(`  ${crawl} ${q.url}: page count failed (${(err as Error).message}); skipping`);
+        complete = false;
         continue;
       }
       for (let page = 0; page < pages; page++) {
@@ -51,38 +80,28 @@ async function main() {
           text = await http.getText(`${base}&page=${page}`);
         } catch (err) {
           console.error(`  ${crawl} ${q.url} page ${page}: ${(err as Error).message}`);
+          complete = false;
           continue;
         }
         // output=json gives one {"url": …} object per line.
         for (const raw of text.split("\n")) {
           if (!raw.trim()) continue;
-          let u: string;
           try {
-            u = (JSON.parse(raw) as { url: string }).url;
+            boards.add((JSON.parse(raw) as { url: string }).url, crawl);
+            lines++;
           } catch {
-            continue;
+            // not a JSON line
           }
-          lines++;
-          const d = detectCompany(u);
-          if (!d || IGNORE.has(d.slug.toLowerCase()) || d.slug.length > 80) continue;
-          if (d.ats === "workday" && !d.site) continue;
-          const key = d.ats === "workday" ? `workday:${d.slug}|${d.shard}|${d.site}`.toLowerCase() : `${d.ats}:${d.slug}`.toLowerCase();
-          const b = boards.get(key) ?? { ats: d.ats, slug: d.slug, region: d.region, shard: d.shard, site: d.site, crawls: new Set<string>() };
-          b.crawls.add(crawl);
-          boards.set(key, b);
         }
         console.error(`  ${crawl} ${q.url} page ${page + 1}/${pages}: ${boards.size} boards so far`);
       }
     }
+    // A crawl with failed pages is read again next run (boards already found are kept).
+    if (complete) done.add(crawl);
+    save();
   }
-
-  const out = join(here, "raw", "commoncrawl");
-  mkdirSync(out, { recursive: true });
-  const list = [...boards.values()].map((b) => ({ ...b, crawls: [...b.crawls] }));
-  writeFileSync(join(out, "boards.json"), JSON.stringify({ generated_at: new Date().toISOString(), crawls, index_lines: lines, boards: list }));
-  const byAts: Record<string, number> = {};
-  for (const b of list) byAts[b.ats] = (byAts[b.ats] ?? 0) + 1;
-  console.error(`Done: ${lines} index lines -> ${list.length} boards`, byAts);
+  save();
+  console.error(`Done: ${lines} index lines -> ${boards.size} boards`, boards.byAts());
 }
 
 main().catch((err) => {

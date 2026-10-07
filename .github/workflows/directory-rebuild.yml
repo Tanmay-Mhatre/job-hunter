@@ -54,7 +54,16 @@ jobs:
         run: |
           [ -f directory-repo/contributions.json ] || echo '{"companies":[]}' > directory-repo/contributions.json
           pnpm catalog:sources
+          # Our own URL lists: new Common Crawl crawls, and the next stretch of the Wayback index (time-boxed).
+          pnpm exec tsx scripts/catalog/commoncrawl.ts --per-run 3 || echo "Common Crawl step failed; using the saved list."
+          pnpm exec tsx scripts/catalog/wayback.ts --max-minutes 60 || echo "Wayback step failed; using the saved list."
+          # Company-first: industry seeds, then the next batch of Wikidata companies (the coverage sample).
           pnpm exec tsx scripts/catalog/resolve.ts
+          pnpm exec tsx scripts/catalog/seeds-bulk.ts && pnpm exec tsx scripts/catalog/resolve.ts --bulk --limit 1500 || echo "Bulk seeds step failed; using saved results."
+          pnpm exec tsx scripts/catalog/merge.ts
+          pnpm exec tsx scripts/catalog/check.ts --recheck-days 30
+          # Known companies tried on other systems (needs fresh check results), then merge and check what it found.
+          pnpm exec tsx scripts/catalog/crossprobe.ts --max-minutes 45
           pnpm exec tsx scripts/catalog/merge.ts
           pnpm exec tsx scripts/catalog/check.ts --recheck-days 30
           pnpm exec tsx scripts/catalog/build.ts
@@ -80,7 +89,11 @@ jobs:
         run: |
           [ -d scripts/catalog/out ] || exit 0
           pnpm exec tsx scripts/catalog/compact.ts
-          tar czf "$RUNNER_TEMP/catalog-state.tar.gz" -C scripts/catalog out/checks.jsonl out/index-all.jsonl $( [ -f scripts/catalog/out/resolved.json ] && echo out/resolved.json ) $( [ -f scripts/catalog/raw/commoncrawl/boards.json ] && echo raw/commoncrawl/boards.json )
+          files="out/checks.jsonl out/index-all.jsonl"
+          for f in out/resolved.json out/resolved-bulk.json out/probe.jsonl out/probe-found.json raw/commoncrawl/boards.json raw/wayback/boards.json; do
+            [ -f "scripts/catalog/$f" ] && files="$files $f"
+          done
+          tar czf "$RUNNER_TEMP/catalog-state.tar.gz" -C scripts/catalog $files
           gh release view state -R "$DATA_REPO" > /dev/null 2>&1 || gh release create state -R "$DATA_REPO" --prerelease --title "Catalog working state" --notes "Internal: lets the weekly rebuild skip boards checked recently."
           gh release upload state "$RUNNER_TEMP/catalog-state.tar.gz" -R "$DATA_REPO" --clobber
 

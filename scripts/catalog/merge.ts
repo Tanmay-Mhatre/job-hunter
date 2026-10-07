@@ -21,6 +21,10 @@ const TRACKED = new Set<string>(["greenhouse", "lever", "ashby", "smartrecruiter
 /** Sources that copy from the same place count as one family when we count agreement. */
 const SOURCES = {
   ourcrawl: { family: "commoncrawl", publishable: true },
+  // Our own pass over the Wayback Machine's URL index (wayback.ts).
+  wayback: { family: "wayback", publishable: true },
+  // Boards found by trying known company names on other hiring systems (crossprobe.ts).
+  probe: { family: "probe", publishable: true },
   latmay: { family: "latmay", publishable: true },
   kalil: { family: "kalil", publishable: true },
   conors: { family: "openjobsdata", publishable: true },
@@ -117,6 +121,18 @@ if (existsSync(raw("commoncrawl", "boards.json"))) {
   for (const b of cc.boards) add("ourcrawl", b);
   count("ourcrawl", cc.boards.length);
 } else console.error("! commoncrawl/boards.json missing (run commoncrawl.ts first)");
+if (existsSync(raw("wayback", "boards.json"))) {
+  const wb = JSON.parse(readFileSync(raw("wayback", "boards.json"), "utf8")) as { boards: { ats: string; slug: string; region?: string; shard?: string; site?: string }[] };
+  for (const b of wb.boards) add("wayback", b);
+  count("wayback", wb.boards.length);
+} else console.error("! wayback/boards.json missing (run wayback.ts first)");
+{
+  // crossprobe.ts keeps every attempt; only live boards whose name matched are listed in found.
+  const file = join(here, "out", "probe-found.json");
+  const found = existsSync(file) ? (JSON.parse(readFileSync(file, "utf8")) as { boards: { ats: string; slug: string; region?: string; shard?: string; site?: string; name?: string }[] }).boards : [];
+  for (const b of found) add("probe", b);
+  count("probe", found.length);
+}
 
 withFile(raw("latmay", "ats_career_page_urls.csv"), (p) => {
   const rows = csvRows(p);
@@ -147,11 +163,13 @@ withFile(raw("conorscode", "companies.json"), (p) => {
 {
   const seeds = (JSON.parse(readFileSync(join(here, "seeds", "industries.json"), "utf8")) as { companies: { name: string; careers_url?: string }[] }).companies;
   for (const s of seeds) if (s.careers_url) fromUrl("seeds", s.careers_url, s.name);
-  const resolvedFile = join(here, "out", "resolved.json");
-  const resolved = existsSync(resolvedFile)
-    ? (JSON.parse(readFileSync(resolvedFile, "utf8")) as { companies: { name: string; board?: { ats: string; slug: string; region?: string; shard?: string; site?: string } }[] }).companies
-    : [];
-  for (const r of resolved) if (r.board) add("seeds", { ...r.board, name: r.name });
+  // resolved.json: the industry seeds; resolved-bulk.json: the Wikidata companies (resolve.ts --bulk).
+  for (const file of ["resolved.json", "resolved-bulk.json"]) {
+    const path = join(here, "out", file);
+    if (!existsSync(path)) continue;
+    const resolved = (JSON.parse(readFileSync(path, "utf8")) as { companies: { name: string; board?: { ats: string; slug: string; region?: string; shard?: string; site?: string } }[] }).companies;
+    for (const r of resolved) if (r.board) add("seeds", { ...r.board, name: r.name });
+  }
   count("seeds", seeds.length);
 }
 
@@ -170,9 +188,15 @@ withFile(raw("conorscode", "companies.json"), (p) => {
 
 // --- restricted sources: votes only, never new boards ---
 const publishableKeys = new Set([...boards.values()].filter((b) => [...b.sources].some((s) => SOURCES[s].publishable)).map((b) => b.key));
+/** Boards only restricted sources list, per system: counted for coverage estimates, never published. */
+const restrictedOnly = new Map<string, Set<string>>();
 function vote(src: SourceId, ats: string, slug: string, shard?: string, site?: string) {
   const key = keyOf(ats, slug, shard, site);
   if (publishableKeys.has(key)) boards.get(key)!.sources.add(src);
+  else {
+    if (!restrictedOnly.has(ats)) restrictedOnly.set(ats, new Set());
+    restrictedOnly.get(ats)!.add(key);
+  }
 }
 for (const f of ["greenhouse", "lever", "ashby"]) {
   withFile(raw("feashliaa", `${f}_companies.json`), (p) => {
@@ -235,7 +259,7 @@ for (const b of out) {
   s[b.confidence] = (s[b.confidence] ?? 0) + 1;
 }
 mkdirSync(join(here, "out"), { recursive: true });
-writeFileSync(join(here, "out", "merged.json"), JSON.stringify({ generated_at: new Date().toISOString(), input_rows: counts, stats, boards: out }));
+writeFileSync(join(here, "out", "merged.json"), JSON.stringify({ generated_at: new Date().toISOString(), input_rows: counts, stats, restricted_only: Object.fromEntries([...restrictedOnly].map(([ats, keys]) => [ats, keys.size])), boards: out }));
 console.log("input rows:", counts);
 console.log("merged boards (publishable):", out.length);
 console.table(stats);

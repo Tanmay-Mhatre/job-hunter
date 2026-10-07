@@ -114,6 +114,11 @@ describe("detectCompany", () => {
     ["jobs.lever.co/acme-labs/abc-123", { ats: "lever", slug: "acme-labs", name: "Acme Labs" }],
     ["https://jobs.eu.lever.co/acme", { ats: "lever", slug: "acme", region: "eu" }],
     ["https://jobs.ashbyhq.com/Acme%20Inc", { ats: "ashby", slug: "Acme Inc" }],
+    ["https://api.lever.co/v0/postings/acme?mode=json", { ats: "lever", slug: "acme" }],
+    ["https://api.eu.lever.co/v0/postings/acme", { ats: "lever", slug: "acme", region: "eu" }],
+    ["https://api.ashbyhq.com/posting-api/job-board/acme", { ats: "ashby", slug: "acme" }],
+    ["https://bank.wd3.myworkdayjobs.com/wday/cxs/bank/External/jobs", { ats: "workday", slug: "bank", shard: "wd3", site: "External" }],
+    ["https://bank.wd3.myworkdayjobs.com/en-US/External/job/123", { ats: "workday", slug: "bank", shard: "wd3", site: "External" }],
   ])("%s", (url, expected) => {
     expect(detectCompany(url)).toMatchObject(expected);
   });
@@ -121,6 +126,8 @@ describe("detectCompany", () => {
   it("returns null for unknown or bare hosts", () => {
     expect(detectCompany("https://careers.example.com/jobs")).toBeNull();
     expect(detectCompany("https://jobs.lever.co/")).toBeNull();
+    expect(detectCompany("https://jobs.ashbyhq.com/api/non-user-graphql")).toBeNull();
+    expect(detectCompany("https://api.lever.co/v1/other")).toBeNull();
     expect(detectCompany("not a url at all")).toBeNull();
   });
 });

@@ -13,6 +13,8 @@ export function detectKnownAts(url: URL): DetectedCompany | null {
   const wd = host.match(/^([^.]+)\.(wd\d+)\.myworkdayjobs\.com$/);
   if (wd) {
     const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+    // The jobs API: /wday/cxs/{tenant}/{site}/jobs
+    if (parts[0] === "wday" && parts[1] === "cxs") return parts[3] ? { ats: "workday", slug: wd[1]!, shard: wd[2]!, site: parts[3] } : null;
     const site = parts.find((p) => !/^[a-z]{2}(-[A-Z]{2})?$/.test(p)) ?? undefined;
     return { ats: "workday", slug: wd[1]!, shard: wd[2]!, site };
   }
