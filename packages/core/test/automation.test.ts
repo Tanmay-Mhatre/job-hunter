@@ -106,7 +106,9 @@ describe("schedule", () => {
       scripts.push(args.at(-1)!);
       return { status: 0, stdout: "", stderr: "" };
     };
-    installSchedule({ repoRoot: "C:\\Repo It's", dataDir, exec, platform: "win32" }, { times: ["08:00", "20:00"], scope: "all" });
+    // An absolute path on any system (tests also run on Linux CI), with a quote PowerShell must escape.
+    const repo = join(tmpdir(), "Repo It's");
+    installSchedule({ repoRoot: repo, dataDir, exec, platform: "win32" }, { times: ["08:00", "20:00"], scope: "all" });
     const script = scripts[0]!;
     expect(script).toContain("-StartWhenAvailable -WakeToRun");
     expect(script).toContain("-ExecutionTimeLimit (New-TimeSpan -Hours 4)");
@@ -115,10 +117,10 @@ describe("schedule", () => {
     expect(script).toContain("-Execute 'conhost.exe' -Argument '--headless ");
     expect(script).toContain("scan --scope all --notify --scheduled --data");
     // A quote in a path is doubled for PowerShell.
-    expect(script).toContain("-WorkingDirectory 'C:\\Repo It''s'");
+    expect(script).toContain(`-WorkingDirectory '${repo.replace(/'/g, "''")}'`);
     expect(JSON.parse(readFileSync(join(dataDir, "schedule.json"), "utf8"))).toEqual({ times: ["08:00", "20:00"], scope: "all" });
 
-    removeSchedule({ repoRoot: "C:\\Repo", dataDir, exec, platform: "win32" });
+    removeSchedule({ repoRoot: repo, dataDir, exec, platform: "win32" });
     expect(scripts.at(-1)).toContain("Unregister-ScheduledTask -TaskName 'JobHunter Scan'");
     expect(existsSync(join(dataDir, "schedule.json"))).toBe(false);
   });
