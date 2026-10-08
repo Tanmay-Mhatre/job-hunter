@@ -1,5 +1,6 @@
 import { COUNTRIES } from "@jobhunter/core/catalog/places";
 import { allTitles } from "@jobhunter/core/catalog/roles";
+import { employersFromResume } from "@jobhunter/core/employers";
 import { detectFromResume, type AiProfile } from "@jobhunter/core/resume-parse";
 import { CV_DICTIONARY } from "../setup/presets";
 import { inferFamily, type Draft } from "./setup";
@@ -14,6 +15,8 @@ export type Suggestions = {
   keywords: [string, number][];
   /** Industry ids. */
   industries: string[];
+  /** Companies worked at, newest first. */
+  pastEmployers: string[];
   /** Where they came from, for the UI label. */
   source: "ai" | "resume" | null;
 };
@@ -27,6 +30,7 @@ export const NO_SUGGESTIONS: Suggestions = {
   remoteRegions: [],
   keywords: [],
   industries: [],
+  pastEmployers: [],
   source: null,
 };
 
@@ -49,6 +53,7 @@ export function buildSuggestions(resumeText: string, ai?: AiProfile): Suggestion
     remoteRegions: ai?.remote_regions ?? [],
     keywords: [...keywords].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])),
     industries: ai?.industries.length ? ai.industries : found.industries,
+    pastEmployers: ai?.past_employers?.length ? ai.past_employers : employersFromResume(resumeText),
     source: ai ? "ai" : "resume",
   };
 }
@@ -71,5 +76,6 @@ export function prefillDraft(d: Draft, s: Suggestions): Partial<Draft> {
   }
   if (!Object.keys(d.keywords).length && s.keywords.length) patch.keywords = Object.fromEntries(s.keywords.slice(0, 25));
   if (!d.industries.length && s.industries.length) patch.industries = s.industries.slice(0, 4);
+  if (!d.pastEmployers.length && s.pastEmployers.length) patch.pastEmployers = s.pastEmployers.slice(0, 10);
   return patch;
 }

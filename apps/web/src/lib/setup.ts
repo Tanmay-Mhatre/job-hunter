@@ -81,9 +81,33 @@ export async function checkCompanies(urls: string[]): Promise<CompanyCheck[]> {
   return (await res.json()) as CompanyCheck[];
 }
 
+/** What a scan covers besides your companies: "mine" = your industries, "all" = the whole directory. */
+export type ScanScope = "mine" | "all";
+
 export type RunEvent =
-  | { type: "start"; companies: string[]; /** The last `checking` companies aren't yours: checked because they're hiring for you. */ checking?: number }
-  | ({ type: "company" } & CompanyHealth)
+  /** Syncing with the shared company directory (the first step of every scan). */
+  | { type: "sync" }
+  | { type: "synced"; updated: boolean; offline?: boolean; message: string }
+  | {
+      type: "start";
+      /** Your companies, in fetch order. */
+      companies: string[];
+      /** Everything this scan covers (yours + directory companies), including ones done before a resume. */
+      total?: number;
+      /** Directory companies beyond yours. */
+      extra?: number;
+      /** Done by the stopped scan this one resumes. */
+      resumed?: number;
+      scope?: ScanScope;
+      /** About how long the rest takes. */
+      seconds?: number;
+      /** Older CLIs: the last `checking` companies aren't yours. */
+      checking?: number;
+    }
+  /** A company done: every one of yours, and directory ones that matched or failed. */
+  | ({ type: "company"; done?: number } & CompanyHealth)
+  /** Directory companies done, as a count. */
+  | { type: "progress"; done: number }
   | {
       type: "done";
       jobsFound: number;
@@ -91,12 +115,46 @@ export type RunEvent =
       strong: number;
       newMatches: number;
       failed: number;
-      /** Companies beyond yours checked live. */
+      /** Directory companies checked besides yours. */
       checked?: number;
-      /** Jobs found in the directory index, not checked live yet. */
+      /** Stopped before the end; the next scan of the same type resumes. */
+      stopped?: boolean;
+      /** Your companies whose board moved; your config is updated. */
+      moves?: { name: string; from: string; to: string }[];
+      moveError?: string;
+      /** Older CLIs: jobs found in the directory index. */
       indexJobs?: number;
     }
+  /** The Telegram message asked for during the scan: "sent", "off" (not set up) or why it failed. */
+  | { type: "notified"; result: string }
   | { type: "error"; message: string };
+
+/** What each scan type covers (GET /api/scan/plan). */
+export type ScanPlan = Record<ScanScope, { yours: number; extra: number; seconds: number; resumable: { done: number; startedAt: string } | null }>;
+
+export async function scanPlan(): Promise<ScanPlan | null> {
+  try {
+    const res = await fetch("/api/scan/plan", { cache: "no-store" });
+    return res.ok ? ((await res.json()) as ScanPlan) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Ask the running scan to send a Telegram message when it finishes. */
+export async function notifyWhenDone(): Promise<boolean> {
+  try {
+    const res = await fetch("/api/run/notify", { method: "POST" });
+    return ((await res.json()) as { ok?: boolean }).ok === true;
+  } catch {
+    return false;
+  }
+}
+
+/** Ask the running scan to stop after the companies in progress; it can be resumed later. */
+export async function stopScan(): Promise<void> {
+  await fetch("/api/run/stop", { method: "POST" }).catch(() => {});
+}
 
 /** "Check now": fetch just these directory companies ("ats:slug") on this machine. */
 export async function checkNow(keys: string[]): Promise<Extract<RunEvent, { type: "done" | "error" }>> {
@@ -109,8 +167,8 @@ export async function checkNow(keys: string[]): Promise<Extract<RunEvent, { type
 }
 
 /** Run a scan on this machine, reporting progress as it streams in. */
-export async function runScan(onEvent: (e: RunEvent) => void): Promise<void> {
-  const res = await fetch("/api/run", { method: "POST" });
+export async function runScan(onEvent: (e: RunEvent) => void, opts: { scope?: ScanScope; fresh?: boolean } = {}): Promise<void> {
+  const res = await fetch("/api/run", { method: "POST", body: JSON.stringify({ scope: opts.scope ?? "mine", fresh: opts.fresh }) });
   if (!res.ok || !res.body) {
     onEvent({ type: "error", message: `Couldn't start the scan (HTTP ${res.status}).` });
     return;
@@ -163,6 +221,8 @@ export type Draft = {
   keywords: Record<string, number>;
   /** Industry ids (Industries step). */
   industries: string[];
+  /** Companies you've worked at (from your resume, confirmed by you): seeds "companies like them". */
+  pastEmployers: string[];
   companies: CompanyRow[];
   minScore: number;
   alerts: Config["alerts"];
@@ -195,6 +255,7 @@ export function emptyDraft(): Draft {
     remoteExclude: [],
     keywords: {},
     industries: [],
+    pastEmployers: [],
     companies: [],
     minScore: 70,
     alerts: { telegram: false, email: false, only_new: true },
@@ -252,6 +313,7 @@ export function draftFromConfig(input: unknown): Draft {
     remoteExclude: strings(l.remote_exclude),
     keywords,
     industries: strings(p.industries),
+    pastEmployers: strings(p.past_employers),
     companies,
     minScore: typeof p.min_score === "number" ? p.min_score : d.minScore,
     alerts: {
@@ -305,6 +367,7 @@ export function draftToConfig(d: Draft): Config {
         remote_exclude: d.remote ? d.remoteExclude : [],
       },
       industries: d.industries,
+      past_employers: d.pastEmployers,
       keywords: d.keywords,
       min_score: d.minScore,
     },
@@ -324,11 +387,12 @@ export const STEPS = [
   { id: 3, key: "locations", label: "Locations" },
   { id: 4, key: "industries", label: "Industries" },
   { id: 5, key: "keywords", label: "Topics" },
-  { id: 6, key: "review", label: "Review" },
+  { id: 6, key: "companies", label: "Companies" },
+  { id: 7, key: "review", label: "Review" },
 ] as const;
 
-/** Step numbers by name, so screens never hard-code positions. Companies are added after setup. */
-export const STEP = { welcome: 0, resume: 1, roles: 2, locations: 3, industries: 4, keywords: 5, review: 6 } as const;
+/** Step numbers by name, so screens never hard-code positions. */
+export const STEP = { welcome: 0, resume: 1, roles: 2, locations: 3, industries: 4, keywords: 5, companies: 6, review: 7 } as const;
 export const STEP_COUNT = STEPS.length;
 
 /** Why the user can't continue yet, or null. Resume, Industries and Topics are optional. */
@@ -353,6 +417,7 @@ export function setupProgress(d: Draft, hasResume = false): SetupProgress {
   for (const s of [STEP.roles, STEP.locations]) if (stepBlocker(s, d)) return { started, nextStep: s };
   if (furthest <= STEP.industries && d.industries.length === 0) return { started, nextStep: STEP.industries };
   if (furthest <= STEP.keywords && Object.keys(d.keywords).length === 0) return { started, nextStep: STEP.keywords };
+  if (furthest <= STEP.companies && d.companies.length === 0) return { started, nextStep: STEP.companies };
   return { started, nextStep: STEP.review };
 }
 
@@ -372,4 +437,18 @@ export function inferFamily(titles: readonly string[]): string | undefined {
     if (n > 0 && (!best || n > best.n)) best = { id: f.id, n };
   }
   return best?.id;
+}
+
+/**
+ * The saved config changed under an open draft (e.g. the Companies page saved itself): take the new
+ * saved value for every field the user hasn't touched, and keep their edits to the rest.
+ */
+export function rebaseDraft(draft: Draft, prevSaved: Draft, nextSaved: Draft): Draft {
+  const out = { ...nextSaved } as Record<string, unknown>;
+  const d = draft as unknown as Record<string, unknown>;
+  const prev = prevSaved as unknown as Record<string, unknown>;
+  for (const k of new Set([...Object.keys(draft), ...Object.keys(nextSaved)])) {
+    if (JSON.stringify(d[k]) !== JSON.stringify(prev[k])) out[k] = d[k];
+  }
+  return out as unknown as Draft;
 }

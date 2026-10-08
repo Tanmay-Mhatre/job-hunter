@@ -70,7 +70,11 @@ export const JobCard = forwardRef<HTMLLIElement, Props>(function JobCard({ group
       <div className="min-w-0 flex-1">
         <div className="flex items-start gap-2">
           <h3 className="line-clamp-2 min-w-0 flex-1 text-[15px] font-semibold leading-5">{job.title}</h3>
-          {isNew && <span className="mt-1.5 size-2 shrink-0 rounded-full bg-accent" title="New since your last visit" />}
+          {isNew && (
+            <span className="mt-0.5 shrink-0 rounded-md bg-accent px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-3 tracking-wide text-accent-fg" title="Found by a scan in the last 2 days">
+              New
+            </span>
+          )}
         </div>
         <p className="mt-0.5 truncate text-sm text-muted">
           {yours && <Star className="mr-1 inline size-3.5 fill-accent text-accent" aria-label="Your company" />}

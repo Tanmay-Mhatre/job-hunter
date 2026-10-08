@@ -11,6 +11,8 @@
     "./text": "./src/text.ts",
     "./detect": "./src/connectors/index.ts",
     "./resume-parse": "./src/resume-parse.ts",
+    "./employers": "./src/employers.ts",
+    "./suggest": "./src/suggest.ts",
     "./catalog/roles": "./src/catalog/roles.ts",
     "./catalog/places": "./src/catalog/places.ts",
     "./catalog/industries": "./src/catalog/industries.ts",

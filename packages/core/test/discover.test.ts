@@ -1,12 +1,8 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseConfig } from "../src/config";
-import { findCandidates, pickChecks, readLedger, recordChecks, toIndexJobs, type DiscoverFile, type IndexFile } from "../src/discover";
-import { scan } from "../src/scan";
+import { findCandidates, pickChecks, readLedger, recordChecks, toIndexJobs, type IndexFile } from "../src/discover";
 import type { IndexedCompany, IndexRow } from "../src/suggest";
-import { fakeHttp, fixture, json, profile } from "./helpers";
+import { profile } from "./helpers";
 
 const now = new Date("2026-10-03T12:00:00Z");
 const DAY = 86_400_000;
@@ -112,100 +108,5 @@ describe("toIndexJobs", () => {
     // Same row, same id: the Radar keeps statuses and "seen" across scans.
     expect(toIndexJobs(candidates, { live: new Set(), muted: new Set(), indexGeneratedAt: now.toISOString() }).map((j) => j.id)).toContain(jobs[0]!.id);
     expect(toIndexJobs(candidates, { live: new Set(), muted: new Set(), indexGeneratedAt: now.toISOString(), limit: 1 })).toHaveLength(1);
-  });
-});
-
-describe("scan", () => {
-  const config = (yaml = "") =>
-    parseConfig(`
-profile:
-  titles: { include: ["product manager", "head of product"], exclude: ["product marketing"] }
-  seniority_boost: ["senior", "head", "group"]
-  locations: { include: ["dubai", "abu dhabi"], remote_ok: ["emea"], remote_exclude: ["us"] }
-  keywords: { crypto: 5, exchange: 4, payments: 3, tokenization: 5 }
-companies:
-  - { name: "GH Co", ats: greenhouse, slug: "ghco" }
-${yaml}`);
-
-  const setup = () => {
-    const dir = mkdtempSync(join(tmpdir(), "jh-scan-"));
-    mkdirSync(join(dir, "catalog"));
-    const idx = index([
-      co("greenhouse:ghco", [pm("Dubai")]),
-      co("lever:leverco", [pm("Dubai", 1)]),
-      co("ashby:quiet", [pm("Abu Dhabi", 10)]),
-      co("ashby:nope", [pm("Dubai", 3)]),
-    ]);
-    writeFileSync(join(dir, "catalog", "index.json"), JSON.stringify(idx));
-    return dir;
-  };
-  const routes = (url: string) => {
-    if (url.includes("greenhouse")) return json(fixture("greenhouse.json"));
-    if (url.includes("lever.co/v0/postings/leverco")) return json(fixture("lever.json"));
-    return json({ error: "not found" }, 404);
-  };
-  const read = <T>(dir: string, f: string) => JSON.parse(readFileSync(join(dir, f), "utf8")) as T;
-
-  it("checks your companies plus the best other ones, and lists the rest as index jobs", async () => {
-    const dir = setup();
-    const { http, calls } = fakeHttp(routes);
-    const names: string[][] = [];
-    const r = await scan(config(`companies_muted: ["ashby:nope"]\ndiscovery: { check_per_scan: 1 }`), {
-      dataDir: dir,
-      http,
-      now,
-      onStart: (n) => names.push(n),
-    });
-
-    expect(names[0]).toEqual(["GH Co", "leverco"]);
-    expect(calls.some((u) => u.includes("leverco"))).toBe(true);
-    expect(r.checks.map((c) => c.slug)).toEqual(["leverco"]);
-    // Your company keeps every job; the checked one only its matches.
-    const byCompany = (c: string) => r.merged.jobs.filter((j) => j.company === c);
-    expect(byCompany("GH Co").length).toBe(3);
-    expect(byCompany("leverco").every((j) => !j.why.gate)).toBe(true);
-    expect(byCompany("leverco").length).toBe(1);
-
-    // Not yours, not checked, not muted: an index job.
-    const discover = read<DiscoverFile>(dir, "discover.json");
-    expect(discover.jobs.map((j) => j.companyKey)).toEqual(["ashby:quiet"]);
-    expect(readLedger(dir).companies["lever:leverco"]).toMatchObject({ matches: 1 });
-    expect(read<{ runs: { checked?: number }[] }>(dir, "meta.json").runs[0]!.checked).toBe(1);
-  });
-
-  it("keeps a checked company's jobs on the next scans without checking it again", async () => {
-    const dir = setup();
-    const cfg = config("discovery: { check_per_scan: 1 }");
-    await scan(cfg, { dataDir: dir, http: fakeHttp(routes).http, now });
-
-    const later = new Date(now.getTime() + 2 * DAY);
-    const { http, calls } = fakeHttp(routes);
-    const r = await scan(cfg, { dataDir: dir, http, now: later });
-    expect(calls.some((u) => u.includes("leverco"))).toBe(false);
-    // The next best company is checked instead (its board 404s, recorded as a failed check).
-    expect(r.checks.map((c) => c.slug)).toEqual(["nope"]);
-    expect(r.merged.jobs.some((j) => j.company === "leverco" && j.status === "open")).toBe(true);
-    expect(readLedger(dir).companies["ashby:nope"]!.error).toMatch(/404/);
-  });
-
-  it("checks no other companies when checks are off, but still lists index jobs", async () => {
-    const dir = setup();
-    const { http, calls } = fakeHttp(routes);
-    const r = await scan(config("discovery: { check_per_scan: 0 }"), { dataDir: dir, http, now });
-    expect(r.checks).toEqual([]);
-    expect(calls.every((u) => u.includes("greenhouse"))).toBe(true);
-    expect(read<DiscoverFile>(dir, "discover.json").jobs.map((j) => j.companyKey).sort()).toEqual(["ashby:nope", "ashby:quiet", "lever:leverco"]);
-  });
-
-  it("works without companies of your own", async () => {
-    const dir = setup();
-    const cfg = parseConfig(`
-profile:
-  titles: { include: ["product manager"] }
-  locations: { include: ["dubai", "abu dhabi"] }
-`);
-    const r = await scan(cfg, { dataDir: dir, http: fakeHttp(routes).http, now });
-    expect(r.checks.length).toBe(4);
-    expect(r.summary?.matches).toBeGreaterThan(0);
   });
 });

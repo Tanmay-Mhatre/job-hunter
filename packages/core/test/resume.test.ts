@@ -36,7 +36,8 @@ ${RESUME}
     "open_to_remote": true,
     "remote_regions": ["emea"],
     "keywords": { "payments": 5, "crypto": 9, "kyc": "3", "tokenization": 0 },
-    "industries": ["Brokerage", "crypto-exchange", "space tourism"]
+    "industries": ["Brokerage", "crypto-exchange", "space tourism"],
+    "past_employers": ["Acme Exchange", " PayCo ", "Acme Exchange", 7]
   }
 }
 \`\`\`
@@ -60,6 +61,8 @@ describe("parseAiAnswer", () => {
       keywords: { payments: 5, crypto: 5, kyc: 3, tokenization: 1 },
       // Labels map to ids; unknown industries are dropped.
       industries: ["brokerage", "crypto", "crypto-exchange"],
+      // Casing kept, duplicates and non-strings dropped.
+      past_employers: ["Acme Exchange", "PayCo"],
     });
     expect(r.warnings).toEqual([]);
   });

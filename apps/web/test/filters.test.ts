@@ -3,6 +3,8 @@ import type { Job } from "../src/lib/data";
 import {
   activeChips,
   applyFilters,
+  hasNewTag,
+  isNewJob,
   DEFAULT_FILTERS,
   facetCounts,
   fromQuery,
@@ -40,7 +42,7 @@ const job = (o: Partial<Job> = {}): Job => ({
   ...o,
 });
 
-const ctx: Ctx = { user: {}, min: 70, cutoff: daysAgo(2), industriesOf: (c) => (c === "Kraken" ? ["crypto-exchange"] : []), hiddenCompanies: new Set(), now: NOW };
+const ctx: Ctx = { user: {}, min: 70, industriesOf: (c) => (c === "Kraken" ? ["crypto-exchange"] : []), hiddenCompanies: new Set(), now: NOW };
 const f = (o: Partial<Filters> = {}): Filters => ({ ...DEFAULT_FILTERS, ...o });
 
 const jobs = [
@@ -156,7 +158,21 @@ describe("your companies and directory jobs", () => {
   it("hides directory jobs older than 30 days unless asked, and never calls them new", () => {
     expect(applyFilters([directory, stale], f(), ctx).map((j) => j.id)).toEqual([directory.id]);
     expect(applyFilters([directory, stale], f({ olderIndex: true }), ctx)).toHaveLength(2);
-    expect(applyFilters([directory], f({ status: "new" }), { ...ctx, cutoff: daysAgo(10) })).toEqual([]);
+    expect(applyFilters([directory], f({ status: "new" }), ctx)).toEqual([]);
+  });
+
+  it("New = found by a scan in the last 24 hours; the New tag stays for 2 days", () => {
+    const hoursAgo = (h: number) => new Date(NOW - h * 3_600_000).toISOString();
+    const found = (h: number) => job({ id: `h${h}`, firstSeen: hoursAgo(h) });
+    expect([2, 23, 30, 47, 50].map((h) => [h, isNewJob(found(h), ctx), hasNewTag(found(h), ctx)])).toEqual([
+      [2, true, true],
+      [23, true, true],
+      [30, false, true],
+      [47, false, true],
+      [50, false, false],
+    ]);
+    // Closed jobs aren't new, however recent.
+    expect(isNewJob(job({ firstSeen: hoursAgo(1), status: "closed" }), ctx)).toBe(false);
   });
 
   it("round-trips the new filters through the URL", () => {

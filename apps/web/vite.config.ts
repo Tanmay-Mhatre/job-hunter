@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, statSync, writeFileSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -59,6 +59,36 @@ async function respondJson(res: ServerResponse, args: string[], stdin?: string) 
 }
 
 /**
+ * Company suggestions read the whole 40 MB index (about 10 s), so answers are kept per request
+ * body until the index, directory or resume changes. Identical requests in flight share one run.
+ */
+const suggestCache = new Map<string, Promise<string>>();
+function suggestions(body: string): Promise<string> {
+  const mtime = (path: string) => {
+    try {
+      return statSync(path).mtimeMs;
+    } catch {
+      return 0;
+    }
+  };
+  const stamp = [resolve(dataDir, "catalog/index.json"), resolve(dataDir, "catalog/directory.json"), resolve(dataDir, "catalog/additions.json"), resolve(repoRoot, "profile/resume.md")].map(mtime).join(":");
+  const key = `${stamp}|${body}`;
+  let hit = suggestCache.get(key);
+  if (!hit) {
+    hit = collect(["companies", "suggest", "--json", "--stdin", "--data", dataDir], body).then((r) => {
+      const out = r.stdout.trim();
+      if (!out.startsWith("{")) throw new Error((r.stderr || "suggestions failed").trim().slice(-1500));
+      return out;
+    });
+    hit.catch(() => suggestCache.delete(key));
+    suggestCache.set(key, hit);
+    // Keep the last few profiles only.
+    for (const k of [...suggestCache.keys()].slice(0, -6)) suggestCache.delete(k);
+  }
+  return hit;
+}
+
+/**
  * Dev only: a small local API so the dashboard can set up and run Job Hunter on this machine.
  *   GET  /api/setup           setup status (+ current config)
  *   POST /api/setup/config    validate and save jobhunter.config.local.yaml
@@ -66,7 +96,14 @@ async function respondJson(res: ServerResponse, args: string[], stdin?: string) 
  *   GET/POST /api/setup/resume  read / save the master resume (profile/resume.md, gitignored)
  *   GET  /api/directory       the shared company directory's local copy (and what's waiting to be shared)
  *   POST /api/directory/update download the latest shared directory and share waiting additions
- *   POST /api/run             run the radar; streams NDJSON progress
+ *   POST /api/companies/suggest  companies that fit a profile ({ profile?, watched?, hidden? }), with lookalikes of past employers
+ *   POST /api/run             scan ({ scope: "mine" | "all", fresh? }); streams NDJSON progress
+ *   POST /api/run/stop        stop the running scan after the companies in progress (it can be resumed)
+ *   POST /api/run/notify      send a Telegram message when the running scan finishes
+ *   GET  /api/scan/plan       what each scan type covers: companies, about how long, a stopped scan to resume
+ *   GET  /api/alerts/telegram Telegram alerts: set up? on? (the token is never sent back, only masked)
+ *   POST /api/alerts/telegram/{token|connect|test|on|off|forget}   set up and manage Telegram alerts
+ *   GET/POST/DELETE /api/schedule   scheduled scans on this computer: status, install ({ times, scope }), remove
  *   POST /api/check           check directory companies now ({ keys: ["ats:slug"] }); answers with the done event
  * Not part of the static build; the dev server listens on 127.0.0.1 only.
  */
@@ -89,6 +126,16 @@ function localApi(): Plugin {
           if (url === "/api/setup/check" && req.method === "POST") return await respondJson(res, ["setup", "check", "--data", dataDir], await readBody(req));
           if (url === "/api/directory" && req.method === "GET") return await respondJson(res, ["directory", "status", "--json", "--data", dataDir]);
           if (url === "/api/directory/update" && req.method === "POST") return await respondJson(res, ["directory", "update", "--json", "--data", dataDir]);
+          if (url === "/api/companies/suggest" && req.method === "POST") {
+            res.setHeader("content-type", "application/json");
+            try {
+              res.end(await suggestions(await readBody(req)));
+            } catch (err) {
+              res.statusCode = 500;
+              res.end(JSON.stringify({ ok: false, errors: (err as Error).message }));
+            }
+            return;
+          }
           if (url === "/api/check" && req.method === "POST") {
             // "Check now" on a directory job: fetch just that company, answer with the final event.
             res.setHeader("content-type", "application/json");
@@ -113,6 +160,28 @@ function localApi(): Plugin {
             }
             return;
           }
+          if (url === "/api/scan/plan" && req.method === "GET") return await respondJson(res, ["scan", "--plan", "--data", dataDir]);
+          if (url === "/api/alerts/telegram" && req.method === "GET") return await respondJson(res, ["alerts", "telegram", "status"]);
+          const alert = url.match(/^\/api\/alerts\/telegram\/(token|connect|test|on|off|forget)$/);
+          if (alert && req.method === "POST") return await respondJson(res, ["alerts", "telegram", alert[1]!], await readBody(req));
+          if (url === "/api/schedule" && req.method === "GET") return await respondJson(res, ["schedule", "status", "--data", dataDir]);
+          if (url === "/api/schedule" && req.method === "POST") return await respondJson(res, ["schedule", "install", "--stdin", "--data", dataDir], await readBody(req));
+          if (url === "/api/schedule" && req.method === "DELETE") return await respondJson(res, ["schedule", "remove", "--data", dataDir]);
+          if (url === "/api/schedule/run" && req.method === "POST") return await respondJson(res, ["schedule", "run", "--data", dataDir]);
+          if (url === "/api/run/notify" && req.method === "POST") {
+            // The running scan sends a Telegram message when it finishes (it checks for this file at the end).
+            if (running) writeFileSync(resolve(dataDir, "scan-notify"), "");
+            res.setHeader("content-type", "application/json");
+            res.end(JSON.stringify({ ok: running }));
+            return;
+          }
+          if (url === "/api/run/stop" && req.method === "POST") {
+            // The scan checks for this file between companies, saves its progress and stops.
+            if (running) writeFileSync(resolve(dataDir, "scan-stop"), "");
+            res.setHeader("content-type", "application/json");
+            res.end(JSON.stringify({ ok: running }));
+            return;
+          }
           if (url === "/api/run" && req.method === "POST") {
             res.setHeader("content-type", "application/x-ndjson");
             res.setHeader("cache-control", "no-cache");
@@ -120,8 +189,10 @@ function localApi(): Plugin {
               res.end(`${JSON.stringify({ type: "error", message: "A scan is already running." })}\n`);
               return;
             }
+            const body = (JSON.parse((await readBody(req)) || "{}") ?? {}) as { scope?: unknown; fresh?: unknown };
+            const scope = body.scope === "all" ? "all" : "mine";
             running = true;
-            const child = cli(["run", "--progress", "ndjson", "--data", dataDir]);
+            const child = cli(["scan", "--progress", "ndjson", "--scope", scope, ...(body.fresh === true ? ["--fresh"] : []), "--data", dataDir]);
             let stderr = "";
             child.stdout.pipe(res, { end: false });
             child.stderr.on("data", (d) => (stderr += d));

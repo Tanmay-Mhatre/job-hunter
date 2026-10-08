@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Job } from "./data";
 import type { Prefs } from "./prefs";
 import { load, save } from "./storage";
@@ -31,8 +31,6 @@ export type UserState = Record<string, Entry>;
 export type JobLike = Pick<Job, "id" | "title" | "company" | "url" | "location" | "score">;
 
 const KEY = "jobhunter.state.v1";
-const VISIT_KEY = "jobhunter.visits";
-const NEW_SESSION_GAP_MS = 30 * 60 * 1000;
 
 export function useUserState() {
   const [state, setState] = useState<UserState>(() => load<UserState>(KEY, {}));
@@ -74,28 +72,6 @@ export function useUserState() {
   const replaceAll = useCallback((next: UserState) => setState(next), []);
 
   return { state, update, toggleStatus, replaceAll };
-}
-
-/**
- * "New since your last visit": the cutoff is the previous visit. A visit ends after 30 minutes
- * without opening the dashboard, so reloading doesn't wipe the "new" markers.
- */
-export function useVisitCutoff() {
-  const [cutoff, setCutoff] = useState<string | null>(() => {
-    const now = Date.now();
-    const v = load<{ last?: number; prev?: number }>(VISIT_KEY, {});
-    const prev = v.last && now - v.last > NEW_SESSION_GAP_MS ? v.last : v.prev;
-    save(VISIT_KEY, { last: now, prev });
-    return prev ? new Date(prev).toISOString() : null;
-  });
-
-  const markAllSeen = useCallback(() => {
-    const now = Date.now();
-    save(VISIT_KEY, { last: now, prev: now });
-    setCutoff(new Date(now).toISOString());
-  }, []);
-
-  return useMemo(() => ({ cutoff, markAllSeen }), [cutoff, markAllSeen]);
 }
 
 export function exportState(state: UserState, prefs?: Prefs): void {

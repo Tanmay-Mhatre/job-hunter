@@ -7,6 +7,9 @@ import { ResumeStep } from "../setup/ResumeStep";
 import type { Prefs } from "../lib/prefs";
 import { exportState, readStateFile, type UserState } from "../lib/userState";
 import { IndustriesStep, KeywordsStep, LocationsStep, RolesStep, ThresholdPicker } from "../setup/steps";
+import { ScanPrefsPicker } from "./ScanButton";
+import { ScheduledScans } from "./ScheduledScans";
+import { TelegramAlerts } from "./TelegramAlerts";
 import { Button, Card, Toggle } from "./ui";
 
 type Props = {
@@ -80,43 +83,39 @@ export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanni
           </Button>
         </div>
       </Section>
-      <Section id="threshold" title="Strong match threshold" hint="Jobs at or above this get a star, and alerts once those arrive.">
+      <Section id="threshold" title="Strong match threshold" hint="Jobs at or above this get a star in your Radar and in Telegram alerts.">
         <ThresholdPicker draft={draft} update={update} />
       </Section>
+      {canRunLocally && (
+        <>
+          <Section id="schedule" title="Scheduled scans" hint="Scan automatically every day at the times you pick. Saved right away.">
+            <ScheduledScans />
+          </Section>
+          <Section id="alerts" title="Telegram alerts" hint="Get new jobs from scheduled scans on your phone. Saved right away.">
+            <TelegramAlerts onChanged={onSaved} />
+          </Section>
+        </>
+      )}
       <Section
         id="directory"
-        title="Jobs beyond your companies"
-        hint="Your Radar finds jobs for you in a shared directory of ~21,000 companies, rebuilt weekly from public lists and what users add."
+        title="Company directory and scans"
+        hint="The shared directory lists ~21,000 companies and where each one posts jobs. Jobs are always fetched live by your own scans; nothing about you is sent."
       >
         <div className="space-y-3">
-          <Toggle
-            checked={draft.discovery.check_per_scan > 0}
-            onChange={(v) => update({ discovery: { ...draft.discovery, check_per_scan: v ? 30 : 0 } })}
-          >
-            Also check the best of those companies live on every scan
-          </Toggle>
-          {draft.discovery.check_per_scan > 0 ? (
-            <label className="flex flex-wrap items-center gap-2 pl-6 text-sm">
-              Up to
-              <input
-                type="number"
-                min={1}
-                max={100}
-                value={draft.discovery.check_per_scan}
-                onChange={(e) => update({ discovery: { ...draft.discovery, check_per_scan: Math.min(100, Math.max(1, Math.round(Number(e.target.value) || 1))) } })}
-                className="h-8 w-20 rounded-lg border border-line bg-surface px-2 text-sm outline-none focus:border-accent"
-                aria-label="Companies to check per scan"
-              />
-              companies per scan, best matches first; each is checked at most once a week.
-            </label>
-          ) : null}
-          <p className="pl-6 text-xs text-muted">
-            {draft.discovery.check_per_scan > 0
-              ? "Checked jobs get a full score and a real apply link. The rest stay estimated (title, place and date only) until checked. Each check is one request to that company's careers page."
-              : "Off: only your companies are contacted. Directory jobs stay estimated, with a link to the careers page, until you check or add the company."}
-          </p>
+          <ul className="space-y-1.5 text-sm">
+            <li>
+              <b>My companies + my industries</b>
+              <span className="text-muted">: your companies, plus every company in the directory tagged with your industries. A few minutes.</span>
+            </li>
+            <li>
+              <b>All companies</b>
+              <span className="text-muted">: every company in the directory we can check. About 2 hours; keep this computer on. Stop any time and it carries on later.</span>
+            </li>
+          </ul>
+          <p className="text-xs text-muted">Every scan first syncs the directory, so new companies and moved job boards are picked up.</p>
+          <ScanPrefsPicker />
           <Toggle checked={draft.directory.auto_update} onChange={(v) => update({ directory: { ...draft.directory, auto_update: v } })}>
-            Download the latest directory automatically (checked weekly)
+            Also update the directory in the background when the app starts
           </Toggle>
           <Toggle checked={draft.directory.share_additions} onChange={(v) => update({ directory: { ...draft.directory, share_additions: v } })}>
             Share companies I add by link with everyone

@@ -1,11 +1,14 @@
-import { ArrowRight, Building2, EyeOff, RefreshCw, Save } from "lucide-react";
-import { useMemo, useState } from "react";
-import { jobCompanyKey, keyOf, toRow, type CompanyRef } from "../lib/companies";
+import { ArrowRight, Building2, Check, CircleAlert, EyeOff, LoaderCircle, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { addCompanies, jobCompanyKey, keyOf, type CompanyRef } from "../lib/companies";
 import type { DataMeta, Job } from "../lib/data";
 import { canRunLocally } from "../lib/data";
 import { draftToConfig, saveConfig, type Draft } from "../lib/setup";
 import { MyCompanies, RecentRuns } from "./Companies";
+import { useCompanySuggestions } from "../lib/companySuggest";
 import { CompanyFinder, useDirectory } from "./CompanyFinder";
+import { ForYou } from "./companies/ForYou";
+import { QuickAdd } from "./companies/QuickAdd";
 import { EmptyState } from "./EmptyState";
 import { Button, Card } from "./ui";
 
@@ -27,23 +30,111 @@ type Props = {
   onUnhideName: (name: string) => void;
 };
 
-const companiesKey = (d: Draft) => JSON.stringify([draftToConfig(d).companies, d.muted]);
+const companiesKey = (d: Draft) => JSON.stringify([draftToConfig(d).companies, d.muted, d.pastEmployers]);
+
+type SaveState = { kind: "idle" } | { kind: "saving" } | { kind: "saved" } | { kind: "error"; message: string };
+
+/**
+ * Save the Companies page's changes on their own, a moment after the last one. Only its fields
+ * (companies, hidden, past employers) are written on top of the saved config, so unsaved Settings
+ * edits in the shared draft stay unsaved. Never scans: the next scan picks the new list up.
+ */
+function useAutoSave(draft: Draft, saved: Draft, onSaved: () => Promise<void>, enabled: boolean) {
+  const [state, setState] = useState<SaveState>({ kind: "idle" });
+  const latest = useRef({ draft, saved, onSaved });
+  latest.current = { draft, saved, onSaved };
+  const busy = useRef(false);
+  const again = useRef(false);
+  const run = useCallback(async () => {
+    if (busy.current) {
+      again.current = true;
+      return;
+    }
+    busy.current = true;
+    setState({ kind: "saving" });
+    try {
+      do {
+        again.current = false;
+        const { draft: d, saved: s } = latest.current;
+        const res = await saveConfig(draftToConfig({ ...s, companies: d.companies, muted: d.muted, pastEmployers: d.pastEmployers }));
+        if (!res.ok) return setState({ kind: "error", message: res.errors });
+        await latest.current.onSaved();
+      } while (again.current);
+      setState({ kind: "saved" });
+    } catch (err) {
+      setState({ kind: "error", message: (err as Error).message });
+    } finally {
+      busy.current = false;
+    }
+  }, []);
+  const pending = companiesKey(draft) !== companiesKey(saved);
+  const key = companiesKey(draft);
+  useEffect(() => {
+    if (!enabled || !pending) return;
+    const t = setTimeout(() => void run(), 800);
+    return () => clearTimeout(t);
+  }, [key, pending, enabled, run]);
+  return { state: pending && state.kind !== "error" && state.kind !== "saving" ? ({ kind: "saving" } as SaveState) : state, retry: run };
+}
+
+/** "Saving…", "Saved · used in your next scan", or what went wrong. */
+function SaveStatus({ state, retry, onScan, scanning }: { state: SaveState; retry: () => void; onScan: () => void; scanning: boolean }) {
+  if (!canRunLocally) return <span className="text-xs text-muted">Changes stay in this browser (run the app locally to save them).</span>;
+  if (state.kind === "error")
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-bad" title={state.message}>
+        <CircleAlert className="size-3.5" /> Couldn't save.
+        <button type="button" className="font-medium underline" onClick={retry}>
+          Retry
+        </button>
+      </span>
+    );
+  if (state.kind === "saving")
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-muted">
+        <LoaderCircle className="size-3.5 animate-spin" /> Saving…
+      </span>
+    );
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+      <span className="inline-flex items-center gap-1">
+        <Check className="size-3.5 text-good" /> {state.kind === "saved" ? "Saved. Used in your next scan." : "Changes save automatically."}
+      </span>
+      {state.kind === "saved" && (
+        <button type="button" className="inline-flex items-center gap-1 font-medium text-accent disabled:opacity-50" onClick={onScan} disabled={scanning}>
+          <RefreshCw className="size-3" /> Scan now
+        </button>
+      )}
+    </span>
+  );
+}
 
 /**
  * Companies tab: the companies you'd love to work at (checked every scan, listed first on the Radar),
  * adding more (directory search or a careers link), and companies you've hidden.
  */
 export function CompaniesTab({ configured, meta, jobs, draft, saved, update, onSaved, onScan, scanning, toSetup, hiddenNames, onUnhideName }: Props) {
-  const [status, setStatus] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
-  const [saving, setSaving] = useState(false);
+  /** A search handed from the top bar to the full finder. */
+  const [browseQuery, setBrowseQuery] = useState<{ text: string; n: number }>();
   /** Bumped after the directory updates, so search reloads it. */
   const [rev, setRev] = useState(0);
   const { directory, error: directoryError } = useDirectory(rev);
-  const dirty = companiesKey(draft) !== companiesKey(saved);
+  const autosave = useAutoSave(draft, saved, onSaved, configured && canRunLocally);
   const savedKeys = useMemo(() => new Set(saved.companies.map(keyOf)), [saved.companies]);
   const watched = useMemo(() => new Set(draft.companies.map(keyOf)), [draft.companies]);
-  const added = draft.companies.filter((r) => !savedKeys.has(keyOf(r))).length;
-  const removed = saved.companies.filter((r) => !watched.has(keyOf(r))).length;
+  const muted = useMemo(() => new Set(draft.muted), [draft.muted]);
+  // From the saved profile (not half-made Settings edits), with the past employers edited here.
+  const suggestFrom = useMemo(() => ({ ...saved, pastEmployers: draft.pastEmployers }), [saved, draft.pastEmployers]);
+  const suggestions = useCompanySuggestions(suggestFrom, configured);
+  /** Fit scores from the suggestions, for ordering and labelling search results. */
+  const fit = useMemo(() => {
+    const m = new Map<string, number>();
+    if (suggestions.kind !== "ready") return m;
+    const d = suggestions.data;
+    const all = [...d.hiringNow, ...d.worthWatching, ...d.notScannable, ...d.lookalikes.flatMap((r) => r.items), ...d.packs.flatMap((p) => p.items)];
+    for (const s of all) m.set(s.key, Math.max(m.get(s.key) ?? 0, s.score));
+    return m;
+  }, [suggestions]);
 
   /** Open jobs for you per company key, from the Radar's data. */
   const forYou = useMemo(() => {
@@ -70,38 +161,13 @@ export function CompaniesTab({ configured, meta, jobs, draft, saved, update, onS
 
   /** Add companies not already yours (adding one also unhides it); returns the keys actually added. */
   const addMany = (list: CompanyRef[]): string[] => {
-    const seen = new Set(watched);
-    const rows = list.filter((c) => {
-      const k = keyOf(c);
-      if (seen.has(k)) return false;
-      seen.add(k);
-      return true;
-    });
-    if (rows.length) {
-      const keys = new Set(rows.map(keyOf));
-      update({ companies: [...draft.companies, ...rows.map(toRow)], muted: draft.muted.filter((k) => !keys.has(k)) });
-    }
-    return rows.map(keyOf);
+    const { patch, keys } = addCompanies(draft, list);
+    if (patch) update(patch);
+    return keys;
   };
   const removeMany = (keys: readonly string[]) => {
     const drop = new Set(keys);
     update({ companies: draft.companies.filter((r) => !drop.has(keyOf(r))) });
-  };
-
-  const save = async (thenScan: boolean) => {
-    setSaving(true);
-    setStatus(null);
-    try {
-      const res = await saveConfig(draftToConfig(draft));
-      if (!res.ok) return setStatus({ tone: "bad", text: res.errors });
-      await onSaved();
-      setStatus({ tone: "ok", text: thenScan ? "Saved. Scanning…" : "Saved." });
-      if (thenScan) onScan();
-    } catch (err) {
-      setStatus({ tone: "bad", text: (err as Error).message });
-    } finally {
-      setSaving(false);
-    }
   };
 
   // Hidden companies: muted in your config (by key) and hidden on the Radar (by name), shown once each.
@@ -110,10 +176,35 @@ export function CompaniesTab({ configured, meta, jobs, draft, saved, update, onS
   const mutedNames = new Set(mutedRows.map((m) => m.name).filter(Boolean));
   const hidden = [...mutedRows, ...hiddenNames.filter((n) => !mutedNames.has(n)).map((name) => ({ key: undefined, name }))];
 
-  const changes = [added && `${added} added`, removed && `${removed} removed`].filter(Boolean).join(", ");
-
   return (
     <div className="space-y-4">
+      <QuickAdd
+        directory={directory}
+        watched={watched}
+        forYou={forYou}
+        fit={fit}
+        onAddMany={addMany}
+        onRemove={(k) => removeMany([k])}
+        onSeeAll={(text) => {
+          setBrowseQuery((b) => ({ text, n: (b?.n ?? 0) + 1 }));
+          setTimeout(() => document.getElementById("browse-companies")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+        }}
+        status={<SaveStatus state={autosave.state} retry={() => void autosave.retry()} onScan={onScan} scanning={scanning} />}
+      />
+
+      <ForYou
+        state={suggestions}
+        watched={watched}
+        muted={muted}
+        pastEmployers={draft.pastEmployers}
+        onPastEmployers={(pastEmployers) => update({ pastEmployers })}
+        onAddMany={addMany}
+        onRemoveMany={removeMany}
+        onMute={(key) => update({ muted: [...new Set([...draft.muted, key])], companies: draft.companies.filter((r) => keyOf(r) !== key) })}
+        onUnmute={(key) => update({ muted: draft.muted.filter((k) => k !== key) })}
+        offHint={canRunLocally ? undefined : "Suggestions are worked out by the local app. Run it on your computer (pnpm dev) to see companies picked for you."}
+      />
+
       <MyCompanies rows={draft.companies} savedKeys={savedKeys} meta={meta} forYou={forYou} onRemove={(k) => removeMany([k])} onRemoveMany={removeMany} />
 
       <CompanyFinder
@@ -124,6 +215,9 @@ export function CompaniesTab({ configured, meta, jobs, draft, saved, update, onS
         onAddMany={addMany}
         onRemove={(k) => removeMany([k])}
         onDirectoryUpdated={() => setRev((r) => r + 1)}
+        fit={fit}
+        industries={draft.industries}
+        query={browseQuery}
       />
 
       {hidden.length > 0 && (
@@ -150,27 +244,6 @@ export function CompaniesTab({ configured, meta, jobs, draft, saved, update, onS
             ))}
           </ul>
         </Card>
-      )}
-
-      {(dirty || status) && canRunLocally && (
-        <div className="sticky bottom-16 z-10 flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-surface/95 p-3 shadow-lg backdrop-blur md:bottom-4">
-          <span className={`mr-auto text-sm ${status?.tone === "bad" ? "text-bad" : status ? "text-good" : "text-muted"}`}>
-            {status?.text ?? (changes ? `${changes}, not saved yet.` : "You have unsaved changes.")}
-          </span>
-          {dirty && (
-            <>
-              <Button variant="ghost" onClick={() => update({ companies: saved.companies, muted: saved.muted })} disabled={saving}>
-                Discard
-              </Button>
-              <Button onClick={() => void save(false)} disabled={saving}>
-                <Save className="size-4" /> Save
-              </Button>
-              <Button variant="primary" onClick={() => void save(true)} disabled={saving || scanning}>
-                <RefreshCw className="size-4" /> Save & scan
-              </Button>
-            </>
-          )}
-        </div>
       )}
 
       {meta && <RecentRuns meta={meta} />}

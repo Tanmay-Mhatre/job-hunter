@@ -147,8 +147,12 @@ export function Toggle({ checked, onChange, children }: { checked: boolean; onCh
   );
 }
 
-export function Card({ children, className }: { children: ReactNode; className?: string }) {
-  return <section className={cx("rounded-2xl border border-line bg-surface", className)}>{children}</section>;
+export function Card({ children, className, id }: { children: ReactNode; className?: string; id?: string }) {
+  return (
+    <section id={id} className={cx("rounded-2xl border border-line bg-surface", className)}>
+      {children}
+    </section>
+  );
 }
 
 export function Kbd({ children }: { children: ReactNode }) {

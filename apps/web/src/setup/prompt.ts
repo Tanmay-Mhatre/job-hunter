@@ -5,7 +5,7 @@ import { INDUSTRIES } from "@jobhunter/core/catalog/industries";
  * master resume. Job Hunter never sends the resume anywhere; the user runs this themselves.
  * Bump PROMPT_VERSION when the output format changes (parseAiAnswer must still read it).
  */
-export const PROMPT_VERSION = 2;
+export const PROMPT_VERSION = 3;
 
 export const MASTER_RESUME_PROMPT = `You are an expert resume writer. I've attached my resumes (and/or pasted them below). I use different versions for different kinds of roles. Merge them into ONE master resume that I can keep as the single source of truth.
 
@@ -37,7 +37,8 @@ After the resume, add a JSON block for my job search tool. Infer it from the res
     "open_to_remote": true,
     "remote_regions": ["regions that fit my location, e.g. emea"],
     "keywords": { "domain or skill term": 5 },
-    "industries": ["1-4 industry ids from the list below that match my experience and where I want to work next"]
+    "industries": ["1-4 industry ids from the list below that match my experience and where I want to work next"],
+    "past_employers": ["every company I've worked at, newest first, spelled as on my resume"]
   }
 }
 \`\`\`

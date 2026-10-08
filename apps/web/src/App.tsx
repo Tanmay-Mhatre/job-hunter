@@ -7,19 +7,21 @@ import { ApplyPrompt } from "./components/ApplyPrompt";
 import { JobDrawer } from "./components/JobDrawer";
 import { Pipeline } from "./components/Pipeline";
 import { RadarPage } from "./components/radar/RadarPage";
+import { NotifyWhenDone } from "./components/NotifyWhenDone";
+import { ScanButton, ScanChooser } from "./components/ScanButton";
 import { Settings } from "./components/Settings";
 import { Button, Card, cx, IconButton, Kbd } from "./components/ui";
 import { jobCompanyKey, keyOf, refOfJob, toRow } from "./lib/companies";
 import { canRunLocally, useData, useOtherJobs, type Job } from "./lib/data";
 import { usePrefs } from "./lib/prefs";
-import { useScan } from "./lib/scan";
+import { scanPrefs, useScan } from "./lib/scan";
 import { useResume } from "./lib/resume";
 import { profileFromPicks, type FilterPicks } from "./lib/profileSync";
-import { checkNow, draftFromConfig, draftToConfig, emptyDraft, saveConfig, setupProgress, STEP, STEP_COUNT, useSetupStatus, type Draft } from "./lib/setup";
+import { checkNow, draftFromConfig, draftToConfig, emptyDraft, rebaseDraft, saveConfig, setupProgress, STEP, STEP_COUNT, useSetupStatus, type Draft } from "./lib/setup";
 import { buildSuggestions } from "./lib/suggest";
 import { load, save } from "./lib/storage";
 import { timeAgo } from "./lib/format";
-import { useUserState, useVisitCutoff, type Status } from "./lib/userState";
+import { useUserState, type Status } from "./lib/userState";
 import { Wizard } from "./setup/Wizard";
 
 const TABS = [
@@ -51,7 +53,6 @@ export function App() {
   const prefs = usePrefs();
   /** The job whose apply page was just opened, to ask "Did you apply?" on return. */
   const [applying, setApplying] = useState<Job | null>(null);
-  const visit = useVisitCutoff();
   const [route, setRoute] = useState<Route>(parseHash);
   const [openId, setOpenId] = useState<string | null>(null);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
@@ -73,11 +74,17 @@ export function App() {
   }, [status, meta]);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const appliedRef = useRef<string>("");
+  /** The saved setup the draft was last based on, so a newer save can be merged under unsaved edits. */
+  const baseRef = useRef<Draft | null>(null);
   useEffect(() => {
     if (status === undefined) return;
     const key = JSON.stringify(draftToConfig(saved));
     if (key === appliedRef.current) return;
     appliedRef.current = key;
+    const base = baseRef.current;
+    baseRef.current = saved;
+    // The config was saved from elsewhere (the Companies page saves itself): keep unsaved edits.
+    if (personal && base) return setDraft((d) => rebaseDraft(d, base, saved));
     // First-time setup resumes an unfinished draft from this browser.
     const stored = !personal && status !== null ? load<Draft | null>(DRAFT_KEY, null) : null;
     setDraft(stored ? { ...emptyDraft(), ...stored } : saved);
@@ -94,7 +101,16 @@ export function App() {
   const afterScan = useCallback(async () => {
     await Promise.all([reload(), setup.refresh()]);
   }, [reload, setup.refresh]);
-  const { scan, start: startScan } = useScan(afterScan);
+  const { scan, start: startScan, stop: stopScan, notify: notifyScan } = useScan(afterScan);
+  /** The "which scan?" pop-up. */
+  const [choosing, setChoosing] = useState(false);
+  /** A "Scan now" click: ask which scan, or run your default if you said not to ask. */
+  const requestScan = useCallback(() => {
+    const p = scanPrefs();
+    if (p.ask) setChoosing(true);
+    else void startScan(p.scope);
+  }, [startScan]);
+  const closeChooser = useCallback(() => setChoosing(false), []);
   const scanning = scan.phase === "running";
 
   /** Radar "Save to my profile": its place and industry picks become your profile, then a rescan. */
@@ -271,12 +287,7 @@ export function App() {
                     {setupState === "invalid" ? "Fix setup" : progress.started ? "Finish setup" : "Set up radar"} <ArrowRight className="size-3.5" />
                   </Button>
                 )}
-                {canRunLocally && setupState === "configured" && (
-                  <Button size="sm" onClick={() => void startScan()} disabled={scanning} title="Find and score jobs for you now">
-                    {scanning ? <LoaderCircle className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
-                    {scanning ? "Scanning…" : "Scan now"}
-                  </Button>
-                )}
+                {canRunLocally && setupState === "configured" && <ScanButton scan={scan} onRequest={requestScan} onChoose={() => setChoosing(true)} onStop={() => void stopScan()} />}
                 <span className="hidden sm:contents">
                   <IconButton label="Keyboard shortcuts (?)" onClick={() => setShowKeys((v) => !v)}>
                     <Keyboard className="size-4" />
@@ -327,16 +338,18 @@ export function App() {
         ) : (
           <div className="space-y-4">
             {state.kind === "error" && <ErrorState message={state.message} />}
+            {/* A scan in progress, on every tab: progress, Stop, and (long scans) a Telegram message when it's done. */}
+            {state.kind !== "empty" && <ScanningBar scan={scan} onStop={() => void stopScan()} />}
+            <NotifyWhenDone scan={scan} onNotify={notifyScan} onSaved={() => setup.refresh()} />
 
             {tab === "radar" && (
               <>
                 {notSetUp && <SetupHero items={items} started={progress.started} nextStep={progress.nextStep} onStep={goStep} onCompanies={goCompanies} />}
                 {setupState === "invalid" && <ConfigProblemCard errors={status?.errors} onFix={() => goStep(0)} />}
                 {setupState === "configured" && personal && (
-                  <SetupChecklist items={items} onStep={goStep} onScan={() => void startScan()} onCompanies={goCompanies} />
+                  <SetupChecklist items={items} onStep={goStep} onScan={requestScan} onCompanies={goCompanies} />
                 )}
-                {state.kind === "ready" && <ScanningBar scan={scan} />}
-                {setupState === "configured" && personal && state.kind === "empty" && <FirstScanCard scan={scan} onScan={() => void startScan()} />}
+                {setupState === "configured" && personal && state.kind === "empty" && <FirstScanCard scan={scan} onScan={requestScan} />}
                 {state.kind === "ready" && failing > 0 && <FailingBanner count={failing} onOpen={() => go({ tab: "companies" })} />}
                 {state.kind === "ready" && lastRun && matched === 0 && <NoMatches jobs={otherJobs ? [...jobs, ...otherJobs] : jobs} onStep={goStep} onCompanies={goCompanies} />}
                 {state.kind === "ready" && (matched > 0 || !lastRun) && (
@@ -344,9 +357,7 @@ export function App() {
                     jobs={state.jobs}
                     meta={state.meta}
                     user={user.state}
-                    cutoff={visit.cutoff}
                     prefs={prefs.prefs}
-                    onMarkAllSeen={visit.markAllSeen}
                     onOpenOverlay={onOpen}
                     overlayOpen={!!openJob}
                     onStatus={onStatus}
@@ -395,7 +406,7 @@ export function App() {
                 }}
                 onScan={() => {
                   go({ tab: "radar" });
-                  void startScan();
+                  requestScan();
                 }}
                 scanning={scanning}
                 toSetup={toSetup}
@@ -426,7 +437,7 @@ export function App() {
                 }}
                 onScan={() => {
                   go({ tab: "radar" });
-                  void startScan();
+                  requestScan();
                 }}
                 scanning={scanning}
                 user={user.state}
@@ -488,6 +499,7 @@ export function App() {
       />
 
       {showKeys && <ShortcutHelp onClose={() => setShowKeys(false)} />}
+      <ScanChooser open={choosing} onClose={closeChooser} onStart={(scope) => void startScan(scope)} />
     </div>
   );
 }

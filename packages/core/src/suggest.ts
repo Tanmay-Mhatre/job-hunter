@@ -331,7 +331,7 @@ function watchSuggestion(
   const reasons: string[] = [];
   if (industry) reasons.push(industryReason(s.industries));
   else if (hires) reasons.push(hiresReason(s.hires_for));
-  if (shortlist) reasons.push("On your shortlist");
+  if (shortlist) reasons.push("Curated pick");
   if (s.near_misses) reasons.push(`${plural(s.near_misses, "similar role")} nearby or remote`);
   if (s.elsewhere) reasons.push(`Hires for your roles in ${extra.elsewherePlaces.join(", ")}`);
   if (s.in_your_places) reasons.push(`Hiring in ${[...new Set(extra.ownPlaces.map(placeName))].slice(0, 2).join(", ")} (other roles)`);

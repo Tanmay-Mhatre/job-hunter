@@ -13,6 +13,8 @@ export type AiProfile = {
   keywords: Record<string, number>;
   /** Industry ids (catalog/industries.ts) the person has worked in or wants to. */
   industries: string[];
+  /** Companies the person has worked at, newest first (original spelling). */
+  past_employers: string[];
 };
 
 export type ParsedAnswer = {
@@ -52,6 +54,10 @@ function normalizeProfile(raw: unknown): AiProfile | undefined {
     keywords,
     // Accept ids or labels ("Brokerage, CFD & FX"); drop anything not in the taxonomy.
     industries: [...new Set(strList(o.industries, 12).flatMap((x) => industriesForLabel(x)))],
+    // Company names keep their casing ("Northwind", "TideWave").
+    past_employers: Array.isArray(o.past_employers)
+      ? [...new Set(o.past_employers.filter((x): x is string => typeof x === "string").map((s) => s.trim().replace(/\s+/g, " ")).filter(Boolean))].slice(0, 15)
+      : [],
   };
   const empty =
     !profile.target_titles.length && !profile.locations.length && !Object.keys(profile.keywords).length && !profile.seniority.length && !profile.industries.length;
