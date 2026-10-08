@@ -8,6 +8,7 @@ import { canRunLocally } from "../lib/data";
 import type { ScanState } from "../lib/scan";
 import { draftToConfig, saveBlockers, saveConfig, STEP, STEP_COUNT, stepBlocker, STEPS, usableCompanies, type Draft, type SetupProgress } from "../lib/setup";
 import { buildSuggestions } from "../lib/suggest";
+import { CompaniesStep } from "./CompaniesStep";
 import { ResumeStep } from "./ResumeStep";
 import { IndustriesStep, KeywordsStep, LocationsStep, RolesStep, ThresholdPicker } from "./steps";
 
@@ -45,6 +46,10 @@ const COPY: Record<number, { title: string; intro: string }> = {
     intro: "Pick the industries you've worked in or want to move into. You can narrow your Radar to them. This never hides a job on its own.",
   },
   [STEP.keywords]: { title: "What topics matter to you?", intro: "These don't hide jobs. They rank the ones that mention your topics higher." },
+  [STEP.companies]: {
+    title: "Pick companies you'd love to work at",
+    intro: "Picked from your roles, places, industries and past employers. We check the ones you add on every scan and put their jobs first. Optional.",
+  },
   [STEP.review]: { title: "Review and save", intro: "Check everything reads right, then save. We'll find matching jobs across thousands of companies right away." },
 };
 
@@ -63,7 +68,8 @@ export function Wizard(props: Props) {
   const optionalEmpty =
     (step === STEP.resume && !resumeText) ||
     (step === STEP.industries && draft.industries.length === 0) ||
-    (step === STEP.keywords && Object.keys(draft.keywords).length === 0);
+    (step === STEP.keywords && Object.keys(draft.keywords).length === 0) ||
+    (step === STEP.companies && draft.companies.length === 0);
   return (
     <div className="mx-auto max-w-2xl">
       <Progress step={step} goStep={goStep} draft={draft} />
@@ -85,6 +91,7 @@ export function Wizard(props: Props) {
           {step === STEP.locations && <LocationsStep draft={draft} update={update} suggest={suggest} />}
           {step === STEP.industries && <IndustriesStep draft={draft} update={update} suggest={suggest} />}
           {step === STEP.keywords && <KeywordsStep draft={draft} update={update} suggest={suggest} resumeText={resumeText} />}
+          {step === STEP.companies && <CompaniesStep draft={draft} update={update} />}
           {step === STEP.review && (
             <Review
               draft={draft}
@@ -133,7 +140,7 @@ function Progress({ step, goStep, draft }: { step: number; goStep: (n: number) =
           Step {step} of {STEP_COUNT}
         </p>
       </div>
-      <ol className="mt-2 grid grid-cols-5 gap-1.5">
+      <ol className="mt-2 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${STEPS.length}, minmax(0, 1fr))` }}>
         {STEPS.map((s) => (
           <li key={s.id}>
             <button
@@ -372,6 +379,17 @@ function Review({
         <span className="text-muted">No topic keywords (jobs won't be ranked by topic).</span>
       ),
     ],
+    [
+      STEP.companies,
+      companies.length ? (
+        <>
+          Watch <b>{companies.slice(0, 4).map((c) => c.name).join(", ")}</b>
+          {companies.length > 4 && ` +${companies.length - 4} more`}: checked every scan, their jobs listed first.
+        </>
+      ) : (
+        <span className="text-muted">No companies picked (optional). You can add them later in the Companies tab.</span>
+      ),
+    ],
   ];
 
   return (
@@ -386,14 +404,6 @@ function Review({
           </li>
         ))}
       </ul>
-      <p className="-mt-3 text-sm text-muted">
-        {companies.length
-          ? `Companies: ${companies.length} saved (${companies
-              .slice(0, 4)
-              .map((c) => c.name)
-              .join(", ")}${companies.length > 4 ? "…" : ""}). Manage them in the Companies tab.`
-          : "Companies: none yet (optional). Add ones you'd love to join in the Companies tab; their jobs go to the top."}
-      </p>
 
       <div>
         <h3 className="text-sm font-semibold">Which jobs count as strong matches?</h3>

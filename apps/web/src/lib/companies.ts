@@ -1,5 +1,5 @@
 import { careersUrl, companyKey } from "@jobhunter/core/detect";
-import { rowId, type CompanyRow } from "./setup";
+import { rowId, type CompanyRow, type Draft } from "./setup";
 
 /** Hiring systems we can scan today. The rest are recognised and kept as "coming soon". */
 export const SUPPORTED = new Set(["greenhouse", "lever", "ashby", "smartrecruiters"]);
@@ -99,4 +99,18 @@ export function toRow(c: CompanyRef): CompanyRow {
     shard: c.shard,
     site: c.site,
   };
+}
+
+/** Add companies not in the draft yet (adding one also unhides it): the draft patch, and the keys actually added. */
+export function addCompanies(draft: Pick<Draft, "companies" | "muted">, list: readonly CompanyRef[]): { patch: Partial<Draft> | null; keys: string[] } {
+  const seen = new Set(draft.companies.map(keyOf));
+  const rows = list.filter((c) => {
+    const k = keyOf(c);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+  if (!rows.length) return { patch: null, keys: [] };
+  const keys = new Set(rows.map(keyOf));
+  return { patch: { companies: [...draft.companies, ...rows.map(toRow)], muted: draft.muted.filter((k) => !keys.has(k)) }, keys: [...keys] };
 }

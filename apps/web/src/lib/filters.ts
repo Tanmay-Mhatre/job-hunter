@@ -67,8 +67,6 @@ export type Ctx = {
   user: UserState;
   /** Strong-match score (the profile's min_score). */
   min: number;
-  /** "New since your last visit" cutoff (ISO), or null for "everything is new". */
-  cutoff: string | null;
   /** Industry ids per company name. */
   industriesOf: (company: string) => string[];
   hiddenCompanies: ReadonlySet<string>;
@@ -82,8 +80,15 @@ export type Ctx = {
 export const REMOTE = "Remote";
 const APPLIED_STAGES: Status[] = ["applied", "interviewing", "offer", "rejected"];
 
-/** New since your last visit. Directory jobs never are: nobody has checked them yet. */
-export const isNewJob = (j: Job, ctx: Ctx) => !j.estimated && j.status === "open" && (!ctx.cutoff || j.firstSeen > ctx.cutoff);
+/** The New view: open jobs a scan found for the first time in the last 24 hours. */
+export const NEW_VIEW_HOURS = 24;
+/** The "New" tag on a job stays this long after a scan first found it. */
+export const NEW_TAG_HOURS = 48;
+const foundWithin = (j: Job, hours: number, now = Date.now()) => !j.estimated && j.status === "open" && now - Date.parse(j.firstSeen) <= hours * 3_600_000;
+/** Found by a scan in the last 24 hours (the New view). Directory jobs never are: nobody has checked them yet. */
+export const isNewJob = (j: Job, ctx: Pick<Ctx, "now">) => foundWithin(j, NEW_VIEW_HOURS, ctx.now);
+/** Shows the "New" tag: found by a scan in the last 2 days. */
+export const hasNewTag = (j: Job, ctx: Pick<Ctx, "now">) => foundWithin(j, NEW_TAG_HOURS, ctx.now);
 /** Remote jobs, and jobs that matched one of your remote regions ("EMEA"), count as "Remote". */
 const isRemoteLike = (j: Job) => j.workplace === "remote" || j.why.location === 15 || /\bremote\b/i.test(j.location);
 const countriesOf = (j: Job) => (isRemoteLike(j) ? [...j.countries, REMOTE] : j.countries);

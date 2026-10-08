@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import type { Config } from "@jobhunter/core/schema";
 import { keyOf } from "../lib/companies";
 import type { DataMeta, Job } from "../lib/data";
-import type { ScanState } from "../lib/scan";
+import { scanLine, type ScanState } from "../lib/scan";
 import { STEP, STEP_COUNT } from "../lib/setup";
 import { load, save } from "../lib/storage";
 import { ScanProgress } from "./ScanProgress";
@@ -222,7 +222,7 @@ export function FirstScanCard({ scan, onScan }: { scan: ScanState; onScan: () =>
     <Card className="p-6 text-center sm:p-8">
       <h2 className="text-lg font-semibold">{running ? "Finding jobs for you…" : "Ready for your first scan"}</h2>
       <p className="mx-auto mt-1 max-w-md text-sm text-muted">
-        We'll find every open job that fits your roles and places in the company directory, check the best companies live, and score each job against your profile.
+        We sync the company directory, check your companies and every company in your industries live, and score each job against your profile.
       </p>
       {running ? (
         <div className="mx-auto mt-5 max-w-md text-left">
@@ -323,17 +323,21 @@ export function FailingBanner({ count, onOpen }: { count: number; onOpen: () => 
   );
 }
 
-export function ScanningBar({ scan }: { scan: ScanState }) {
+export function ScanningBar({ scan, onStop }: { scan: ScanState; onStop?: () => void }) {
   if (scan.phase !== "running") return null;
-  const total = scan.companies.length;
-  const done = Object.keys(scan.results).length;
   return (
-    <Card className="flex items-center gap-3 px-4 py-2.5 text-sm">
+    <Card className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 text-sm">
       <LoaderCircle className="size-4 animate-spin text-accent" />
-      <span className="flex-1">{total ? `Scanning ${Math.min(done + 1, total)} of ${total} companies…` : "Starting scan…"}</span>
+      <span className="min-w-0 flex-1">{scanLine(scan)}</span>
       <div className="h-1.5 w-28 overflow-hidden rounded-full bg-surface-2">
-        <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${total ? (done / total) * 100 : 4}%` }} />
+        <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${scan.total ? (scan.done / scan.total) * 100 : 4}%` }} />
       </div>
+      {onStop && (
+        <Button size="sm" variant="ghost" onClick={onStop} disabled={scan.stopping}>
+          {scan.stopping ? "Stopping…" : "Stop"}
+        </Button>
+      )}
     </Card>
   );
 }
+

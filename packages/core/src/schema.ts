@@ -193,6 +193,8 @@ export const ProfileSchema = z.object({
   }),
   /** Industry ids you want to work in (see catalog/industries.ts); used to suggest companies. */
   industries: z.array(z.string().trim().toLowerCase().min(1)).default([]),
+  /** Companies you've worked at (from your resume, confirmed by you); used to suggest similar companies. */
+  past_employers: z.array(z.string().trim().min(1)).max(20).default([]),
   /** keyword -> weight 1..5, matched as whole words in title + description. */
   keywords: z.record(term, z.number().int().min(1).max(5)).default({}),
   min_score: z.number().int().min(0).max(100).default(70),

@@ -1,5 +1,5 @@
 #!/usr/bin/env -S npx tsx
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import {
@@ -16,30 +16,55 @@ import {
   scan,
   setupStatus,
   suggestCompanies,
+  syncDirectory,
+  scanPlan,
+  acquireScanLock,
+  releaseScanLock,
+  digest,
+  finishedMessage,
+  sendTelegram,
+  telegramSecrets,
+  saveTelegramSecrets,
+  telegramBotName,
+  findTelegramChat,
+  looksLikeToken,
+  maskToken,
+  installSchedule,
+  removeSchedule,
+  runScheduleNow,
+  scheduleStatus,
+  recordScheduledRun,
+  type MergeResult,
+  type RunResult,
+  type ScheduledRun,
+  resumable,
+  readDirectory,
+  SCAN_SCOPES,
+  PERSONAL_CONFIG,
+  type BoardMove,
+  type ScanScope,
+  type DirectoryEntry,
   directoryAgeDays,
   directoryStatus,
   queueContributions,
   sendContributions,
   updateDirectory,
+  companyWords,
+  lookalikes,
+  matchEmployers,
+  ProfileSchema,
+  rolesFromResume,
+  seedFromRole,
   type CompanyCheck,
   type CompanyHealth,
+  type CompanyShape,
+  type Config,
+  type Profile,
+  type SuggestResult,
   type DirectoryCompany,
   type IndexedCompany,
   type Job,
 } from "@jobhunter/core";
-
-type DirectoryEntry = DirectoryCompany & { indexed?: boolean; status?: string; origin?: "user" };
-
-/** The published company directory plus companies added by link (empty if not built yet). */
-function readDirectory(dataDir: string): DirectoryEntry[] {
-  const read = (name: string): DirectoryEntry[] => {
-    const file = resolve(dataDir, "catalog", name);
-    return existsSync(file) ? (JSON.parse(readFileSync(file, "utf8")) as { companies: DirectoryEntry[] }).companies : [];
-  };
-  const dir = read("directory.json");
-  const known = new Set(dir.map((c) => c.key));
-  return [...dir, ...read("additions.json").filter((c) => !known.has(c.key)).map((c) => ({ ...c, origin: "user" as const }))];
-}
 
 /** Remember boards found by "Add by link" that the directory doesn't have yet. */
 function recordAdditions(dataDir: string, results: CompanyCheck[]): void {
@@ -66,6 +91,54 @@ function recordAdditions(dataDir: string, results: CompanyCheck[]): void {
   writeFileSync(file, JSON.stringify({ companies: [...byKey.values()] }, null, 1));
 }
 
+type SuggestInput = { profile?: unknown; watched?: string[]; hidden?: string[] };
+
+/**
+ * What the Companies page shows beyond the three lists: your past employers in the directory
+ * ("go back?"), companies like them, one starter pack per industry you picked, and how much of
+ * your industries we can track.
+ */
+function companyExtras(profile: Profile, pool: SuggestResult, indexed: readonly IndexedCompany[], directory: readonly DirectoryEntry[], exclude: ReadonlySet<string>) {
+  const candidates = [...pool.hiringNow, ...pool.worthWatching];
+  const rowsByKey = new Map(indexed.map((c) => [c.key, c]));
+  const dirByKey = new Map(directory.map((c) => [c.key, c]));
+  const source = (key: string) => rowsByKey.get(key) ?? dirByKey.get(key);
+  const shapes = new Map<string, CompanyShape>();
+
+  // Past employers: the confirmed list, or (until there is one) what the resume says.
+  const roles = rolesFromResume(readResume().text ?? "");
+  const names = profile.past_employers.length ? profile.past_employers : roles.map((r) => r.company);
+  const matched = matchEmployers(names, directory);
+  const roleOf = (name: string) => roles.find((r) => companyWords(r.company).join(" ") === companyWords(name).join(" "));
+  const lookalikeRows = matched
+    .map(({ name, match }) => {
+      const role = roleOf(name);
+      const seed = match ? { ...(rowsByKey.get(match.key) ?? match), name } : role ? seedFromRole(role) : undefined;
+      return seed ? { seed: name, in_directory: !!match, items: lookalikes(seed, candidates, source, shapes, { limit: 6 }) } : undefined;
+    })
+    .filter((r): r is NonNullable<typeof r> => !!r && r.items.length > 0)
+    .slice(0, 3);
+  const pastEmployers = matched.map(({ name, match }) => ({
+    name,
+    ...(match && !exclude.has(match.key)
+      ? { company: { key: match.key, name: match.name, ats: match.ats, slug: match.slug, careers_url: match.careers_url, region: match.region, shard: match.shard, site: match.site, open_jobs: match.open_jobs, status: match.status } }
+      : {}),
+    watched: !!match && exclude.has(match.key),
+  }));
+
+  const wanted = new Set(profile.industries);
+  const packs = profile.industries.map((id) => ({
+    industry: id,
+    items: candidates.filter((c) => c.industries.includes(id) && connectors[c.ats as keyof typeof connectors]).sort((a, b) => b.score - a.score).slice(0, 8),
+  }));
+  const inIndustries = directory.filter((c) => c.tags?.some((t) => wanted.has(t)));
+  const coverage = {
+    in_industries: new Set(inIndustries.map((c) => companyWords(c.name).join(" "))).size,
+    trackable: new Set(inIndustries.filter((c) => c.status === "live" && connectors[c.ats as keyof typeof connectors]).map((c) => companyWords(c.name).join(" "))).size,
+  };
+  return { pastEmployers, lookalikes: lookalikeRows, packs: packs.filter((p) => p.items.length), coverage };
+}
+
 async function cmdCompanies(args: string[]): Promise<number> {
   const { values, positionals } = parseArgs({
     args,
@@ -89,22 +162,32 @@ async function cmdCompanies(args: string[]): Promise<number> {
     else console.error(msg);
     return values.json ? 0 : 1;
   }
-  const { config } = loadConfig(values.config);
-  const hidden: string[] = values.stdin ? ((JSON.parse((await readStdin()) || "{}") as { hidden?: string[] }).hidden ?? []) : [];
+  // The dashboard sends the profile being edited (maybe not saved yet) and the companies to leave out.
+  const input: SuggestInput = values.stdin ? (JSON.parse((await readStdin()) || "{}") as SuggestInput) : {};
+  const sent = input.profile ? ProfileSchema.safeParse(input.profile) : undefined;
+  let config: Config | undefined;
+  try {
+    config = loadConfig(values.config).config;
+  } catch (err) {
+    if (!sent?.success) throw err;
+  }
+  const profile = sent?.success ? sent.data : config!.profile;
   const index = JSON.parse(readFileSync(indexFile, "utf8")) as { generated_at: string; companies: IndexedCompany[] };
+  const directory = readDirectory(values.data);
   // Directory companies without job rows (no openings, or not indexed): candidates to watch.
-  const others = readDirectory(values.data).filter((c) => !c.indexed);
+  const others = directory.filter((c) => !c.indexed);
   // Leave out companies already watched and ones the user said no to.
-  const exclude = new Set([...config.companies.map(companyKey), ...hidden.map((h) => h.toLowerCase())]);
+  const exclude = new Set(
+    [...(input.watched ?? config?.companies.map(companyKey) ?? []), ...(input.hidden ?? []), ...(config?.companies_muted ?? [])].map((k) => k.toLowerCase()),
+  );
   const started = Date.now();
-  const result = suggestCompanies(config.profile, index.companies, {
-    exclude,
-    others,
-    limit: Number(values.limit) || 30,
-    indexGeneratedAt: new Date(index.generated_at),
-  });
+  const limit = Number(values.limit) || 30;
+  // A deep pool for lookalikes and packs; the lists shown are its first `limit` (same order).
+  const pool = suggestCompanies(profile, index.companies, { exclude, others, limit: 400, indexGeneratedAt: new Date(index.generated_at) });
+  const result = { hiringNow: pool.hiringNow.slice(0, limit), worthWatching: pool.worthWatching.slice(0, limit), notScannable: pool.notScannable.slice(0, limit), scanned: pool.scanned };
+  const extra = companyExtras(profile, pool, index.companies, directory, exclude);
   if (values.json) {
-    console.log(JSON.stringify({ ...result, index_generated_at: index.generated_at, took_ms: Date.now() - started }));
+    console.log(JSON.stringify({ ...result, ...extra, index_generated_at: index.generated_at, took_ms: Date.now() - started }));
     return 0;
   }
   console.log(`Scanned ${result.scanned} companies in ${Date.now() - started} ms (index from ${index.generated_at.slice(0, 10)}).\n`);
@@ -122,7 +205,9 @@ async function cmdCompanies(args: string[]): Promise<number> {
 const HELP = `Job Hunter — self-hosted job radar
 
 Usage:
-  jobhunter run [options]       Fetch, score and print matching jobs
+  jobhunter scan [options]      Sync the directory, fetch your companies (and more, by scope) live, score them
+  jobhunter schedule <status|install|remove>   Scan on a schedule on this computer (--time 08:00 [--time 20:00] --scope mine|all)
+  jobhunter alerts telegram <status|token|connect|test|on|off|forget>   Telegram alerts
   jobhunter detect <url>...     Turn careers URLs into config lines
   jobhunter validate            Check your config file
   jobhunter setup <status|save|check>   Used by the dashboard's setup wizard (JSON in/out)
@@ -134,9 +219,15 @@ Options for companies suggest:
   -d, --data <dir>      Where data/catalog/index.json lives (default: data)
   -n, --limit <n>       How many to suggest (default 30)
       --json            Print JSON (used by the dashboard)
-      --stdin           Read {"hidden": ["ats:slug", …]} from stdin to leave out
+      --stdin           Read {"profile"?, "watched"?: ["ats:slug"], "hidden"?: ["ats:slug"]} from stdin (the profile being edited, companies to leave out)
 
-Options for run:
+Options for scan (alias: run):
+  -s, --scope <type>    mine: your companies + every directory company in your industries (default)
+                        all:  your companies + every company in the directory (about 2 h)
+      --offline         Don't sync the company directory first
+      --fresh           Start over instead of resuming a stopped scan (Ctrl+C stops and saves progress)
+      --plan            Print what each scope covers (companies, minutes) as JSON
+      --notify          Send the new jobs to Telegram (when set up in Settings → Alerts)
   -c, --config <path>   Config file (default: jobhunter.config.local.yaml, then jobhunter.config.yaml)
   -o, --only <name>     Only this company (name or slug); repeatable
   -a, --all             Also list jobs that failed the title/location gates
@@ -151,6 +242,7 @@ async function main(argv: string[]): Promise<number> {
   const [cmd, ...rest] = argv;
   switch (cmd) {
     case "run":
+    case "scan":
       return cmdRun(rest);
     case "detect":
       return cmdDetect(rest);
@@ -162,6 +254,10 @@ async function main(argv: string[]): Promise<number> {
       return cmdCompanies(rest);
     case "directory":
       return cmdDirectory(rest);
+    case "alerts":
+      return cmdAlerts(rest);
+    case "schedule":
+      return cmdSchedule(rest);
     case undefined:
     case "help":
     case "-h":
@@ -173,6 +269,52 @@ async function main(argv: string[]): Promise<number> {
       return 2;
   }
 }
+
+type RunValues = {
+  config?: string;
+  only?: string[];
+  check?: string[];
+  data: string;
+  "dry-run": boolean;
+  scope?: string;
+  offline: boolean;
+  fresh: boolean;
+};
+
+const parseScope = (v: string | undefined): ScanScope => {
+  if (v === undefined || v === "mine" || v === "all") return v ?? "mine";
+  throw new Error(`--scope must be "mine" (your companies + your industries) or "all" (every company in the directory), not "${v}".`);
+};
+
+/** Stop a scan from outside: Ctrl+C here, or the dashboard's Stop button (it creates this file). */
+const stopFile = (dataDir: string) => resolve(dataDir, "scan-stop");
+/** "Tell me on Telegram when this scan is done": the dashboard creates this file during a scan. */
+const notifyFile = (dataDir: string) => resolve(dataDir, "scan-notify");
+function stopSignal(dataDir: string): () => boolean {
+  rmSync(stopFile(dataDir), { force: true });
+  rmSync(notifyFile(dataDir), { force: true });
+  let interrupted = false;
+  process.once("SIGINT", () => {
+    interrupted = true;
+    console.error("\nStopping after the companies in progress… (progress is saved; run again to resume)");
+  });
+  return () => interrupted || existsSync(stopFile(dataDir));
+}
+
+/** Moved boards go into your personal config (the scan already fetched them on their new board). */
+function saveMoves(config: Config, path: string, moves: BoardMove[]): string | undefined {
+  if (!moves.length) return undefined;
+  if (resolve(path) !== resolve(PERSONAL_CONFIG)) return `Update ${path} by hand: ${moves.map((m) => `${m.name} is now ${m.to.ats}:${m.to.slug}`).join("; ")}`;
+  const key = (c: { ats: string; slug: string }) => `${c.ats}:${c.slug}`.toLowerCase();
+  const companies = config.companies.map((c) => {
+    const m = moves.find((x) => key(x.from) === key(c));
+    return m ? { ...m.to, enabled: c.enabled } : c;
+  });
+  const res = saveConfig({ ...config, companies });
+  return res.ok ? undefined : res.errors;
+}
+
+const duration = (s: number) => (s < 90 ? `${Math.max(1, Math.round(s / 60))} min` : s < 5400 ? `${Math.round(s / 60)} min` : `${(s / 3600).toFixed(1)} h`);
 
 async function cmdRun(args: string[]): Promise<number> {
   const { values } = parseArgs({
@@ -188,95 +330,312 @@ async function cmdRun(args: string[]): Promise<number> {
       progress: { type: "string" },
       /** Check just this directory company now ("ats:slug"); repeatable. */
       check: { type: "string", multiple: true },
+      scope: { type: "string", short: "s" },
+      /** Skip the directory sync (no network for it). */
+      offline: { type: "boolean", default: false },
+      /** Start over instead of resuming a stopped scan. */
+      fresh: { type: "boolean", default: false },
+      /** Print what each scope would cover, as JSON, and exit. */
+      plan: { type: "boolean", default: false },
+      /** Send the new matches to Telegram (when it's set up and on). */
+      notify: { type: "boolean", default: false },
+      /** Run by the computer's scheduler: logged in data/schedule-runs.json. */
+      scheduled: { type: "boolean", default: false },
     },
   });
+  if (values.plan) return printPlan(values);
   if (values.progress === "ndjson") return runNdjson(values);
+  const scope = parseScope(values.scope);
   const { config, path } = loadConfig(values.config);
   const dataDir = resolve(values.data);
-  const count = config.companies.filter((c) => c.enabled).length;
-  if (!count && (values.only?.length || !readIndex(dataDir))) {
-    console.error(`Config: ${path}
-No companies yet, and no company directory to find jobs in. Add companies in the dashboard (Companies tab),
-download the directory with: pnpm jobhunter directory update, or add one with: pnpm jobhunter detect <careers url>`);
-    return 0;
-  }
   console.error(`Config: ${path}`);
 
-  const { result, merged, summary, checks, indexJobs } = await scan(config, {
-    dataDir,
-    only: values.only,
-    checkKeys: values.check,
-    dryRun: values["dry-run"],
-    onStart: (names, extra) =>
-      console.error(
-        `Checking ${values.only?.length ? values.only.join(", ") : `${names.length - extra.length} of your companies`}${extra.length ? ` and ${extra.length} more hiring for you` : ""}...
-`,
-      ),
-    onCompanyDone: (h) => console.error(`  ${h.ok ? "ok " : "ERR"} ${h.company.padEnd(24)} ${healthLine(h)}`),
-  });
-
-  const min = config.profile.min_score;
-  const shown = result.jobs.filter((j) => values.all || !j.why.gate).slice(0, Number.isFinite(Number(values.limit)) ? Number(values.limit) : 50);
-  const matches = result.jobs.filter((j) => !j.why.gate);
-  const fresh = matches.filter((j) => merged.newIds.has(j.id)).length;
-  console.log(
-    `
-${matches.length} jobs passed your title and location gates (${fresh} new); ${matches.filter((j) => j.score >= min).length} scored ${min}+ (alert threshold).`,
-  );
-  if (checks.length) console.log(`Also checked ${checks.length} companies you haven't added, because the directory says they're hiring for you.`);
-  if (indexJobs !== undefined) console.log(`${indexJobs} more jobs for you in the directory, not checked live yet (see the Radar).`);
-  console.log("");
-  if (shown.length) printJobs(shown, min);
-
-  const failed = result.health.filter((h) => !h.ok);
-  if (failed.length) {
-    console.log(`
-${failed.length} compan${failed.length === 1 ? "y" : "ies"} failed:`);
-    for (const h of failed) console.log(`  ${h.company} (${h.ats}:${h.slug}): ${h.error}`);
+  const fullScan = !values.only?.length && !values.check?.length;
+  const startedAt = new Date().toISOString();
+  const log = (run: Omit<ScheduledRun, "startedAt" | "scope">) => values.scheduled && recordScheduledRun(dataDir, { startedAt, scope, finishedAt: new Date().toISOString(), ...run });
+  if (!values["dry-run"] && !acquireScanLock(dataDir)) {
+    console.error("Another scan is running in this data folder; not starting a second one.");
+    log({ ok: false, error: "Another scan was already running." });
+    return 0;
   }
-
-  if (summary) console.error(`
-Saved to ${dataDir} (${merged.jobs.length} jobs tracked, ${summary.closed} closed this run). Open the dashboard with: pnpm dev`);
-
-  if (values.json) {
-    const out = resolve(values.json);
-    mkdirSync(dirname(out), { recursive: true });
-    writeFileSync(out, JSON.stringify(result, null, 2));
-    console.error(`\nWrote ${out}`);
-  }
-  return 0;
-}
-
-const emit = (event: Record<string, unknown>) => process.stdout.write(`${JSON.stringify(event)}
-`);
-
-/** Machine-readable run for the dashboard: start, one line per company, done (or error). */
-async function runNdjson(values: { config?: string; only?: string[]; check?: string[]; data: string; "dry-run": boolean }): Promise<number> {
   try {
-    const { config } = loadConfig(values.config);
-    const { result, merged, summary, checks, indexJobs } = await scan(config, {
-      dataDir: resolve(values.data),
+    if (fullScan && !values.offline) {
+      console.error("Syncing the company directory…");
+      console.error(`  ${(await syncDirectory(dataDir)).message}`);
+    }
+
+    const { result, merged, summary, checks, moves, stopped } = await scan(config, {
+      dataDir,
+      scope,
       only: values.only,
       checkKeys: values.check,
       dryRun: values["dry-run"],
-      onStart: (companies, extra) => emit({ type: "start", companies, checking: extra.length }),
-      onCompanyDone: (h) => emit({ type: "company", ...h }),
+      resume: !values.fresh,
+      stopped: stopSignal(dataDir),
+      onStart: (s) =>
+        console.error(
+          `Checking ${values.only?.length ? values.only.join(", ") : `${s.yours.length} of your companies`}${s.extra ? ` and ${s.extra.toLocaleString()} ${s.scope === "all" ? "more from the directory" : "in your industries"}` : ""}${s.resumed ? ` (resuming: ${s.resumed.toLocaleString()} done already)` : ""}, about ${duration(s.seconds)}...\n`,
+        ),
+      onCompanyDone: (h) => {
+        // A whole-directory scan prints your companies, matches and failures, not 17,000 lines.
+        if (checks_quiet(h)) return;
+        console.error(`  ${h.ok ? "ok " : "ERR"} ${h.company.padEnd(24)} ${healthLine(h)}`);
+      },
     });
+
+    const min = config.profile.min_score;
+    const shown = result.jobs.filter((j) => values.all || !j.why.gate).slice(0, Number.isFinite(Number(values.limit)) ? Number(values.limit) : 50);
     const matches = result.jobs.filter((j) => !j.why.gate);
-    emit({
-      type: "done",
-      jobsFound: result.jobs.length,
-      matches: matches.length,
-      strong: matches.filter((j) => j.score >= config.profile.min_score).length,
-      newMatches: summary?.newMatches ?? matches.filter((j) => merged.newIds.has(j.id)).length,
-      failed: result.health.filter((h) => !h.ok && !h.unsupported).length,
-      checked: checks.length,
-      indexJobs: indexJobs ?? 0,
-    });
+    const fresh = matches.filter((j) => merged.newIds.has(j.id)).length;
+    console.log(`\n${matches.length} jobs passed your title and location gates (${fresh} new); ${matches.filter((j) => j.score >= min).length} scored ${min}+ (alert threshold).`);
+    if (checks.length) console.log(`Checked ${checks.length.toLocaleString()} directory companies besides yours.`);
+    if (stopped) console.log("Stopped before the end. Run the same scan again to carry on where it stopped.");
+    for (const m of moves) console.log(`${m.name} moved from ${m.from.ats}:${m.from.slug} to ${m.to.ats}:${m.to.slug}; your config is updated.`);
+    const moveError = values["dry-run"] ? undefined : saveMoves(config, path, moves);
+    if (moveError) console.error(moveError);
+    console.log("");
+    if (shown.length) printJobs(shown, min);
+
+    const failed = result.health.filter((h) => !h.ok && !h.unsupported);
+    if (failed.length) {
+      console.log(`\n${failed.length} compan${failed.length === 1 ? "y" : "ies"} failed:`);
+      for (const h of failed.slice(0, 50)) console.log(`  ${h.company} (${h.ats}:${h.slug}): ${h.error}`);
+      if (failed.length > 50) console.log(`  …and ${failed.length - 50} more`);
+    }
+
+    if (summary) console.error(`\nSaved to ${dataDir} (${merged.jobs.length} jobs tracked, ${summary.closed} closed this run). Open the dashboard with: pnpm dev`);
+
+    if (values.json) {
+      const out = resolve(values.json);
+      mkdirSync(dirname(out), { recursive: true });
+      writeFileSync(out, JSON.stringify(result, null, 2));
+      console.error(`\nWrote ${out}`);
+    }
+
+    const notified = values.notify && !values["dry-run"] ? await notifyScan(config, result, merged, scope) : undefined;
+    if (notified) console.error(`Telegram: ${notified === "sent" ? "sent the new jobs" : notified === "nothing-new" ? "nothing new to send" : notified === "off" ? "not set up (Settings → Alerts)" : notified}`);
+    log({ ok: true, matches: matches.length, newMatches: fresh, notified, stopped });
     return 0;
+  } catch (err) {
+    log({ ok: false, error: (err as Error).message });
+    throw err;
+  } finally {
+    if (!values["dry-run"]) releaseScanLock(dataDir);
+    rmSync(stopFile(dataDir), { force: true });
+  }
+
+  function checks_quiet(h: CompanyHealth): boolean {
+    return config.companies.every((c) => c.slug !== h.slug || c.ats !== h.ats) && h.matches === 0 && (h.ok || !!h.unsupported);
+  }
+}
+
+/** What each scan type would cover, for the dashboard's picker: companies and about how long. */
+function printPlan(values: { config?: string; data: string }): number {
+  const { config } = loadConfig(values.config);
+  const dataDir = resolve(values.data);
+  const plans = Object.fromEntries(
+    SCAN_SCOPES.map((scope) => {
+      const p = scanPlan(config, dataDir, scope);
+      return [scope, { yours: p.yours.length, extra: p.extra.length, seconds: p.seconds, resumable: resumable(dataDir, scope) ?? null }];
+    }),
+  );
+  console.log(JSON.stringify(plans));
+  return 0;
+}
+
+const emit = (event: Record<string, unknown>) => process.stdout.write(`${JSON.stringify(event)}\n`);
+
+/** Machine-readable scan for the dashboard: sync, start, one line per company (yours, plus matches and failures), done (or error). */
+async function runNdjson(values: RunValues): Promise<number> {
+  try {
+    const scope = parseScope(values.scope);
+    const { config, path } = loadConfig(values.config);
+    const dataDir = resolve(values.data);
+    const fullScan = !values.only?.length && !values.check?.length;
+    if (!values["dry-run"] && !acquireScanLock(dataDir)) {
+      emit({ type: "error", message: "A scheduled scan is running right now. Its results show up here when it's done." });
+      return 0;
+    }
+    try {
+      if (fullScan && !values.offline) {
+        emit({ type: "sync" });
+        emit({ type: "synced", ...(await syncDirectory(dataDir)) });
+      }
+      const yours = new Set(config.companies.map((c) => `${c.ats}:${c.slug}`));
+      let done = 0;
+      const { result, merged, summary, checks, moves, stopped } = await scan(config, {
+        dataDir,
+        scope,
+        only: values.only,
+        checkKeys: values.check,
+        dryRun: values["dry-run"],
+        resume: !values.fresh,
+        stopped: stopSignal(dataDir),
+        onStart: (s) => {
+          done = s.resumed;
+          emit({ type: "start", companies: s.yours, total: s.total, extra: s.extra, resumed: s.resumed, scope: s.scope, seconds: s.seconds });
+        },
+        onCompanyDone: (h) => {
+          done++;
+          // Every one of yours, and directory companies that matched or failed; the rest only as a count.
+          if (yours.has(`${h.ats}:${h.slug}`) || h.matches > 0 || (!h.ok && !h.unsupported)) emit({ type: "company", done, ...h });
+          else if (done % 25 === 0) emit({ type: "progress", done });
+        },
+      });
+      const moveError = values["dry-run"] ? undefined : saveMoves(config, path, moves);
+      const matches = result.jobs.filter((j) => !j.why.gate);
+      emit({
+        type: "done",
+        jobsFound: result.jobs.length,
+        matches: matches.length,
+        strong: matches.filter((j) => j.score >= config.profile.min_score).length,
+        newMatches: summary?.newMatches ?? matches.filter((j) => merged.newIds.has(j.id)).length,
+        failed: result.health.filter((h) => !h.ok && !h.unsupported).length,
+        checked: checks.length,
+        stopped,
+        moves: moves.map((m) => ({ name: m.name, from: `${m.from.ats}:${m.from.slug}`, to: `${m.to.ats}:${m.to.slug}` })),
+        ...(moveError ? { moveError } : {}),
+      });
+      if (existsSync(notifyFile(dataDir))) {
+        rmSync(notifyFile(dataDir), { force: true });
+        emit({ type: "notified", result: await notifyFinished(config, matches.length, matches.filter((j) => merged.newIds.has(j.id)), scope, { stopped, done: result.health.length, total: checks.length + config.companies.filter((c) => c.enabled).length }) });
+      }
+      return 0;
+    } finally {
+      if (!values["dry-run"]) releaseScanLock(dataDir);
+      rmSync(stopFile(dataDir), { force: true });
+    }
   } catch (err) {
     emit({ type: "error", message: (err as Error).message });
     return 1;
+  }
+}
+
+/** Send the scan's new matches (or, with only_new off, every strong one) to Telegram. Never throws. */
+async function notifyScan(config: Config, result: RunResult, merged: MergeResult, scope: ScanScope): Promise<string> {
+  const secrets = telegramSecrets();
+  if (!config.alerts.telegram || !secrets.token || !secrets.chatId) return "off";
+  const matches = result.jobs.filter((j) => !j.why.gate);
+  const jobs = config.alerts.only_new ? matches.filter((j) => merged.newIds.has(j.id)) : matches.filter((j) => j.score >= config.profile.min_score);
+  const text = digest(jobs, { minScore: config.profile.min_score, scopeLabel: scope === "all" ? "All companies" : "My companies + my industries" });
+  if (!text) return "nothing-new";
+  try {
+    await sendTelegram(text, secrets);
+    return "sent";
+  } catch (err) {
+    return `failed: ${(err as Error).message}`;
+  }
+}
+
+/** "Tell me when it's done": sent whether or not there's anything new, and whatever the alerts switch says. */
+async function notifyFinished(config: Config, matches: number, newJobs: Job[], scope: ScanScope, o: { stopped: boolean; done: number; total: number }): Promise<string> {
+  const secrets = telegramSecrets();
+  if (!secrets.token || !secrets.chatId) return "off";
+  try {
+    await sendTelegram(finishedMessage({ scopeLabel: scope === "all" ? "All companies" : "My companies + my industries", matches, newJobs, minScore: config.profile.min_score, ...o }), secrets);
+    return "sent";
+  } catch (err) {
+    return `failed: ${(err as Error).message}`;
+  }
+}
+
+/** Telegram alerts (JSON in and out, for the dashboard): status, token, connect, test, off. */
+async function cmdAlerts(args: string[]): Promise<number> {
+  const [channel, action = "status"] = args;
+  const out = (o: Record<string, unknown>) => console.log(JSON.stringify(o));
+  if (channel !== "telegram") {
+    console.error("Usage: jobhunter alerts telegram <status|token|connect|test|off>");
+    return 2;
+  }
+  const setEnabled = (on: boolean) => {
+    const { config, path } = loadConfig();
+    if (resolve(path) !== resolve(PERSONAL_CONFIG)) return;
+    if (config.alerts.telegram !== on) saveConfig({ ...config, alerts: { ...config.alerts, telegram: on } });
+  };
+  try {
+    const secrets = telegramSecrets();
+    if (action === "status") {
+      let enabled = false;
+      try {
+        enabled = loadConfig().config.alerts.telegram;
+      } catch {
+        // no config yet
+      }
+      out({ ok: true, token: maskToken(secrets.token) ?? null, bot: secrets.bot ?? null, connected: !!secrets.chatId, enabled, fromEnv: !!process.env.TELEGRAM_BOT_TOKEN });
+      return 0;
+    }
+    if (action === "token") {
+      const token = String((JSON.parse((await readStdin()) || "{}") as { token?: unknown }).token ?? "").trim();
+      if (!looksLikeToken(token)) return out({ ok: false, error: "That doesn't look like a bot token. It looks like 123456789:AAF… and comes from @BotFather." }), 0;
+      const bot = await telegramBotName(token);
+      saveTelegramSecrets({ token, chatId: "", bot });
+      out({ ok: true, bot });
+      return 0;
+    }
+    if (!secrets.token) return out({ ok: false, error: "Add your bot token first." }), 0;
+    if (action === "connect") {
+      const chat = await findTelegramChat(secrets.token);
+      if (!chat) return out({ ok: false, error: "No message from you yet. Open your bot in Telegram, press Start (or send it \"hi\"), then try again." }), 0;
+      saveTelegramSecrets({ chatId: chat.chatId });
+      setEnabled(true);
+      await sendTelegram("✅ Job Hunter is connected. New jobs from your scans will arrive here.", { ...secrets, chatId: chat.chatId });
+      out({ ok: true, name: chat.name });
+      return 0;
+    }
+    if (action === "test") {
+      await sendTelegram("👋 Test from Job Hunter. Alerts are working.", secrets);
+      out({ ok: true });
+      return 0;
+    }
+    if (action === "on" || action === "off") {
+      setEnabled(action === "on");
+      out({ ok: true });
+      return 0;
+    }
+    if (action === "forget") {
+      saveTelegramSecrets({ token: "", chatId: "", bot: "" });
+      setEnabled(false);
+      out({ ok: true });
+      return 0;
+    }
+    out({ ok: false, error: `Unknown action "${action}".` });
+    return 2;
+  } catch (err) {
+    out({ ok: false, error: (err as Error).message });
+    return 0;
+  }
+}
+
+/** Scheduled scans on this computer (JSON out): status, install --time hh:mm [--time …] --scope mine|all, remove. */
+async function cmdSchedule(args: string[]): Promise<number> {
+  const { values, positionals } = parseArgs({
+    args,
+    allowPositionals: true,
+    options: {
+      time: { type: "string", multiple: true },
+      scope: { type: "string" },
+      data: { type: "string", short: "d", default: "data" },
+      stdin: { type: "boolean", default: false },
+    },
+  });
+  const ctx = { repoRoot: process.cwd(), dataDir: resolve(values.data) };
+  const out = (o: Record<string, unknown>) => console.log(JSON.stringify(o));
+  try {
+    const action = positionals[0] ?? "status";
+    if (action === "install") {
+      const input = values.stdin ? (JSON.parse((await readStdin()) || "{}") as { times?: string[]; scope?: string }) : { times: values.time, scope: values.scope };
+      installSchedule(ctx, { times: input.times, scope: input.scope as ScanScope });
+    } else if (action === "remove") removeSchedule(ctx);
+    else if (action === "run") runScheduleNow(ctx);
+    else if (action !== "status") {
+      out({ ok: false, error: "Usage: jobhunter schedule <status|install|remove|run>" });
+      return 2;
+    }
+    out({ ok: true, ...scheduleStatus(ctx) });
+    return 0;
+  } catch (err) {
+    out({ ok: false, error: (err as Error).message, ...scheduleStatus(ctx) });
+    return 0;
   }
 }
 

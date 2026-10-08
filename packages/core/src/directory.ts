@@ -85,6 +85,22 @@ export async function updateDirectory(dataDir: string, opts: { force?: boolean; 
   return { updated: true, version: manifest.version, companies: manifest.companies, message: `Updated to ${manifest.companies.toLocaleString()} companies.` };
 }
 
+export type SyncResult = UpdateResult & { /** The shared directory couldn't be reached; the local copy is used. */ offline?: boolean };
+
+/**
+ * The first step of every scan: make the local directory match the shared one. Checks the small
+ * manifest every time and downloads only a new version. Never throws: offline, the scan carries on
+ * with the local copy.
+ */
+export async function syncDirectory(dataDir: string, opts: { fetchImpl?: typeof fetch } = {}): Promise<SyncResult> {
+  try {
+    const r = await updateDirectory(dataDir, opts);
+    return r.updated || r.version ? r : { ...r, offline: true };
+  } catch (err) {
+    return { updated: false, offline: true, message: `Couldn't reach the shared directory (${(err as Error).message}); using your local copy.` };
+  }
+}
+
 /** A board to share: what the directory needs to find it again, nothing about the user. */
 export type SharedBoard = { ats: string; slug: string; region?: string; shard?: string; site?: string; name?: string };
 

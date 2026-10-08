@@ -1,0 +1,155 @@
+import { ChevronDown, ExternalLink, EyeOff } from "lucide-react";
+import { useState } from "react";
+import { ATS_LABEL, SUPPORTED } from "../../lib/companies";
+import type { CompanySuggestion } from "../../lib/companySuggest";
+import { AddButton } from "../CompanyButtons";
+import { Button, Chip, cx } from "../ui";
+
+/** "Strong fit" and friends instead of a bare number: the score is relative, the label is what people act on. */
+export function fitOf(score: number): { label: string; tone: string } {
+  if (score >= 70) return { label: "Strong fit", tone: "border-accent/40 bg-accent-soft text-accent" };
+  if (score >= 45) return { label: "Good fit", tone: "border-warn/40 bg-warn-soft text-warn" };
+  return { label: "Worth a look", tone: "border-line bg-surface-2 text-muted" };
+}
+
+/** "Product Manager (United Kingdom; Brazil; …20 more)" -> "Product Manager · United Kingdom +21". */
+export function shortExample(example: string): string {
+  const m = example.match(/^(.*?)\s*\(([^()]*)\)$/);
+  if (!m) return example;
+  const places = m[2]!.split(/\s*;\s*/).filter(Boolean);
+  return places.length ? `${m[1]} · ${places[0]}${places.length > 1 ? ` +${places.length - 1}` : ""}` : m[1]!;
+}
+
+/** Initials on a tinted square: no logo fetches (they'd tell a third party which companies you look at). */
+const MONOGRAM_SIZE = { xs: "size-5 rounded-md text-[9px]", sm: "size-7 rounded-lg text-[11px]", md: "size-10 rounded-xl text-sm" };
+
+export function Monogram({ name, size = "md" }: { name: string; size?: keyof typeof MONOGRAM_SIZE }) {
+  const words = name.replace(/[^\p{L}\p{N}\s]/gu, " ").split(/\s+/).filter(Boolean);
+  const text = (words.length > 1 ? words[0]![0]! + words[1]![0]! : (words[0] ?? "?").slice(0, 2)).toUpperCase();
+  // A stable hue per name, so a company keeps its colour across lists.
+  let h = 0;
+  for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) % 360;
+  return (
+    <span
+      aria-hidden
+      className={cx("inline-flex shrink-0 items-center justify-center font-semibold", MONOGRAM_SIZE[size])}
+      style={{ background: `hsl(${h} 70% 50% / 0.16)`, color: `color-mix(in oklab, hsl(${h} 70% 50%) 65%, var(--fg))` }}
+    >
+      {text}
+    </span>
+  );
+}
+
+/** Reasons already said in the headline line, so chips don't repeat them. */
+const HEADLINE = /^\d+ (open roles? (match|matches) you|new this week)$/;
+
+type Props = {
+  s: CompanySuggestion & { like?: string };
+  added: boolean;
+  onAdd: () => void;
+  onRemove: () => void;
+  onHide?: () => void;
+};
+
+/** One suggested company: why it fits, an example role, and Add / Not interested. */
+export function SuggestionCard({ s, added, onAdd, onRemove, onHide }: Props) {
+  const [open, setOpen] = useState(false);
+  const fit = fitOf(s.score);
+  const soon = !SUPPORTED.has(s.ats);
+  const headline = s.matches
+    ? [`${s.matches} ${s.matches === 1 ? "role matches" : "roles match"} you`, s.new_matches > 0 && `${s.new_matches} new this week`].filter(Boolean).join(" · ")
+    : s.near_misses
+      ? `${s.near_misses} similar ${s.near_misses === 1 ? "role" : "roles"} nearby or remote`
+      : null;
+  const chips = s.reasons.filter((r) => !HEADLINE.test(r) && !r.startsWith("Like "));
+  const like = s.reasons.find((r) => r.startsWith("Like "));
+  return (
+    <article className={cx("flex flex-col gap-3 rounded-xl border bg-surface p-4 transition-colors", added ? "border-accent/50" : "border-line hover:border-muted/40")}>
+      <header className="flex items-start gap-3">
+        <Monogram name={s.name} />
+        <div className="min-w-0 flex-1">
+          <p className="flex items-center gap-1.5 font-semibold leading-5">
+            <span className="truncate">{s.name}</span>
+            <a href={s.careers_url} target="_blank" rel="noreferrer" className="shrink-0 text-muted hover:text-accent" aria-label={`${s.name} careers page`}>
+              <ExternalLink className="size-3.5" />
+            </a>
+          </p>
+          <p className="truncate text-xs text-muted">
+            {[ATS_LABEL[s.ats] ?? s.ats, s.open_jobs ? `${s.open_jobs.toLocaleString()} open jobs` : null, soon && "support coming soon"].filter(Boolean).join(" · ")}
+          </p>
+        </div>
+        <span className={cx("shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold", fit.tone)} title={`Fit score ${s.score} / 100`}>
+          {fit.label}
+        </span>
+      </header>
+
+      {like && <p className="rounded-lg bg-surface-2 px-2.5 py-1.5 text-xs text-fg">{like}</p>}
+      {headline && <p className="text-sm font-medium text-accent">{headline}</p>}
+      {s.examples[0] && (
+        <p className="truncate text-xs text-muted" title={s.examples.join("\n")}>
+          e.g. {shortExample(s.examples[0])}
+        </p>
+      )}
+      {chips.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {chips.slice(0, open ? chips.length : 2).map((r) => (
+            <Chip key={r} className="max-w-full truncate">
+              {r}
+            </Chip>
+          ))}
+        </div>
+      )}
+      {open && (
+        <div className="space-y-1 rounded-lg border border-line p-2.5 text-xs text-muted">
+          <p>
+            Fit score <b className="tabular text-fg">{s.score}</b> / 100 from your roles, places, industries and topics.
+          </p>
+          {s.examples.length > 0 && (
+            <ul className="list-inside list-disc">
+              {s.examples.map((e) => (
+                <li key={e} className="truncate">
+                  {shortExample(e)}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      <footer className="mt-auto flex items-center gap-1.5 pt-1">
+        <AddButton added={added} onAdd={onAdd} onRemove={onRemove} soon={soon} />
+        {onHide && !added && (
+          <Button size="sm" variant="ghost" onClick={onHide} className="text-muted">
+            <EyeOff className="size-3.5" /> Not interested
+          </Button>
+        )}
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="ml-auto inline-flex items-center gap-0.5 text-xs font-medium text-muted hover:text-fg"
+        >
+          Why? <ChevronDown className={cx("size-3.5 transition-transform", open && "rotate-180")} />
+        </button>
+      </footer>
+    </article>
+  );
+}
+
+/** A card-shaped placeholder while suggestions load. */
+export function CardSkeleton() {
+  return (
+    <div className="flex animate-pulse flex-col gap-3 rounded-xl border border-line p-4" aria-hidden>
+      <div className="flex gap-3">
+        <span className="size-10 rounded-xl bg-surface-2" />
+        <div className="flex-1 space-y-2 pt-1">
+          <span className="block h-3 w-2/3 rounded bg-surface-2" />
+          <span className="block h-2.5 w-1/3 rounded bg-surface-2" />
+        </div>
+      </div>
+      <span className="block h-3 w-1/2 rounded bg-surface-2" />
+      <span className="block h-2.5 w-5/6 rounded bg-surface-2" />
+      <span className="mt-2 block h-8 w-24 rounded-lg bg-surface-2" />
+    </div>
+  );
+}

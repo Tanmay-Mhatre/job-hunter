@@ -10,6 +10,7 @@ import {
   fromQuery,
   groupJobs,
   INDEX_MAX_AGE_DAYS,
+  hasNewTag,
   isNewJob,
   profileFilters,
   profilePlaces,
@@ -36,9 +37,7 @@ type Props = {
   jobs: Job[];
   meta: DataMeta;
   user: UserState;
-  cutoff: string | null;
   prefs: Prefs;
-  onMarkAllSeen: () => void;
   /** Phones: open the job full screen. */
   onOpenOverlay: (job: Job) => void;
   overlayOpen: boolean;
@@ -146,14 +145,13 @@ export function RadarPage(p: Props) {
       return {
         user: p.user,
         min,
-        cutoff: p.cutoff,
         industriesOf: (c: string) => industriesByCompany.get(c) ?? [],
         hiddenCompanies: hidden,
         isYours: p.isYours,
         mine: { countries: new Set([...places.countries, ...(places.remote ? ["Remote"] : [])]), locations: new Set(places.locations), industries: new Set(profile.industries) },
       };
     },
-    [p.user, min, p.cutoff, industriesByCompany, hidden, profileKey, p.isYours], // eslint-disable-line react-hooks/exhaustive-deps
+    [p.user, min, industriesByCompany, hidden, profileKey, p.isYours], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   // Your companies' jobs always lead, whatever the sort.
@@ -346,7 +344,6 @@ export function RadarPage(p: Props) {
           onSave={(name) => p.onSaveView(name, filters, sort)}
           onRename={p.onRenameView}
           onDelete={p.onDeleteView}
-          onMarkAllSeen={newCount ? p.onMarkAllSeen : undefined}
         />
 
         <div className="mt-2 hidden flex-wrap items-center gap-1.5 lg:flex">
@@ -434,7 +431,7 @@ export function RadarPage(p: Props) {
                     group={g}
                     entry={p.user[g.lead.id]}
                     min={min}
-                    isNew={isNewJob(g.lead, ctx)}
+                    isNew={hasNewTag(g.lead, ctx)}
                     selected={!!selectedGroup && g.key === selectedGroup.key && (wide || p.overlayOpen)}
                     onSelect={() => select(g.lead)}
                     onStatus={(s) => p.onStatus(g.lead, s)}
@@ -534,7 +531,6 @@ function ViewsBar(props: {
   onSave: (name: string) => SavedView;
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
-  onMarkAllSeen?: () => void;
 }) {
   const [naming, setNaming] = useState<{ id?: string; value: string } | null>(null);
   const matchesView = (f: Filters) => sameFilters(f, props.filters);
@@ -564,11 +560,6 @@ function ViewsBar(props: {
           </button>
         );
       })}
-      {props.onMarkAllSeen && builtInActive?.id === "new" && (
-        <button type="button" onClick={props.onMarkAllSeen} className="shrink-0 px-1 text-xs font-medium text-accent">
-          Mark all seen
-        </button>
-      )}
       <span className="mx-1 h-5 w-px shrink-0 bg-line" aria-hidden />
       {props.views.map((v) =>
         naming?.id === v.id ? (

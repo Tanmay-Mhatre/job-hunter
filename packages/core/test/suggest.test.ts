@@ -90,7 +90,7 @@ describe("suggestCompanies", () => {
       exclude: new Set(["lever:gone"]),
     });
     expect(r.worthWatching.map((s) => [s.key, s.reasons])).toEqual([
-      ["lever:shortlisted", ["On your shortlist"]],
+      ["lever:shortlisted", ["Curated pick"]],
       ["ashby:cryptoco", ["Your topics: web3"]],
     ]);
     expect(r.scanned).toBe(4);

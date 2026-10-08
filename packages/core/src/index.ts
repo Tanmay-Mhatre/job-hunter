@@ -23,3 +23,7 @@ export * from "./catalog/seniority";
 export { htmlToText, inferWorkplace, matchesTerm, termRegex } from "./text";
 export { careersUrl, companyKey, connectors, getConnector, detectCompany, guessName, type DetectResult } from "./connectors";
 export type { Connector, Ctx, DetectedCompany } from "./connectors";
+export * from "./employers";
+export * from "./scope";
+export * from "./notify";
+export * from "./schedule";
