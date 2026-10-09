@@ -475,6 +475,8 @@ async function runNdjson(values: RunValues): Promise<number> {
       }
       const yours = new Set(config.companies.map((c) => `${c.ats}:${c.slug}`));
       let done = 0;
+      /** Companies done per hiring system, including ones a resumed scan already did. */
+      let doneByAts: Record<string, number> = {};
       const { result, merged, summary, checks, moves, stopped } = await scan(config, {
         dataDir,
         scope,
@@ -486,13 +488,15 @@ async function runNdjson(values: RunValues): Promise<number> {
         stopped: stopSignal(dataDir),
         onStart: (s) => {
           done = s.resumed;
-          emit({ type: "start", companies: s.yours, total: s.total, extra: s.extra, resumed: s.resumed, scope: s.scope, seconds: s.seconds, skippedByFeed: s.skippedByFeed });
+          doneByAts = { ...s.resumedByAts };
+          emit({ type: "start", companies: s.yours, total: s.total, extra: s.extra, resumed: s.resumed, scope: s.scope, seconds: s.seconds, skippedByFeed: s.skippedByFeed, byAts: s.byAts, doneByAts });
         },
         onCompanyDone: (h) => {
           done++;
+          doneByAts[h.ats] = (doneByAts[h.ats] ?? 0) + 1;
           // Every one of yours, and directory companies that matched or failed; the rest only as a count.
-          if (yours.has(`${h.ats}:${h.slug}`) || h.matches > 0 || (!h.ok && !h.unsupported)) emit({ type: "company", done, ...h });
-          else if (done % 25 === 0) emit({ type: "progress", done });
+          if (yours.has(`${h.ats}:${h.slug}`) || h.matches > 0 || (!h.ok && !h.unsupported)) emit({ type: "company", done, doneByAts, ...h });
+          else if (done % 25 === 0) emit({ type: "progress", done, ats: h.ats, doneByAts });
         },
       });
       const moveError = values["dry-run"] ? undefined : saveMoves(config, path, moves);

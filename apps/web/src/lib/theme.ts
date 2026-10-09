@@ -66,6 +66,34 @@ export function setContrastChoice(choice: ContrastChoice): void {
   window.dispatchEvent(new Event(CHANGED));
 }
 
+/** Feed density (design/components/Feed): comfortable rows by default, compact on request. */
+export type Density = "comfortable" | "compact";
+const DENSITY_KEY = "rawjobs.density";
+
+export function densityChoice(): Density {
+  return read(DENSITY_KEY) === "compact" ? "compact" : "comfortable";
+}
+
+export function setDensityChoice(d: Density): void {
+  write(DENSITY_KEY, d === "comfortable" ? "system" : d);
+  window.dispatchEvent(new Event(CHANGED));
+}
+
+/** The feed density, kept in step with Settings. */
+export function useDensity(): Density {
+  const [d, setD] = useState(densityChoice);
+  useEffect(() => {
+    const refresh = () => setD(densityChoice());
+    window.addEventListener(CHANGED, refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener(CHANGED, refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
+  return d;
+}
+
 /** Your choices and the theme in use; follows the system while set to System. */
 export function useTheme() {
   const [state, setState] = useState(() => ({ theme: themeChoice(), contrast: contrastChoice(), active: resolveTheme() }));

@@ -80,11 +80,11 @@ export function NotifyWhenDone({ scan, onNotify, onSaved }: { scan: ScanState; o
     <Card className="px-4 py-2.5">
       {scan.notify?.asked ? (
         <p className="flex items-center gap-2 type-small text-success-text" role="status">
-          <Check className="size-4" /> We'll send you a Telegram message ({bot}) when this scan finishes, with any new jobs it found.
+          <Check className="size-4" aria-hidden="true" /> Sends you a Telegram message ({bot}) when this scan finishes, with any new jobs it found.
         </p>
       ) : (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 type-small">
-          <BellRing className="size-4 shrink-0 text-accent-text" />
+          <BellRing className="size-4 shrink-0 text-muted" aria-hidden="true" />
           <span className="min-w-0 flex-1">This scan takes a while. Get a Telegram message when it's done, so you don't have to keep checking.</span>
           {!tg ? (
             <LoaderCircle className="size-4 animate-spin text-muted" />
@@ -95,7 +95,7 @@ export function NotifyWhenDone({ scan, onNotify, onSaved }: { scan: ScanState; o
             </Button>
           )}
           {failed && (
-            <span className="flex w-full flex-wrap items-center gap-x-2 gap-y-1 type-meta" role="alert">
+            <span className="flex w-full flex-wrap items-center gap-x-2 gap-y-1 type-small" role="alert">
               <span className="text-danger-text">Couldn't set up the message.</span>
               <span className="text-muted">The scan may have just finished, or it was started from another tab or by a schedule. Messages can only be set up for a scan started on this page.</span>
               <Button size="sm" variant="ghost" onClick={() => void ask()} disabled={busy}>
@@ -120,7 +120,7 @@ export function NotifyWhenDone({ scan, onNotify, onSaved }: { scan: ScanState; o
             </IconButton>
           </div>
           <TelegramAlerts
-            footnote="Once it's connected, we'll message you when this scan finishes. Scheduled scans can then send you new jobs too."
+            footnote="Once it's connected, you get a message when this scan finishes. Scheduled scans can then send you new jobs too."
             onChanged={onSaved}
             onConnected={() => {
               void telegramStatus().then(setTg);

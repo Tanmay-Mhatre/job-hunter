@@ -7,14 +7,14 @@ import { companyIndex, companyMatches, type CompanyIndex } from "../lib/companyS
 import { canRunLocally } from "../lib/data";
 import { DirectoryBar, updateDirectory } from "./DirectoryBar";
 import { AddButton } from "./CompanyButtons";
-import { fitOf } from "./companies/SuggestionCard";
+import { FitLabel } from "./companies/SuggestionCard";
 import { Button, cx, Pagination, Segmented, Select } from "./ui";
 
 /** Directory entry served at data/catalog/directory.json (see scripts/catalog/publish.ts). */
 export type DirCompany = CompanyRef & {
   key: string;
   tier: "curated" | "dump";
-  /** unverified: a seed company on a hiring system we can't check yet. */
+  /** unverified: a seed company on a hiring system RawJobs can't check yet. */
   status: "live" | "dormant" | "unverified";
   open_jobs: number | null;
   indexed: boolean;
@@ -149,7 +149,7 @@ function DirectoryMissing({ onReload }: { onReload: () => void }) {
           <RefreshCw className="size-3.5" /> Try again
         </Button>
       </div>
-      {note && <p className="type-meta text-danger-text">{note}</p>}
+      {note && <p className="type-small text-danger-text">{note}</p>}
     </div>
   );
 }
@@ -247,7 +247,7 @@ function Browse({
         </Select>
         {hiring > 0 && (
           <label className="inline-flex items-center gap-2 type-small text-muted">
-            <input type="checkbox" checked={onlyForYou} onChange={(e) => setOnlyForYou(e.target.checked)} className="size-4 accent-accent" />
+            <input type="checkbox" checked={onlyForYou} onChange={(e) => setOnlyForYou(e.target.checked)} className="size-4 accent-ink" />
             Only companies with jobs for you ({hiring.toLocaleString()})
           </label>
         )}
@@ -315,15 +315,13 @@ function BoardLine({ c, watched, jobsFor, fitFor, onAdd, onRemove, sub }: LinePr
       <div className="min-w-0 flex-1">
         <p className={cx("flex items-center gap-1.5 type-small", sub ? "text-muted" : "font-semibold")}>
           <span className="truncate">{sub ? `${c.name} on ${ATS_LABEL[c.ats] ?? c.ats}` : c.name}</span>
-          {score !== undefined && score >= 45 && (
-            <span className={cx("shrink-0 rounded-sm border px-1.5 type-meta font-semibold", fitOf(score).tone)}>{fitOf(score).label}</span>
-          )}
-          <a href={c.careers_url} target="_blank" rel="noreferrer" className="shrink-0 text-muted hover:text-accent-text" aria-label={`${c.name} careers page`}>
+          {score !== undefined && score >= 45 && <FitLabel score={score} className="font-normal" />}
+          <a href={c.careers_url} target="_blank" rel="noreferrer" className="shrink-0 text-muted hover:text-ink" aria-label={`${c.name} careers page`}>
             <ExternalLink className="size-3.5" />
           </a>
         </p>
-        <p className="type-meta text-muted">
-          {mine > 0 && <span className="font-medium text-accent-text">{mine === 1 ? "1 job for you · " : `${mine} jobs for you · `}</span>}
+        <p className="type-small text-muted">
+          {mine > 0 && <span className="font-semibold text-ink">{mine === 1 ? "1 job for you · " : `${mine} jobs for you · `}</span>}
           {[
             !sub && `Hiring system: ${ATS_LABEL[c.ats] ?? c.ats}`,
             c.open_jobs ? `${c.open_jobs.toLocaleString()} open jobs` : c.status === "dormant" ? "no open jobs right now" : c.status === "unverified" ? "not checked yet" : null,
@@ -346,7 +344,7 @@ export function BrowseRow({ lead, others, ...line }: LineProps & { lead: DirComp
     <li className="space-y-2 px-3 py-2.5">
       <BoardLine c={lead} {...line} />
       {others.length > 0 && (
-        <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="inline-flex items-center gap-1 type-meta font-medium text-accent-text">
+        <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="inline-flex items-center gap-1 type-label text-ink hover:text-muted">
           <ChevronDown className={cx("size-3.5 transition-transform", !open && "-rotate-90")} />
           {others.length} other careers page{others.length === 1 ? "" : "s"}
         </button>

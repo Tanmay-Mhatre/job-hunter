@@ -109,7 +109,7 @@ describe("scan", () => {
     const starts: ScanStart[] = [];
     const r = await scan(config(`companies_muted: ["ashby:mutedco"]`), { dataDir: dir, http, now, onStart: (s) => starts.push(s) });
 
-    expect(starts[0]).toMatchObject({ yours: ["GH Co"], extra: 1, total: 2, resumed: 0, scope: "mine" });
+    expect(starts[0]).toMatchObject({ yours: ["GH Co"], extra: 1, total: 2, resumed: 0, scope: "mine", byAts: { greenhouse: 1, lever: 1 }, resumedByAts: {} });
     expect(calls.some((u) => u.includes("leverco"))).toBe(true);
     expect(calls.some((u) => u.includes("quiet"))).toBe(false);
     const byCompany = (c: string) => r.merged.jobs.filter((j) => j.company === c);
@@ -156,6 +156,8 @@ describe("scan", () => {
     const starts: ScanStart[] = [];
     const second = await scan(config(), { dataDir: dir, http, now, scope: "all", onStart: (s) => starts.push(s) });
     expect(starts[0]!.resumed).toBe(done.size);
+    expect(Object.values(starts[0]!.resumedByAts).reduce((a, b) => a + b, 0)).toBe(done.size);
+    expect(Object.values(starts[0]!.byAts).reduce((a, b) => a + b, 0)).toBe(starts[0]!.total);
     expect(calls.some((u) => [...done].some((slug) => u.includes(`/${slug}`)))).toBe(false);
     expect(second.result.health.length).toBe(4);
     expect(existsSync(join(dir, "scan-progress-all.json"))).toBe(false);

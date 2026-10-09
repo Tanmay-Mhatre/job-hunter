@@ -8,7 +8,7 @@ import { draftToConfig, officePlaces, saveBlockers, saveConfig, type Draft } fro
 import type { Suggestions } from "../lib/suggest";
 import { ResumeStep } from "../setup/ResumeStep";
 import type { Prefs } from "../lib/prefs";
-import { useTheme, type ThemeChoice } from "../lib/theme";
+import { setDensityChoice, useDensity, useTheme, type Density, type ThemeChoice } from "../lib/theme";
 import { exportState, readStateFile, type UserState } from "../lib/userState";
 import { IndustriesStep, KeywordsStep, LocationsStep, RolesStep, ThresholdPicker } from "../setup/steps";
 import { Dialog } from "./Dialog";
@@ -125,7 +125,7 @@ export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanni
           {profile("resume", "Master resume", "Saved on this computer only.", <ResumeStep draft={draft} update={update} resumeText={resumeText} saveResume={saveResume} hideSkip />)}
           {profile("roles", "Roles", "Only jobs whose title matches are shown.", <RolesStep draft={draft} update={update} suggest={suggest} />)}
           {profile("locations", "Locations", "Jobs outside these places are hidden.", <LocationsStep draft={draft} update={update} suggest={suggest} />)}
-          {profile("industries", "Industries", "Industries pick which companies we scan and suggest.", <IndustriesStep draft={draft} update={update} suggest={suggest} />)}
+          {profile("industries", "Industries", "Industries decide which companies are scanned and suggested.", <IndustriesStep draft={draft} update={update} suggest={suggest} />)}
           {profile("keywords", "Topics", "Topics rank jobs higher when they mention them.", <KeywordsStep draft={draft} update={update} suggest={suggest} resumeText={resumeText} />)}
         </Group>
 
@@ -172,10 +172,10 @@ export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanni
                 </li>
                 <li>
                   <b>All companies</b>
-                  <span className="text-muted">: every company in the directory we can scan. The daily job feed skips companies with nothing for you, so usually minutes; up to 2 hours without it. Stop any time and it carries on later.</span>
+                  <span className="text-muted">: every company in the directory that RawJobs can scan. The daily job feed skips companies with nothing for you, so usually minutes; up to 2 hours without it. Stop any time and it carries on later.</span>
                 </li>
               </ul>
-              <p className="type-meta text-muted">Every scan first updates the company directory, so new companies and moved careers pages are picked up.</p>
+              <p className="type-small text-muted">Every scan first updates the company directory, so new companies and moved careers pages are picked up.</p>
               <ScanPrefsPicker />
               <Toggle checked={draft.directory.auto_update} onChange={(v) => update({ directory: { ...draft.directory, auto_update: v } })}>
                 Also update the company directory in the background when the app starts
@@ -191,9 +191,9 @@ export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanni
               <Toggle checked={draft.directory.share_additions} onChange={(v) => update({ directory: { ...draft.directory, share_additions: v } })}>
                 Share companies I add by link with everyone
               </Toggle>
-              <p className="type-meta text-muted">
+              <p className="type-small text-muted">
                 Only the careers link is shared: the company's name, its hiring system and its board name. Never your profile, resume, searches or which jobs you look at.{" "}
-                <a href="https://github.com/Tanmay-Mhatre/job-hunter/blob/main/PRIVACY.md" target="_blank" rel="noreferrer" className="font-medium text-accent-text">
+                <a href="https://github.com/Tanmay-Mhatre/job-hunter/blob/main/PRIVACY.md" target="_blank" rel="noreferrer" className="font-medium text-ink underline underline-offset-2 hover:text-muted">
                   What is sent, and where
                 </a>
               </p>
@@ -297,7 +297,7 @@ function SettingsNav({ active }: { active: GroupId }) {
               onClick={(e) => jump(e, g.id)}
               className={cx(
                 "flex h-9 items-center whitespace-nowrap rounded-sm border px-3 type-label md:rounded-md md:border-0",
-                active === g.id ? "border-accent bg-accent-subtle text-accent-text" : "border-line bg-raised text-muted hover:text-ink md:bg-transparent md:hover:bg-inset",
+                active === g.id ? "border-ink bg-ink text-raised md:bg-active md:text-ink" : "border-line bg-raised text-muted hover:text-ink md:bg-transparent md:hover:bg-inset",
               )}
             >
               {g.label}
@@ -312,7 +312,9 @@ function SettingsNav({ active }: { active: GroupId }) {
 /** Theme and contrast: saved in this browser and applied at once, so they're not part of Save. */
 function AppearanceSection() {
   const { theme, contrast, setTheme, setContrast } = useTheme();
+  const density = useDensity();
   return (
+    <>
     <Section id="theme" title="Theme" hint="Follows your system's light or dark setting unless you pick one.">
       <div className="space-y-3">
         <Segmented<ThemeChoice>
@@ -329,17 +331,29 @@ function AppearanceSection() {
           <Toggle checked={contrast === "more"} onChange={(on) => setContrast(on ? "more" : "system")}>
             Increase contrast
           </Toggle>
-          <p className="mt-1 type-meta text-muted">Darker text and stronger borders. Turns on by itself when your system asks for more contrast.</p>
+          <p className="mt-1 type-small text-muted">Darker text and stronger borders. Turns on by itself when your system asks for more contrast.</p>
         </div>
       </div>
     </Section>
+    <Section id="density" title="Job list" hint="How much room each job gets on the Radar.">
+      <Segmented<Density>
+        label="Job list density"
+        value={density}
+        onChange={setDensityChoice}
+        options={[
+          { value: "comfortable", label: "Comfortable" },
+          { value: "compact", label: "Compact" },
+        ]}
+      />
+    </Section>
+    </>
   );
 }
 
 function Group({ id, label, children }: { id: GroupId; label: string; children: ReactNode }) {
   return (
     <div id={`settings-${id}`} tabIndex={-1} role="group" aria-labelledby={`g-${id}`} className="scroll-mt-32 space-y-4 outline-none md:scroll-mt-20">
-      <h2 id={`g-${id}`} className="type-meta font-semibold uppercase tracking-wide text-muted">
+      <h2 id={`g-${id}`} className="type-subheading text-ink">
         {label}
       </h2>
       {children}

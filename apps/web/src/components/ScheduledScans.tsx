@@ -97,8 +97,8 @@ export function ScheduledScans() {
   return (
     <div className="space-y-4">
       {status.installed && saved ? (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-accent-subtle/50 p-3 type-small">
-          <Clock className="size-4 text-accent-text" />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-line bg-inset p-3 type-small">
+          <Clock className="size-4 text-muted" aria-hidden="true" />
           <span>
             On: <b>{scopeLabel(saved.scope, hasIndustries)}</b>, daily at <b>{saved.times.join(" and ")}</b>.
             {status.nextRun && <> Next scan {formatDateTime(status.nextRun)}.</>}
@@ -123,7 +123,7 @@ export function ScheduledScans() {
                   value={t}
                   onChange={(e) => setTimes(times.map((x, j) => (j === i ? e.target.value : x)))}
                   aria-label={`Scan time ${i + 1}`}
-                  className="h-9 rounded-md border border-line bg-raised px-2 type-small outline-none focus:border-accent"
+                  className="h-9 rounded-md border border-line bg-raised px-2 type-small"
                 />
                 {times.length > 1 && (
                   <button
@@ -152,11 +152,11 @@ export function ScheduledScans() {
               const p = plan?.[s];
               const count = p ? p.yours + p.extra : 0;
               return (
-                <label key={s} className={cx("flex cursor-pointer gap-2.5 rounded-md border p-3", scope === s ? "border-accent bg-accent-subtle/30" : "border-line")}>
-                  <input type="radio" name="schedule-scope" checked={scope === s} onChange={() => setScope(s)} className="mt-0.5 accent-accent" />
+                <label key={s} className={cx("flex cursor-pointer gap-2.5 rounded-md border p-3", scope === s ? "border-ink bg-active" : "border-line")}>
+                  <input type="radio" name="schedule-scope" checked={scope === s} onChange={() => setScope(s)} className="mt-0.5 accent-ink" />
                   <span className="type-small">
                     <b>{scopeLabel(s, hasIndustries)}</b>
-                    <span className="block type-meta text-muted">{p ? `${s === "all" ? roughCount(count) : count.toLocaleString()} companies · ${aboutTime(p.seconds)}` : "…"}</span>
+                    <span className="block text-muted">{p ? `${s === "all" ? roughCount(count) : count.toLocaleString()} companies · ${aboutTime(p.seconds)}` : "…"}</span>
                   </span>
                 </label>
               );
@@ -197,7 +197,7 @@ export function ScheduledScans() {
         )}
       </div>
 
-      <p className="type-meta text-muted">
+      <p className="type-small text-muted">
         Scans run on this computer, even with this page closed, but only while it's on or asleep (it wakes up for them). A scan missed while it was off runs as
         soon as it's back on. {scope === "all" && "All companies usually takes minutes with the daily job feed, up to 2 hours without it: keep the computer on until it's done."}
       </p>
@@ -220,7 +220,7 @@ export function ScheduledScans() {
                     </details>
                   )}
                 </span>
-                <span className="type-meta text-muted">{scopeLabel(r.scope, hasIndustries)}</span>
+                <span className="text-muted">{scopeLabel(r.scope, hasIndustries)}</span>
               </li>
             ))}
           </ul>

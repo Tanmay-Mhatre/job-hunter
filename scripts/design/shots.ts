@@ -2,7 +2,7 @@
  * Deterministic screenshots (and an optional axe accessibility pass) of every dashboard screen,
  * with invented demo data only. Used for before/after design reviews and README images.
  *
- *   pnpm design:shots [--out <dir>] [--themes light,dark,light-hc,dark-hc] [--viewports 1280,390]
+ *   pnpm design:shots [--out <dir>] [--themes light,dark,light-hc,dark-hc] [--viewports 1280,375]
  *                     [--only radar,drawer,...] [--axe] [--list]
  *
  * How it stays safe and stable:
@@ -42,7 +42,7 @@ const { values: args } = parseArgs({
   options: {
     out: { type: "string" },
     themes: { type: "string", default: "light,dark" },
-    viewports: { type: "string", default: "1280,390" },
+    viewports: { type: "string", default: "1280,375" },
     only: { type: "string" },
     axe: { type: "boolean", default: false },
     list: { type: "boolean", default: false },
@@ -50,7 +50,7 @@ const { values: args } = parseArgs({
   },
 });
 
-const HEIGHTS: Record<number, number> = { 1280: 800, 390: 844 };
+const HEIGHTS: Record<number, number> = { 1280: 800, 390: 844, 375: 812 };
 const themes = args.themes.split(",").map((t) => t.trim()).filter(Boolean) as ThemeId[];
 for (const t of themes) if (!(t in THEMES)) fail(`Unknown theme "${t}". Use: ${Object.keys(THEMES).join(", ")}`);
 const widths = args.viewports.split(",").map((w) => Number(w.trim())).filter((w) => w > 0);
@@ -89,12 +89,28 @@ const DRAFT_KEY = "rawjobs.setupDraft.v1";
 const WELCOME_KEY = "rawjobs.welcomeSeen";
 
 const clickView = (name: RegExp) => async (page: Page) => {
-  await page.getByRole("button", { name }).first().click();
+  await page.getByRole("tab", { name }).first().click();
 };
 
 const SCREENS: Screen[] = [
   { id: "radar", what: "Radar, All view (default)", scenario: "demo", hash: "#radar", ready: strong },
-  { id: "radar-new", what: "Radar, New view (views bar)", scenario: "demo", hash: "#radar", ready: strong, act: clickView(/^New\b/) },
+  {
+    id: "radar-keys",
+    what: "Radar after J, J: focus is on the second row's title (Feed: J/K move focus between rows)",
+    scenario: "demo",
+    hash: "#radar",
+    ready: strong,
+    widths: [1280],
+    act: async (page) => {
+      await page.locator("body").click({ position: { x: 1, y: 1 } });
+      await page.keyboard.press("j");
+      await page.keyboard.press("j");
+      // A string, so this file needs no DOM types (tsconfig.scripts.json).
+      const focused = await page.evaluate<string | null>(`document.activeElement?.hasAttribute("data-job-link") ? document.activeElement.textContent : null`);
+      if (!focused) throw new Error("J didn't move focus to a row's title");
+    },
+  },
+  { id: "radar-new",what: "Radar, New view (views bar)", scenario: "demo", hash: "#radar", ready: strong, act: clickView(/^New\b/) },
   { id: "radar-strong", what: "Radar, Strong matches view (views bar)", scenario: "demo", hash: "#radar", ready: strong, act: clickView(/^Strong matches\b/) },
   {
     id: "radar-drawer",
@@ -102,7 +118,7 @@ const SCREENS: Screen[] = [
     what: "Radar on a phone: tap the strongest job, the drawer opens (wide screens show it inline)",
     scenario: "demo",
     hash: "#radar",
-    widths: [390],
+    widths: [375, 390],
     ready: strong,
     act: async (page) => {
       await page.getByRole("button", { name: strong, exact: true }).first().click();

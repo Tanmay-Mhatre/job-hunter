@@ -12,8 +12,8 @@ describe("design lint", () => {
   });
 
   it("flags solid fills used as text, but not their -text variants", () => {
-    expect(rules(`className="text-accent hover:text-danger"`)).toEqual(["solid-text"]);
-    expect(rules(`className="text-accent-text text-danger-text bg-accent text-on-accent"`)).toEqual([]);
+    expect(rules(`className="text-danger hover:text-success"`)).toEqual(["solid-text"]);
+    expect(rules(`className="text-success-text text-danger-text text-warning-text"`)).toEqual([]);
   });
 
   it("flags pre-RawJobs names and Tailwind sizes, radii and shadows that no longer exist", () => {
@@ -21,6 +21,19 @@ describe("design lint", () => {
     expect(rules(`className="text-sm font-medium"`)).toEqual(["text-size"]);
     expect(rules(`className="rounded-xl shadow-lg"`)).toEqual(["radius", "shadow"]);
     expect(rules(`className="rounded-md rounded-dot shadow-l2 type-label text-muted bg-raised"`)).toEqual([]);
+  });
+
+  it("keeps orange to its four jobs: no accent fills, borders, text or checkbox colors in app code", () => {
+    expect(rules(`className="border-accent bg-accent-subtle text-accent-text"`)).toEqual(["accent"]);
+    expect(rules(`className="hover:bg-accent text-on-accent"`)).toEqual(["accent"]);
+    expect(rules(`className="size-4 accent-accent"`)).toEqual(["accent"]);
+    expect(rules(`className="size-4 accent-ink bg-ink text-raised border-control"`)).toEqual([]);
+  });
+
+  it("allows uppercase nowhere (source tags get theirs from rj-source)", () => {
+    expect(rules(`className="type-meta font-semibold uppercase tracking-wide"`)).toEqual(["uppercase"]);
+    expect(rules(`className="sm:uppercase"`)).toEqual(["uppercase"]);
+    expect(rules(`const t = name.toUpperCase(); className="normal-case"`)).toEqual([]);
   });
 
   it("leaves URLs, hash routes and opted-out lines alone", () => {

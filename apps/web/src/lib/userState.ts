@@ -13,7 +13,7 @@ export const STATUS_LABEL: Record<Status, string> = {
   interviewing: "Interviewing",
   offer: "Offer",
   rejected: "Rejected",
-  dismissed: "Hidden",
+  dismissed: "Not interested",
 };
 
 /** Your own tracking for one job. Lives in this browser (export/import to move it). */

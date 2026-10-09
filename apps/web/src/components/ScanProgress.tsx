@@ -1,8 +1,10 @@
 import { CircleAlert, CircleCheck, Clock, LoaderCircle, RefreshCw } from "lucide-react";
-import { scanLine, type ScanState } from "../lib/scan";
+import { atsLabel } from "../lib/filters";
+import { progressRows, scanLine, type ScanState } from "../lib/scan";
+import { SourceTag } from "./primitives";
 import { Button, cx } from "./ui";
 
-/** Rows listed under the progress bar: your companies, then directory ones that matched or failed. */
+/** Rows listed under the progress bars: your companies, then directory ones that matched or failed. */
 const MAX_ROWS = 60;
 
 const toCompanies = () => {
@@ -14,42 +16,40 @@ const syncLine = (sync: string) => (/already up to date/i.test(sync) ? "Company 
 
 /** Live list of companies being scanned, then a one-line result. `onRetry` adds "Try again" to a failed scan. */
 export function ScanProgress({ scan, onRetry }: { scan: ScanState; onRetry?: () => void }) {
-  const total = scan.total;
-  const doneCount = scan.done;
   const s = scan.summary;
   const yours = new Set(scan.companies);
   const rows = [...scan.companies, ...Object.keys(scan.results).filter((n) => !yours.has(n))].slice(0, MAX_ROWS);
-  const pct = total ? Math.round((doneCount / total) * 100) : 0;
+  const bars = progressRows(scan);
   return (
     <div className="space-y-3">
       {scan.phase === "running" && (
-        <div>
-          <div className="flex items-center justify-between type-small">
-            <span className="font-medium" role="status">
-              {scanLine(scan)}
-            </span>
-            <span className="tabular text-muted" aria-hidden="true">
-              {pct}%
-            </span>
-          </div>
-          <div
-            className="mt-2 h-1.5 overflow-hidden rounded-0 bg-inset"
-            role="progressbar"
-            aria-label="Scan progress"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={pct}
-          >
-            <div className="h-full rounded-0 bg-accent transition-all" style={{ width: `${total ? (doneCount / total) * 100 : 4}%` }} />
-          </div>
+        <div className="space-y-3">
+          <p className="type-small font-medium" role="status">
+            {scanLine(scan)}
+          </p>
+          {bars.length > 0 && (
+            <div className="rj-progress" role="group" aria-label="Scan progress">
+              {bars.map((b) => (
+                <div key={b.ats || "all"} className="rj-progress__row">
+                  <SourceTag source={b.ats ? atsLabel(b.ats) : "All companies"} className="min-w-0 truncate" />
+                  <span className="rj-progress__track">
+                    <span className="rj-progress__fill" style={{ transform: `scaleX(${b.total ? b.done / b.total : 0})` }} />
+                  </span>
+                  <span className="rj-progress__count">
+                    {b.done.toLocaleString()} / {b.total.toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
       {s && (
-        <p className="rounded-md bg-accent-subtle/50 p-3 type-small" role="status">
-          Scanned <b className="tabular">{s.jobsFound.toLocaleString()}</b> jobs and found <b className="tabular">{s.matches}</b> match{s.matches === 1 ? "" : "es"}
+        <p className="rounded-md bg-inset p-3 type-small" role="status">
+          Scanned <b className="tabular font-semibold text-ink">{s.jobsFound.toLocaleString()}</b> jobs and found <b className="tabular font-semibold text-ink">{s.matches}</b> match{s.matches === 1 ? "" : "es"}
           {s.strong > 0 && (
             <>
-              , <b className="tabular text-accent-text">{s.strong} strong</b>
+              , <b className="tabular font-semibold text-ink">{s.strong} strong</b>
             </>
           )}
           .
@@ -60,7 +60,7 @@ export function ScanProgress({ scan, onRetry }: { scan: ScanState; onRetry?: () 
                 {s.failed} compan{s.failed === 1 ? "y" : "ies"} couldn't be scanned
               </span>
               , usually because the careers page moved.{" "}
-              <button type="button" className="font-medium text-accent-text hover:underline" onClick={toCompanies}>
+              <button type="button" className="font-medium text-ink underline underline-offset-2 hover:text-muted" onClick={toCompanies}>
                 Review failing companies
               </button>
             </>
@@ -70,11 +70,11 @@ export function ScanProgress({ scan, onRetry }: { scan: ScanState; onRetry?: () 
       )}
       {s?.moves?.map((m) => (
         <p key={m.name} className="rounded-md bg-inset p-3 type-small">
-          <b>{m.name}</b> moved its careers page. We found the new one and updated My companies.
+          <b>{m.name}</b> moved its careers page. Found its new careers page and updated My companies.
         </p>
       ))}
-      {scan.sync && scan.phase !== "running" && <p className="type-meta text-muted">{syncLine(scan.sync)}</p>}
-      {scan.feed && scan.phase !== "running" && <p className="type-meta text-muted">{scan.feed}</p>}
+      {scan.sync && scan.phase !== "running" && <p className="type-small text-muted">{syncLine(scan.sync)}</p>}
+      {scan.feed && scan.phase !== "running" && <p className="type-small text-muted">{scan.feed}</p>}
       {scan.error && (
         <div className="rounded-md bg-danger-subtle/50 p-3 type-small" role="alert">
           <p className="font-medium text-danger-text">The scan stopped before it finished.</p>
@@ -103,14 +103,14 @@ export function ScanProgress({ scan, onRetry }: { scan: ScanState; onRetry?: () 
                     <Clock className="size-4 shrink-0 text-muted" />
                   )
                 ) : h.ok ? (
-                  <CircleCheck className="size-4 shrink-0 text-accent-text" />
+                  <CircleCheck className="size-4 shrink-0 text-success-text" />
                 ) : h.unsupported ? (
                   <Clock className="size-4 shrink-0 text-warning-text" />
                 ) : (
                   <CircleAlert className="size-4 shrink-0 text-danger-text" />
                 )}
                 <span className="min-w-0 flex-1 truncate font-medium">{name}</span>
-                <span className={cx("tabular shrink-0 type-meta", h && !h.ok && !h.unsupported ? "text-danger-text" : "text-muted")}>
+                <span className={cx("tabular shrink-0", h && !h.ok && !h.unsupported ? "text-danger-text" : "text-muted")}>
                   {!h
                     ? ""
                     : h.ok

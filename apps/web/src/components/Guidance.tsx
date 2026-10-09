@@ -1,5 +1,5 @@
 import { diagnoseNoMatches } from "@rawjobs/core/diagnose";
-import { ArrowRight, Bell, Check, ChevronRight, LoaderCircle, Radar as RadarIcon, RefreshCw, SearchX, TriangleAlert, X } from "lucide-react";
+import { ArrowRight, Bell, Check, ChevronDown, ChevronRight, LoaderCircle, RefreshCw, TriangleAlert, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { scheduleStatus } from "../lib/automation";
 import type { Config } from "@rawjobs/core/schema";
@@ -55,11 +55,17 @@ export function checklistItems(config: Config | undefined, meta: DataMeta | unde
 
 const DISMISS_KEY = "rawjobs.checklist.dismissed";
 
-function ChecklistRows({ items, onStep, onScan, onCompanies }: { items: Item[]; onStep: (n: number) => void; onScan: () => void; onCompanies: () => void }) {
+type Actions = { onStep: (n: number) => void; onScan: () => void; onCompanies: () => void };
+
+/** Where a checklist item takes you, if anywhere. */
+const actionFor = (i: Item, { onStep, onScan, onCompanies }: Actions): (() => void) | undefined =>
+  i.key === "scan" ? onScan : i.key === "companies" ? onCompanies : i.key === "daily" ? goDailyAlerts : i.step ? () => onStep(i.step!) : undefined;
+
+function ChecklistRows({ items, ...actions }: { items: Item[] } & Actions) {
   return (
     <ul className="grid divide-y divide-line sm:grid-cols-2 sm:divide-y-0">
       {items.map((i) => {
-        const action = i.key === "scan" ? onScan : i.key === "companies" ? onCompanies : i.key === "daily" ? goDailyAlerts : i.step ? () => onStep(i.step!) : undefined;
+        const action = actionFor(i, actions);
         return (
           <li key={i.key} className="sm:border-b sm:border-line sm:odd:border-r">
             <button
@@ -71,16 +77,16 @@ function ChecklistRows({ items, onStep, onScan, onCompanies }: { items: Item[]; 
               <span
                 className={cx(
                   "flex size-6 shrink-0 items-center justify-center rounded-sm border",
-                  i.done ? "border-accent bg-accent text-on-accent" : i.key === "daily" ? "border-line text-muted" : "border-line",
+                  i.done ? "border-ink bg-ink text-raised" : i.key === "daily" ? "border-line text-muted" : "border-line",
                 )}
               >
-                {i.done ? <Check className="size-3.5" /> : i.key === "daily" ? <Bell className="size-3" /> : null}
+                {i.done ? <Check className="size-3.5" aria-label="Done" /> : i.key === "daily" ? <Bell className="size-3" aria-hidden="true" /> : null}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block type-label">{i.label}</span>
-                <span className={cx("block truncate type-meta", i.detail.includes("failing") ? "text-danger-text" : "text-muted")}>{i.detail}</span>
+                <span className={cx("block truncate type-small", i.detail.includes("failing") ? "text-danger-text" : "text-muted")}>{i.detail}</span>
               </span>
-              {action && <ChevronRight className="size-4 text-muted" />}
+              {action && <ChevronRight className="size-4 text-muted" aria-hidden="true" />}
             </button>
           </li>
         );
@@ -97,7 +103,7 @@ const countDone = (items: Item[]) => {
 function ProgressBar({ done, total, className }: { done: number; total: number; className?: string }) {
   return (
     <div
-      className={cx("h-1.5 overflow-hidden rounded-0 bg-inset", className)}
+      className={cx("rj-progress__track", className)}
       role="progressbar"
       aria-label="Setup progress"
       aria-valuemin={0}
@@ -105,7 +111,7 @@ function ProgressBar({ done, total, className }: { done: number; total: number; 
       aria-valuenow={done}
       aria-valuetext={`${done} of ${total} done`}
     >
-      <div className="h-full rounded-0 bg-accent transition-all" style={{ width: `${(done / total) * 100}%` }} />
+      <span className="rj-progress__fill" style={{ transform: `scaleX(${total ? done / total : 0})` }} />
     </div>
   );
 }
@@ -123,6 +129,7 @@ export function SetupChecklist({
   onCompanies: () => void;
 }) {
   const [dismissed, setDismissed] = useState(() => load(DISMISS_KEY, false));
+  const [expanded, setExpanded] = useState(false);
   const { done, total } = countDone(items);
   const complete = done === total;
   // Already scanning on a schedule: no need to point at it.
@@ -135,15 +142,15 @@ export function SetupChecklist({
     const daily = items.find((i) => i.key === "daily");
     return (
       <div className="flex items-center gap-3 rounded-md border border-line bg-raised px-4 py-2.5 type-small">
-        <span className="flex size-5 shrink-0 items-center justify-center rounded-sm bg-accent text-on-accent">
-          <Check className="size-3" />
+        <span className="flex size-5 shrink-0 items-center justify-center rounded-sm bg-ink text-raised">
+          <Check className="size-3" aria-hidden="true" />
         </span>
         <span className="min-w-0 flex-1">
           <b>Setup complete.</b>{" "}
           {daily && !scheduled && (
             <span className="text-muted">
               Next:{" "}
-              <button type="button" className="font-medium text-accent-text hover:underline" onClick={goDailyAlerts}>
+              <button type="button" className="font-medium text-ink underline underline-offset-2 hover:text-muted" onClick={goDailyAlerts}>
                 get new jobs on Telegram every day <span aria-hidden="true">&rarr;</span>
               </button>
             </span>
@@ -161,6 +168,52 @@ export function SetupChecklist({
           <X className="size-4" />
         </button>
       </div>
+    );
+  }
+
+  // After the first scan, what's left shrinks to one line; "Show all" opens the full list.
+  const scanned = items.some((i) => i.key === "scan" && i.done);
+  if (scanned) {
+    const left = total - done;
+    const next = items.find((i) => !i.done && !i.optional) ?? items.find((i) => !i.done);
+    const nextAction = next && actionFor(next, { onStep, onScan, onCompanies });
+    return (
+      <Card className="overflow-hidden">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 type-small">
+          <p className="min-w-0 flex-1">
+            <b>
+              {left} step{left === 1 ? "" : "s"} left
+            </b>
+            {next && (
+              <>
+                :{" "}
+                {nextAction ? (
+                  <button type="button" className="font-medium text-ink underline underline-offset-2 hover:text-muted" onClick={nextAction}>
+                    {next.label}
+                  </button>
+                ) : (
+                  next.label
+                )}
+              </>
+            )}
+          </p>
+          <button
+            type="button"
+            aria-expanded={expanded}
+            aria-controls="setup-checklist-rows"
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 font-medium text-muted hover:bg-inset hover:text-ink"
+            onClick={() => setExpanded((e) => !e)}
+          >
+            {expanded ? "Hide" : "Show all"}
+            <ChevronDown aria-hidden="true" size={16} className={cx("transition-transform", expanded && "rotate-180")} />
+          </button>
+        </div>
+        {expanded && (
+          <div id="setup-checklist-rows" className="border-t border-line">
+            <ChecklistRows items={items} onStep={onStep} onScan={onScan} onCompanies={onCompanies} />
+          </div>
+        )}
+      </Card>
     );
   }
 
@@ -198,13 +251,10 @@ export function SetupHero({
   return (
     <Card className="overflow-hidden">
       <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
-        <span className="flex size-12 shrink-0 items-center justify-center rounded-md bg-accent text-on-accent">
-          <RadarIcon className="size-6" />
-        </span>
         <div className="min-w-0 flex-1">
           <h2 className="type-subheading font-semibold">{started ? "Finish setting up your radar" : "Set up your radar"}</h2>
           <p className="mt-0.5 type-small text-muted">
-            Tell us the roles and places you want, and we'll find and rank matching jobs across thousands of companies. About 3 minutes.
+            Pick the roles and places you want. RawJobs finds and ranks matching jobs across thousands of companies. Setup takes about 3 minutes.
           </p>
           <div className="mt-3 flex items-center gap-3">
             <ProgressBar done={done} total={total} className="w-40" />
@@ -252,20 +302,22 @@ export function ConfigProblemCard({ errors, onFix }: { errors?: string; onFix: (
 export function FirstScanCard({ scan, onScan }: { scan: ScanState; onScan: () => void }) {
   const running = scan.phase === "running";
   return (
-    <Card className="p-6 text-center sm:p-8">
-      <h2 className="type-subheading font-semibold">{running ? "Finding jobs for you…" : "Ready for your first scan"}</h2>
-      <p className="mx-auto mt-1 max-w-md type-small text-muted">
-        We check thousands of companies for jobs that match your roles and places. This usually takes a few minutes.
-      </p>
-      {running ? (
-        <div className="mx-auto mt-5 max-w-md text-left">
-          <ScanProgress scan={scan} onRetry={onScan} />
-        </div>
-      ) : (
-        <Button variant="primary" className="mt-5 h-11 px-5 type-body" onClick={onScan}>
-          <RefreshCw className="size-4" /> Start my first scan
-        </Button>
-      )}
+    <Card>
+      <div className="rj-empty">
+        <h2 className="rj-empty__title">{running ? "Finding jobs for you…" : "Ready for your first scan"}</h2>
+        <p className="rj-empty__body">Checks thousands of companies for jobs that match your roles and places. This usually takes a few minutes.</p>
+        {running ? (
+          <div className="w-full">
+            <ScanProgress scan={scan} onRetry={onScan} />
+          </div>
+        ) : (
+          <div className="rj-empty__actions">
+            <Button variant="primary" className="h-11 px-5 type-body" onClick={onScan}>
+              <RefreshCw className="size-4" /> Start my first scan
+            </Button>
+          </div>
+        )}
+      </div>
     </Card>
   );
 }
@@ -275,16 +327,13 @@ export function NoMatches({ jobs, onStep, onCompanies }: { jobs: Job[]; onStep: 
   const d = useMemo(() => diagnoseNoMatches(jobs), [jobs]);
   return (
     <Card className="p-5 sm:p-6">
-      <div className="flex items-start gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-warning-subtle text-warning-text">
-          <SearchX className="size-5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 className="type-body font-semibold">No matches yet. Here's why.</h2>
+      <div className="max-w-prose">
+        <div>
+          <h2 className="type-subheading font-semibold">No matches yet. Here's why.</h2>
           <p className="mt-1 type-small text-muted">
-            We checked <b className="tabular text-ink">{d.scanned.toLocaleString()}</b> open jobs:{" "}
-            <b className="tabular text-ink">{d.titleMiss.toLocaleString()}</b> had other job titles and{" "}
-            <b className="tabular text-ink">{d.locationMiss.toLocaleString()}</b> had the right title but were in other places.
+            Checked <b className="tabular font-semibold text-ink">{d.scanned.toLocaleString()}</b> open jobs:{" "}
+            <b className="tabular font-semibold text-ink">{d.titleMiss.toLocaleString()}</b> had other job titles and{" "}
+            <b className="tabular font-semibold text-ink">{d.locationMiss.toLocaleString()}</b> had the right title but were in other places.
           </p>
         </div>
       </div>
@@ -302,7 +351,7 @@ export function NoMatches({ jobs, onStep, onCompanies }: { jobs: Job[]; onStep: 
               ))}
             </ul>
           ) : (
-            <p className="mt-1 type-small text-muted">None. Nobody is hiring for this role in the companies we checked right now.</p>
+            <p className="mt-1 type-small text-muted">None. No company checked is hiring for this role right now.</p>
           )}
           <Button size="sm" className="mt-3" onClick={() => onStep(STEP.locations)}>
             Add locations or remote <ArrowRight className="size-3.5" />
@@ -328,10 +377,10 @@ export function NoMatches({ jobs, onStep, onCompanies }: { jobs: Job[]; onStep: 
       </div>
       <p className="mt-4 type-small text-muted">
         Or{" "}
-        <button type="button" className="font-medium text-accent-text" onClick={onCompanies}>
+        <button type="button" className="font-medium text-ink underline underline-offset-2 hover:text-muted" onClick={onCompanies}>
           add companies you'd like to work at
         </button>
-        : we scan them every time, even ones the directory doesn't list.
+        : RawJobs scans them every time, even ones the directory doesn't list.
       </p>
     </Card>
   );
@@ -342,16 +391,16 @@ export function FailingBanner({ count, onOpen }: { count: number; onOpen: () => 
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full items-center gap-2.5 rounded-md border border-warning/40 bg-warning-subtle/40 px-4 py-2.5 text-left type-small hover:bg-warning-subtle/60"
+      className="flex w-full flex-wrap items-center gap-x-2.5 gap-y-1 rounded-md border border-warning/40 bg-warning-subtle/40 px-4 py-2.5 text-left type-small hover:bg-warning-subtle/60"
     >
       <TriangleAlert className="size-4 shrink-0 text-warning-text" />
-      <span className="flex-1">
+      <span className="min-w-48 flex-1">
         <b>
           {count} compan{count === 1 ? "y" : "ies"}
         </b>{" "}
         couldn't be scanned last time. Usually the careers page moved.
       </span>
-      <span className="font-medium text-warning-text">Review failing companies</span>
+      <span className="pl-6.5 font-medium text-warning-text underline underline-offset-2 sm:pl-0">Review failing companies</span>
     </button>
   );
 }
@@ -360,20 +409,28 @@ export function ScanningBar({ scan, onStop }: { scan: ScanState; onStop?: () => 
   if (scan.phase !== "running") return null;
   return (
     <Card className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 type-small">
-      <LoaderCircle className="size-4 animate-spin text-accent-text" aria-hidden="true" />
+      <LoaderCircle className="size-4 animate-spin text-muted" aria-hidden="true" />
       <span className="min-w-0 flex-1" role="status">
         {scanLine(scan)}
       </span>
-      <div
-        className="h-1.5 w-28 overflow-hidden rounded-0 bg-inset"
-        role="progressbar"
-        aria-label="Scan progress"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={scan.total ? Math.round((scan.done / scan.total) * 100) : 0}
-      >
-        <div className="h-full rounded-0 bg-accent transition-all" style={{ width: `${scan.total ? (scan.done / scan.total) * 100 : 4}%` }} />
-      </div>
+      {scan.total > 0 && (
+        <span className="flex items-center gap-2">
+          <span
+            className="rj-progress__track block w-28"
+            role="progressbar"
+            aria-label="Scan progress"
+            aria-valuemin={0}
+            aria-valuemax={scan.total}
+            aria-valuenow={Math.min(scan.done, scan.total)}
+            aria-valuetext={`${Math.min(scan.done, scan.total).toLocaleString()} of ${scan.total.toLocaleString()} companies`}
+          >
+            <span className="rj-progress__fill" style={{ transform: `scaleX(${Math.min(scan.done / scan.total, 1)})` }} />
+          </span>
+          <span className="tabular type-meta text-muted" aria-hidden="true">
+            {Math.min(scan.done, scan.total).toLocaleString()} / {scan.total.toLocaleString()}
+          </span>
+        </span>
+      )}
       {onStop && (
         <Button size="sm" variant="ghost" onClick={onStop} disabled={scan.stopping}>
           {scan.stopping ? "Stopping…" : "Stop scan"}

@@ -2,6 +2,7 @@ import { Check, ExternalLink, LoaderCircle, RefreshCw, Send, X } from "lucide-re
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { telegramAction, telegramStatus, type TelegramAction, type TelegramStatus } from "../lib/automation";
 import { Dialog } from "./Dialog";
+import { StatusGlyph } from "./primitives";
 import { Button, Card, cx, IconButton, Toggle } from "./ui";
 
 /** What failed, and how to fix it. The raw reason goes under "Technical details" unless it's already plain advice. */
@@ -98,7 +99,7 @@ export function TelegramAlerts({
               <>
                 <p className="type-small text-muted">
                   In Telegram, open{" "}
-                  <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="font-medium text-accent-text">
+                  <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="font-medium text-ink underline underline-offset-2 hover:text-muted">
                     @BotFather <ExternalLink className="inline size-3" />
                   </a>
                   , send <code className="rounded-md bg-inset px-1">/newbot</code>, pick any name, and copy the token it gives you.
@@ -118,7 +119,7 @@ export function TelegramAlerts({
                     spellCheck={false}
                     placeholder="123456789:AAF…"
                     aria-label="Bot token from BotFather"
-                    className="h-9 min-w-0 flex-1 rounded-md border border-line bg-raised px-3 font-mono type-small outline-none focus:border-accent"
+                    className="h-9 min-w-0 flex-1 rounded-md border border-line bg-raised px-3 font-mono type-small"
                   />
                   <Button type="submit" variant="primary" disabled={!token.trim() || !!busy}>
                     {spin("token")} Check token
@@ -128,7 +129,7 @@ export function TelegramAlerts({
             ) : (
               <p className="type-small text-muted">
                 Bot {status.bot ?? status.token} ·{" "}
-                <button type="button" className="min-h-6 font-medium text-accent-text hover:underline" onClick={() => setConfirmForget(true)} disabled={!!busy}>
+                <button type="button" className="min-h-6 font-medium text-ink underline underline-offset-2 hover:text-muted" onClick={() => setConfirmForget(true)} disabled={!!busy}>
                   use another bot
                 </button>
               </p>
@@ -140,15 +141,15 @@ export function TelegramAlerts({
                 <p className="type-small text-muted">
                   Open{" "}
                   {botLink ? (
-                    <a href={botLink} target="_blank" rel="noreferrer" className="font-medium text-accent-text">
+                    <a href={botLink} target="_blank" rel="noreferrer" className="font-medium text-ink underline underline-offset-2 hover:text-muted">
                       {status.bot} <ExternalLink className="inline size-3" />
                     </a>
                   ) : (
                     "your bot"
                   )}{" "}
-                  in Telegram and press <b>Start</b> (or send it any message). That tells us where to send your alerts.
+                  in Telegram and press <b>Start</b> (or send it any message). That tells RawJobs where to send your alerts.
                 </p>
-                <Button className="mt-2" variant="primary" onClick={() => void act("connect", undefined, (r) => `Connected. Check Telegram, ${r.name}: we sent a welcome message.`)} disabled={!!busy}>
+                <Button className="mt-2" variant="primary" onClick={() => void act("connect", undefined, (r) => `Connected. Check Telegram, ${r.name}: a welcome message is waiting.`)} disabled={!!busy}>
                   {spin("connect")} I've messaged the bot
                 </Button>
               </>
@@ -158,8 +159,8 @@ export function TelegramAlerts({
       ) : (
         <div className="space-y-3">
           <p className="flex flex-wrap items-center gap-2 type-small">
-            <span className="inline-flex items-center gap-1.5 rounded-sm bg-accent-subtle px-2.5 py-0.5 type-meta font-medium text-accent-text">
-              <Check className="size-3.5" /> Connected
+            <span className="inline-flex items-center gap-2 text-success-text">
+              <StatusGlyph shape="full" /> <span className="font-medium text-ink">Connected</span>
             </span>
             New jobs go to {botName} on Telegram.
           </p>
@@ -192,7 +193,7 @@ export function TelegramAlerts({
           )}
         </div>
       )}
-      <p className="type-meta text-muted">
+      <p className="type-small text-muted">
         {footnote ?? "One message per scheduled scan, only when there are new jobs for you (best first, up to 10). Scans you start yourself don't send one."} Your bot token is kept on this computer only.
       </p>
 
@@ -233,7 +234,7 @@ export function TelegramAlerts({
 function Step({ n, title, done, muted, children }: { n: number; title: string; done: boolean; muted?: boolean; children?: ReactNode }) {
   return (
     <li className={cx("flex gap-3", muted && "opacity-50")}>
-      <span className={cx("flex size-6 shrink-0 items-center justify-center rounded-sm border type-meta font-semibold", done ? "border-accent bg-accent text-on-accent" : "border-line")}>
+      <span className={cx("flex size-6 shrink-0 items-center justify-center rounded-sm border type-label", done ? "border-ink bg-ink text-raised" : "border-line")}>
         {done ? <Check className="size-3.5" /> : n}
       </span>
       <div className="min-w-0 flex-1">

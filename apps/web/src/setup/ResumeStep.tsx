@@ -1,7 +1,8 @@
 import { parseAiAnswer, type AiProfile, type ParsedAnswer } from "@rawjobs/core/resume-parse";
 import { ArrowRight, Check, ClipboardCopy, ExternalLink, FileText, Files, LoaderCircle, SkipForward, Sparkles, Upload, Wand2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Button, Chip, cx } from "../components/ui";
+import { Kbd } from "../components/primitives";
+import { Button, cx } from "../components/ui";
 import { copyText } from "../lib/clipboard";
 import { canRunLocally } from "../lib/data";
 import { extractResumeText } from "../lib/extract";
@@ -24,7 +25,7 @@ type Props = {
   /** In Settings there's nowhere to skip to. */
   hideSkip?: boolean;
   /**
-   * Wizard only: renders the step footer around our primary button ("Save & continue", "Continue" or
+   * Wizard only: renders the step footer around this step's primary button ("Save & continue", "Continue" or
    * "Skip for now"), and resume suggestions fill still-empty steps automatically. Without it (Settings)
    * saving stays in the panel and prefilling is a button.
    */
@@ -195,13 +196,13 @@ export function ResumeStep({ draft, update, resumeText, saveResume, onSkip, onNe
           )}
           {wizard && error && (
             <p role="alert" className="type-small text-danger-text">
-              We couldn't save your resume. {error}
+              Couldn't save your resume. {error}
             </p>
           )}
           {resumeText && replacing && (
             <button
               type="button"
-              className="type-label text-accent-text"
+              className="type-label text-ink underline underline-offset-2 hover:text-muted"
               onClick={() => {
                 setReplacing(false);
                 setMode(null);
@@ -214,7 +215,7 @@ export function ResumeStep({ draft, update, resumeText, saveResume, onSkip, onNe
           )}
         </>
       )}
-      <p className="type-meta text-muted">
+      <p className="type-small text-muted">
         {canRunLocally ? "Your resume stays on this computer. It's never uploaded." : "Your resume is kept in this browser only. It's never uploaded."}
       </p>
       {footer?.(primary)}
@@ -230,12 +231,12 @@ function ModeCard({ active, icon, title, body, onClick }: { active: boolean; ico
       onClick={onClick}
       className={cx(
         "flex flex-col items-start gap-2 rounded-md border p-4 text-left transition-colors",
-        active ? "border-accent bg-accent-subtle/40" : "border-line hover:bg-inset",
+        active ? "border-ink bg-active" : "border-line hover:bg-inset",
       )}
     >
-      <span className={cx("flex size-9 items-center justify-center rounded-md", active ? "bg-accent text-on-accent" : "bg-inset text-muted")}>{icon}</span>
+      <span className={cx("flex size-9 items-center justify-center rounded-md", active ? "bg-ink text-raised" : "bg-inset text-muted")}>{icon}</span>
       <span className="type-small font-semibold">{title}</span>
-      <span className="type-meta text-muted">{body}</span>
+      <span className="type-small text-muted">{body}</span>
     </button>
   );
 }
@@ -295,11 +296,11 @@ function SinglePath({ text, setText, tooShort, save }: { text: string; setText: 
           onChange={(e) => void onFile(e.target.files?.[0])}
         />
       </div>
-      <p className="type-meta text-muted">PDF, Word (.docx), Markdown or text. The file is read on this computer and never uploaded.</p>
+      <p className="type-small text-muted">PDF, Word (.docx), Markdown or text. The file is read on this computer and never uploaded.</p>
       {file.state === "error" && <p className="rounded-md bg-warning-subtle/50 p-2.5 type-small text-warning-text">{file.message}</p>}
       {file.state === "done" && (
-        <p className="rounded-md bg-accent-subtle/40 p-2.5 type-small">
-          <Check className="mr-1 inline size-4 text-accent-text" />
+        <p className="rounded-md bg-success-subtle p-2.5 type-small text-success-text">
+          <Check className="mr-1 inline size-4" aria-hidden />
           Read <b>{file.name}</b>.{file.message ? ` ${file.message}` : ` Check the text below, then save.`}
         </p>
       )}
@@ -310,7 +311,7 @@ function SinglePath({ text, setText, tooShort, save }: { text: string; setText: 
         aria-label="Your resume"
         aria-describedby={tooShort ? MIN_WORDS_HINT_ID : undefined}
         placeholder={"Paste your full resume here, or choose a file above.\n\nPlain text or Markdown both work."}
-        className="w-full resize-y rounded-md border border-line bg-raised p-3 font-mono type-meta leading-5 outline-none placeholder:font-sans placeholder:type-small placeholder:text-muted focus:border-accent"
+        className="w-full resize-y rounded-md border border-line bg-raised p-3 font-mono type-small placeholder:font-sans placeholder:text-muted"
       />
       <div className="flex flex-wrap items-center gap-3">
         {save && (
@@ -325,8 +326,8 @@ function SinglePath({ text, setText, tooShort, save }: { text: string; setText: 
         )}
         <span className="type-meta text-muted">{words(text) ? `${words(text)} words` : ""}</span>
         {tooShort && (
-          <span id={MIN_WORDS_HINT_ID} className="type-meta text-muted">
-            Add a bit more — we need at least {MIN_WORDS} words to suggest roles.
+          <span id={MIN_WORDS_HINT_ID} className="type-small text-muted">
+            Add a bit more: at least {MIN_WORDS} words are needed to suggest roles.
           </span>
         )}
         {save?.error && <span className="type-small text-danger-text">{save.error}</span>}
@@ -357,18 +358,18 @@ function AiPath({ answer, setAnswer, parsed, save }: { answer: string; setAnswer
 
   return (
     <ol className="space-y-4 rounded-md border border-line p-4">
-      <Step n={1} title="Copy our prompt">
+      <Step n={1} title="Copy the prompt">
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="primary" onClick={() => void copy()}>
             {copied === "yes" ? <Check className="size-4" /> : <ClipboardCopy className="size-4" />}
             {copied === "yes" ? "Copied" : "Copy prompt"}
           </Button>
-          <button type="button" className="type-label text-accent-text" onClick={() => setShowPrompt((v) => !v)} aria-expanded={showPrompt}>
+          <button type="button" className="type-label text-ink underline underline-offset-2 hover:text-muted" onClick={() => setShowPrompt((v) => !v)} aria-expanded={showPrompt}>
             {showPrompt ? "Hide the prompt" : "See the prompt"}
           </button>
         </div>
         {copied === "manual" && (
-          <p className="mt-2 type-small text-warning-text">Your browser blocked copying. The prompt is selected below: press Ctrl+C (Cmd+C on Mac).</p>
+          <p className="mt-2 type-small text-warning-text">Your browser blocked copying. The prompt is selected below: press <Kbd>Ctrl</Kbd> <Kbd>C</Kbd> (<Kbd>⌘</Kbd> <Kbd>C</Kbd> on Mac).</p>
         )}
         {showPrompt && (
           <textarea
@@ -378,7 +379,7 @@ function AiPath({ answer, setAnswer, parsed, save }: { answer: string; setAnswer
             rows={10}
             aria-label="The prompt"
             onFocus={(e) => e.currentTarget.select()}
-            className="mt-2 w-full resize-y rounded-md border border-line bg-inset p-3 font-mono type-meta leading-5 text-muted outline-none focus:border-accent"
+            className="mt-2 w-full resize-y rounded-md border border-line bg-inset p-3 font-mono type-small text-muted"
           />
         )}
       </Step>
@@ -400,23 +401,23 @@ function AiPath({ answer, setAnswer, parsed, save }: { answer: string; setAnswer
           rows={8}
           aria-label="The AI's answer"
           placeholder="Paste everything it wrote, including the JSON block at the end."
-          className="w-full resize-y rounded-md border border-line bg-raised p-3 font-mono type-meta leading-5 outline-none placeholder:font-sans placeholder:type-small placeholder:text-muted focus:border-accent"
+          className="w-full resize-y rounded-md border border-line bg-raised p-3 font-mono type-small placeholder:font-sans placeholder:text-muted"
         />
         {parsed && (
           <div className="mt-2 rounded-md bg-inset/60 p-3 type-small">
             <p className="font-medium">
-              <Wand2 className="mr-1 inline size-4 text-accent-text" />
+              <Wand2 className="mr-1 inline size-4 text-muted" aria-hidden />
               Found: master resume ({words(parsed.resume).toLocaleString()} words)
               {parsed.profile ? (
                 <>
                   {" "}· {parsed.profile.target_titles.length} target titles · {parsed.profile.locations.length} places · {Object.keys(parsed.profile.keywords).length} topics
                 </>
               ) : (
-                " · no profile block (we'll suggest details from the text)"
+                " · no profile block (details are suggested from the text)"
               )}
             </p>
             {parsed.warnings.map((w) => (
-              <p key={w} className="mt-1 type-meta text-warning-text">
+              <p key={w} className="mt-1 type-small text-warning-text">
                 {w}
               </p>
             ))}
@@ -438,7 +439,7 @@ function AiPath({ answer, setAnswer, parsed, save }: { answer: string; setAnswer
 function Step({ n, title, children }: { n: number; title: string; children: ReactNode }) {
   return (
     <li className="flex gap-3">
-      <span className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-accent-subtle type-small font-semibold text-accent-text">{n}</span>
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-inset type-label text-ink">{n}</span>
       <div className="min-w-0 flex-1">
         <p className="mb-1.5 type-small font-semibold">{title}</p>
         {children}
@@ -478,7 +479,7 @@ function SavedResume({
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-3 rounded-md border border-line p-4">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-accent-subtle text-accent-text">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-inset text-muted">
           <FileText className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
@@ -487,8 +488,8 @@ function SavedResume({
             Master resume saved · {words(text).toLocaleString()} words{draft.aiProfile ? " · with AI profile" : ""}
           </p>
           <details className="mt-1 type-small">
-            <summary className="cursor-pointer font-medium text-accent-text">View</summary>
-            <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-inset p-3 font-mono type-meta leading-5 text-muted">{text}</pre>
+            <summary className="cursor-pointer font-medium text-ink underline underline-offset-2 hover:text-muted">View</summary>
+            <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-inset p-3 font-mono type-small text-muted">{text}</pre>
           </details>
         </div>
         <Button size="sm" onClick={onReplace}>
@@ -497,11 +498,11 @@ function SavedResume({
       </div>
 
       {nothing ? (
-        <p className="type-small text-muted">We couldn't find job titles or places in this resume. You'll pick them in the next steps.</p>
+        <p className="type-small text-muted">Couldn't find job titles or places in this resume. You'll pick them in the next steps.</p>
       ) : (
-      <div className="rounded-md border border-accent/40 bg-accent-subtle/30 p-4">
+      <div className="rounded-md border border-line bg-inset p-4">
         <p className="flex items-center gap-1.5 type-small font-semibold">
-          <Sparkles className="size-4 text-accent-text" /> {suggest.source === "ai" ? "From your master resume" : "Suggested from your resume"}
+          <Sparkles className="size-4 text-muted" aria-hidden /> {suggest.source === "ai" ? "From your master resume" : "Suggested from your resume"}
         </p>
         <dl className="mt-2 grid gap-x-4 gap-y-1.5 type-small sm:grid-cols-[110px_1fr]">
           <Row label="Titles" items={suggest.titles} />
@@ -510,14 +511,14 @@ function SavedResume({
           <Row label="Topics" items={suggest.keywords.map(([k]) => k)} />
         </dl>
         {auto ? (
-          <p role="status" className="mt-3 flex items-start gap-1.5 type-label text-accent-text">
+          <p role="status" className="mt-3 flex items-start gap-1.5 type-label text-ink">
             <Check className="mt-0.5 size-4 shrink-0" />
             {filled
-              ? `We've pre-filled ${filled} from your resume. You can change anything.`
+              ? `Pre-filled ${filled} from your resume. You can change anything.`
               : "Suggestions appear next to each step. Nothing you chose is overwritten."}
           </p>
         ) : applied ? (
-          <p className="mt-3 flex items-center gap-1.5 type-label text-accent-text">
+          <p className="mt-3 flex items-center gap-1.5 type-label text-ink">
             <Check className="size-4" /> Added. You can review and change everything below.
           </p>
         ) : fills.length ? (
@@ -531,7 +532,7 @@ function SavedResume({
             >
               <Wand2 className="size-4" /> Fill empty sections from my resume
             </Button>
-            <span className="type-meta text-muted">Nothing you chose is overwritten.</span>
+            <span className="type-small text-muted">Nothing you chose is overwritten.</span>
           </div>
         ) : (
           <p className="mt-3 type-small text-muted">Suggestions appear next to each step for you to add.</p>
@@ -547,9 +548,9 @@ function Row({ label, items }: { label: string; items: string[] }) {
   return (
     <>
       <dt className="text-muted">{label}</dt>
-      <dd className="flex flex-wrap gap-1">
-        {items.slice(0, 10).map((i) => <Chip key={i}>{i}</Chip>)}
-        {items.length > 10 && <Chip>+{items.length - 10}</Chip>}
+      <dd className="text-ink">
+        {items.slice(0, 10).join(" · ")}
+        {items.length > 10 && <span className="text-muted"> · +{items.length - 10} more</span>}
       </dd>
     </>
   );

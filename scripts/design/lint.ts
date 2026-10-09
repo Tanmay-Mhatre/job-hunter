@@ -28,6 +28,13 @@ export const RULES: { id: string; pattern: RegExp; message: string }[] = [
   { id: "text-size", pattern: /\btext-(?:xs|sm|base|lg|[2-9]?xl)\b/, message: "Tailwind font size: use a type style (type-small, type-label, type-meta, type-body...)." },
   { id: "radius", pattern: /\brounded(?:-[trblse]{1,2})?-(?:lg|xl|2xl|3xl|full)\b/, message: "Radius above 4px: use rounded-sm or rounded-md; only dots, radios and toggles use rounded-dot." },
   { id: "shadow", pattern: /\bshadow-(?:2xs|xs|sm|md|lg|xl|2xl|inner)\b/, message: "Tailwind shadow: use shadow-l1, shadow-l2 or shadow-l3." },
+  {
+    id: "accent",
+    pattern: /(?<![\w-])(?:[a-z-]+:)*(?:bg|border(?:-[trblxy])?|text|fill|stroke|ring|outline|divide|from|via|to|decoration|accent)-(?:accent(?:-subtle|-text|-border|-hover)?|on-accent)(?![\w-])/,
+    message:
+      "Orange is only for the primary button, the star, the new dot and the logo (design/README.md, One accent), which the primitives and kit classes already style. Selected, active and pressed states are ink.",
+  },
+  { id: "uppercase", pattern: /(?<![\w-])(?:[a-z-]+:)*uppercase(?![\w-])/, message: "No uppercase: headings are sentence case. Only source tags are uppercase, and the kit's rj-source styles them." },
 ];
 
 export type Finding = { file: string; line: number; rule: string; message: string; text: string };

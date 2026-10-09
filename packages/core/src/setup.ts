@@ -123,7 +123,7 @@ export async function checkCompanies(inputs: readonly string[], opts: CheckOptio
     if (!input) continue;
     const found = detectCompany(input);
     if (!found) {
-      out.push({ input, status: "unknown", error: "Not a careers site we recognise yet." });
+      out.push({ input, status: "unknown", error: "Not a careers site RawJobs can read yet." });
       continue;
     }
     const { supported, name: guessed, ...ref } = found;

@@ -4,6 +4,7 @@ import type { Job } from "../lib/data";
 import { timeAgo } from "../lib/format";
 import { PIPELINE, STATUS_LABEL, type Entry, type PipelineStatus, type Status, type UserState } from "../lib/userState";
 import { EmptyState } from "./EmptyState";
+import { Chip, ChipGroup, Kbd, ScoreBadge } from "./primitives";
 import { Button, cx, Select } from "./ui";
 
 type Props = {
@@ -27,7 +28,6 @@ export function Pipeline({ user, jobsById, min, onOpen, onMove, onSetup, goRadar
   if (total === 0) {
     return (
       <EmptyState
-        icon={<KanbanSquare className="size-6" />}
         title="Track your applications here"
         actions={
           onSetup ? (
@@ -41,9 +41,13 @@ export function Pipeline({ user, jobsById, min, onOpen, onMove, onSetup, goRadar
           )
         }
       >
-        {onSetup
-          ? "Jobs you save or apply to show up here as cards you can move from Saved to Offer. Set up your radar to start finding them."
-          : "Save a job from the Radar (bookmark icon, or press s) and it shows up here. Drag cards between columns as you progress."}
+        {onSetup ? (
+          "Jobs you save or apply to show up here as cards you can move from Saved to Offer. Set up your radar to start finding them."
+        ) : (
+          <>
+            Save a job on the Radar (press <Kbd>S</Kbd>) and it shows up here. Drag cards between columns as you progress.
+          </>
+        )}
       </EmptyState>
     );
   }
@@ -58,22 +62,13 @@ export function Pipeline({ user, jobsById, min, onOpen, onMove, onSetup, goRadar
   return (
     <div className="pb-2 md:overflow-x-auto">
       <div className="-mx-4 mb-3 overflow-x-auto px-4 md:hidden [mask-image:linear-gradient(to_right,transparent,black_1rem,black_calc(100%-1.5rem),transparent)]">
-        <div className="flex w-max gap-2 pr-4" role="group" aria-label="Pipeline column">
+        <ChipGroup label="Pipeline column" className="w-max pr-4">
           {columns.map(({ col, items }) => (
-            <button
-              key={col}
-              type="button"
-              aria-pressed={shown === col}
-              onClick={() => setMobileCol(col)}
-              className={cx(
-                "inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-sm border px-3 type-label",
-                shown === col ? "border-accent bg-accent-subtle text-accent-text" : "border-line bg-raised text-muted",
-              )}
-            >
-              {STATUS_LABEL[col]} <span className="tabular type-meta">{items.length}</span>
-            </button>
+            <Chip key={col} pressed={shown === col} onClick={() => setMobileCol(col)} count={items.length} className="whitespace-nowrap">
+              {STATUS_LABEL[col]}
+            </Chip>
           ))}
-        </div>
+        </ChipGroup>
       </div>
       <div className="grid gap-3 md:min-w-[900px] md:grid-cols-5">
         {columns.map(({ col, items }) => {
@@ -95,7 +90,7 @@ export function Pipeline({ user, jobsById, min, onOpen, onMove, onSetup, goRadar
               className={cx(
                 "min-h-64 flex-col rounded-md border bg-inset/50 p-2 transition-colors md:flex",
                 shown === col ? "flex" : "hidden",
-                dragOver === col ? "border-accent bg-accent-subtle/30" : "border-line",
+                dragOver === col ? "border-ink bg-active" : "border-line",
               )}
             >
               <h2 className="flex items-center justify-between px-1.5 py-1 type-small font-semibold">
@@ -132,14 +127,12 @@ export function Pipeline({ user, jobsById, min, onOpen, onMove, onSetup, goRadar
                         ) : (
                           <p className="type-small font-semibold leading-5">{s.title}</p>
                         )}
-                        <span className={cx("tabular type-meta font-semibold", (job?.score ?? s.score) >= min ? "text-accent-text" : "text-muted")}>
-                          {job?.score ?? s.score}
-                        </span>
+                        <ScoreBadge score={job?.score ?? s.score} threshold={min} estimated={job?.estimated} className="shrink-0" />
                       </div>
-                      <p className="mt-0.5 type-meta text-muted">{s.company}</p>
+                      <p className="mt-0.5 type-small text-muted">{s.company}</p>
                       {e.note && (
-                        <p className="mt-2 line-clamp-2 flex gap-1 type-meta text-muted">
-                          <StickyNote className="mt-0.5 size-3 shrink-0" />
+                        <p className="mt-2 line-clamp-2 flex gap-1 type-small text-muted">
+                          <StickyNote className="mt-1 size-3.5 shrink-0" aria-hidden />
                           {e.note}
                         </p>
                       )}
@@ -154,7 +147,7 @@ export function Pipeline({ user, jobsById, min, onOpen, onMove, onSetup, goRadar
                           value={e.status}
                           onClick={(ev) => ev.stopPropagation()}
                           onChange={(ev) => onMove(id, e, ev.target.value as Status)}
-                          className="h-8 px-1.5 type-meta"
+                          className="h-8 px-1.5 type-small"
                         >
                           {PIPELINE.map((p) => (
                             <option key={p} value={p}>

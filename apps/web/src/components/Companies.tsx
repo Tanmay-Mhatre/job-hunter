@@ -5,7 +5,7 @@ import type { CompanyHealth, DataMeta } from "../lib/data";
 import { formatDate, formatDateTime, timeAgo } from "../lib/format";
 import type { CompanyRow } from "../lib/setup";
 import { Status as BoardStatus } from "./primitives";
-import { Button, Card, Chip, cx, IconButton, Segmented } from "./ui";
+import { Button, Card, cx, IconButton, Segmented } from "./ui";
 
 /** A company with no jobs for you in at least this many scans in a row, over at least QUIET_DAYS, gets a "remove?" flag. */
 export const QUIET_SCANS = 10;
@@ -80,7 +80,7 @@ function ScanHistory({ history }: { history: Row["history"] }) {
           title={!h ? "Not in this scan" : h.ok ? `${h.jobsFound} jobs, ${h.matches} for you` : h.unsupported ? "Not supported yet" : "Scan failed"}
           className={cx(
             "w-1.5 rounded-md",
-            !h ? "h-1 bg-line" : h.unsupported ? "h-1.5 bg-warning/50" : !h.ok ? "h-5 bg-danger" : h.matches > 0 ? "h-5 bg-accent/70" : "h-2.5 bg-line",
+            !h ? "h-1 bg-line" : h.unsupported ? "h-1.5 bg-warning/50" : !h.ok ? "h-5 bg-danger" : h.matches > 0 ? "h-5 bg-ink" : "h-2.5 bg-line",
           )}
         />
       ))}
@@ -140,7 +140,7 @@ export function MyCompanies({
           <h2 className="type-body font-semibold">
             My companies <span className="tabular font-normal text-muted">({rows.length})</span>
           </h2>
-          <p className="type-meta text-muted">
+          <p className="type-small text-muted">
             {rows.filter((x) => x.forYou > 0).length} with jobs for you now
             {broken > 0 && <span className="text-danger-text"> · last scan failed for {broken}</span>}
           </p>
@@ -186,11 +186,11 @@ export function MyCompanies({
         {/* Phones: one card per company. */}
         <ul className="divide-y divide-line md:hidden">
           {sorted.map((x) => (
-            <li key={x.r.id} className={cx("flex items-start gap-3 px-4 py-3 type-small", x.isNew && "bg-accent-subtle/20")}>
+            <li key={x.r.id} className={cx("flex items-start gap-3 px-4 py-3 type-small", x.isNew && "bg-inset")}>
               <div className="min-w-0 flex-1 space-y-1.5">
                 <NameCell x={x} />
-                <p className="type-meta text-muted">
-                  <span className={cx("tabular", x.forYou > 0 && "font-semibold text-accent-text")}>{x.forYou || "No"} for you</span>
+                <p className="type-small text-muted">
+                  <span className={cx("tabular", x.forYou > 0 && "font-semibold text-ink")}>{x.forYou || "No"} for you</span>
                   {x.last?.h.ok && <span className="tabular"> · {x.last.h.jobsFound} open jobs</span>}
                 </p>
                 <ScanHistory history={x.history} />
@@ -204,13 +204,13 @@ export function MyCompanies({
         </ul>
         <div className="hidden md:block">
           <table className="w-full type-small">
-            <thead className="border-b border-line text-left type-meta uppercase tracking-wide text-muted">
+            <thead className="border-b border-line text-left type-label text-muted">
               <tr>
-                <th className="px-4 py-2.5 font-semibold">Company</th>
+                <th className="px-4 py-2.5 font-medium">Company</th>
                 <th className="px-3 py-2.5 text-right font-semibold">For you</th>
                 <th className="px-3 py-2.5 text-right font-semibold">Open jobs</th>
-                <th className="px-3 py-2.5 font-semibold">Recent scans</th>
-                <th className="px-3 py-2.5 font-semibold">Status</th>
+                <th className="px-3 py-2.5 font-medium">Recent scans</th>
+                <th className="px-3 py-2.5 font-medium">Status</th>
                 <th className="w-10 px-2 py-2.5">
                   <span className="sr-only">Remove</span>
                 </th>
@@ -218,11 +218,11 @@ export function MyCompanies({
             </thead>
             <tbody>
               {sorted.map((x) => (
-                <tr key={x.r.id} className={cx("border-b border-line last:border-b-0", x.isNew && "bg-accent-subtle/20")}>
+                <tr key={x.r.id} className={cx("border-b border-line last:border-b-0", x.isNew && "bg-inset")}>
                   <td className="px-4 py-2.5">
                     <NameCell x={x} />
                   </td>
-                  <td className={cx("tabular px-3 py-2.5 text-right", x.forYou > 0 ? "font-semibold text-accent-text" : "text-muted")}>{x.forYou || "—"}</td>
+                  <td className={cx("tabular px-3 py-2.5 text-right", x.forYou > 0 ? "font-semibold text-ink" : "text-muted")}>{x.forYou || "—"}</td>
                   <td className="tabular px-3 py-2.5 text-right text-muted">{x.last?.h.ok ? x.last.h.jobsFound : "—"}</td>
                   <td className="px-3 py-2.5">
                     <ScanHistory history={x.history} />
@@ -253,29 +253,30 @@ function NameCell({ x }: { x: Row }) {
       <div className="flex items-center gap-1.5 font-medium">
         {x.r.name || x.r.slug}
         {/^https?:/.test(x.r.input) && (
-          <a href={x.r.input} target="_blank" rel="noreferrer" className="inline-flex size-6 items-center justify-center rounded-md text-muted hover:text-accent-text" aria-label={`${x.r.name || x.r.slug} careers page`}>
+          <a href={x.r.input} target="_blank" rel="noreferrer" className="inline-flex size-6 items-center justify-center rounded-md text-muted hover:text-ink" aria-label={`${x.r.name || x.r.slug} careers page`}>
             <ExternalLink className="size-3.5" />
           </a>
         )}
-        {x.isNew && <span className="type-meta text-accent-text">new</span>}
+        {x.isNew && <span className="type-small font-normal text-muted">new</span>}
       </div>
-      {x.r.ats && <div className="type-meta text-muted">Hiring system: {atsName(x.r.ats)}</div>}
+      {x.r.ats && <div className="type-small text-muted">Hiring system: {atsName(x.r.ats)}</div>}
     </>
   );
 }
 
 function Status({ row, onScan, scanning }: { row: Row; onScan?: () => void; scanning?: boolean }) {
   const { last, r, isNew, quiet } = row;
-  if (isNew) return <Chip>{r.state === "soon" ? "Not supported yet" : "Not saved yet"}</Chip>;
-  if (!last) return r.state === "soon" ? <Chip tone="warn">Not supported yet</Chip> : <Chip>Not scanned yet</Chip>;
-  if (last.h.unsupported) return <Chip tone="warn">Not supported yet ({atsName(last.h.ats)})</Chip>;
+  const note = (text: string) => <span className="type-small text-muted">{text}</span>;
+  if (isNew) return note(r.state === "soon" ? "Not supported yet" : "Not saved yet");
+  if (!last) return note(r.state === "soon" ? "Not supported yet" : "Not scanned yet");
+  if (last.h.unsupported) return note(`Not supported yet (${atsName(last.h.ats)})`);
   if (!last.h.ok)
     return (
       <div className="space-y-1">
         <div className="flex flex-wrap items-center gap-2">
           <BoardStatus state="broken" />
           {onScan && (
-            <button type="button" className="inline-flex min-h-6 items-center gap-1 type-meta font-medium text-accent-text disabled:opacity-50" onClick={onScan} disabled={scanning}>
+            <button type="button" className="inline-flex min-h-6 items-center gap-1 type-label text-ink underline underline-offset-2 hover:text-muted disabled:opacity-50" onClick={onScan} disabled={scanning}>
               <RefreshCw className="size-3" /> Retry
             </button>
           )}
@@ -292,7 +293,7 @@ function Status({ row, onScan, scanning }: { row: Row; onScan?: () => void; scan
   return (
     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
       <BoardStatus state={last.h.jobsFound > 0 ? "healthy" : "dormant"} />
-      <span className="type-meta text-muted">
+      <span className="type-small text-muted">
         {isQuiet(quiet) && !row.forYou ? `Nothing for you since ${formatDate(quiet.since)}` : `Scanned ${timeAgo(last.at)}`}
       </span>
     </span>
@@ -314,15 +315,15 @@ export function RecentRuns({ meta }: { meta: DataMeta }) {
           const secs = (Date.parse(r.finishedAt) - Date.parse(r.startedAt)) / 1000;
           return (
             <li key={r.startedAt} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2">
-              <span className="w-36 font-medium">{formatDateTime(r.startedAt)}</span>
+              <span className="w-36 text-muted">{formatDateTime(r.startedAt)}</span>
               <span className="tabular text-muted">{r.jobsFound} jobs</span>
               <span className="tabular text-muted">{r.matches} matches</span>
-              <span className={cx("tabular", r.newMatches > 0 ? "text-accent-text" : "text-muted")}>{r.newMatches} new</span>
+              <span className={cx("tabular", r.newMatches > 0 ? "font-semibold text-ink" : "text-muted")}>{r.newMatches} new</span>
               <span className="tabular text-muted">{r.closed} closed</span>
               {!!r.checked && <span className="tabular text-muted">+{r.checked.toLocaleString()} more companies scanned</span>}
               <span className="tabular text-muted">{secs.toFixed(0)}s</span>
-              {failed > 0 && <Chip tone="bad">{failed} failed</Chip>}
-              {r.partial && <Chip>Stopped before the end</Chip>}
+              {failed > 0 && <span className="tabular text-danger-text">{failed} failed</span>}
+              {r.partial && <span className="text-muted">Stopped before the end</span>}
             </li>
           );
         })}
