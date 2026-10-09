@@ -15,6 +15,15 @@ const job = (o: Partial<Parameters<typeof scoreJob>[0]> = {}) => ({
 });
 
 describe("scoreJob", () => {
+  it("workplace preference gates office jobs of the other kind, never remote or unknown ones", () => {
+    const base = profile();
+    const onsiteOnly = profile({ locations: { ...base.locations, workplace: ["onsite"] } });
+    expect(scoreJob(job({ workplace: "hybrid" }), onsiteOnly, now).why).toMatchObject({ gate: "location", locationNote: "Hybrid role: you asked for on-site only." });
+    expect(scoreJob(job({ workplace: "onsite" }), onsiteOnly, now).why.gate).toBeUndefined();
+    expect(scoreJob(job({ workplace: "unknown" }), onsiteOnly, now).why.gate).toBeUndefined();
+    expect(scoreJob(job({ workplace: "hybrid" }), base, now).why.gate).toBeUndefined();
+  });
+
   it("adds up title, location, keywords and freshness", () => {
     const r = scoreJob(job({ description: "Crypto exchange, payments and KYC." }), profile(), now);
     expect(r.why).toEqual({

@@ -215,11 +215,13 @@ export type Draft = {
   exclude: string[];
   seniority: string[];
   places: string[];
+  /** Office jobs you'll take (Work style). None = remote only, so places are ignored. */
+  office: ("onsite" | "hybrid")[];
   remote: boolean;
   remoteOk: string[];
   remoteExclude: string[];
   keywords: Record<string, number>;
-  /** Industry ids (Industries step). */
+  /** Industry ids (Settings; suggested from your resume). */
   industries: string[];
   /** Companies you've worked at (from your resume, confirmed by you): seeds "companies like them". */
   pastEmployers: string[];
@@ -250,6 +252,7 @@ export function emptyDraft(): Draft {
     exclude: [],
     seniority: [],
     places: [],
+    office: ["onsite", "hybrid"],
     remote: false,
     remoteOk: [],
     remoteExclude: [],
@@ -308,6 +311,7 @@ export function draftFromConfig(input: unknown): Draft {
     exclude: strings(t.exclude),
     seniority: strings(p.seniority_boost),
     places: strings(l.include),
+    office: officeFromConfig(l.workplace, strings(l.include).length > 0, remoteOk.length > 0),
     remote: remoteOk.length > 0,
     remoteOk,
     remoteExclude: strings(l.remote_exclude),
@@ -331,6 +335,16 @@ export function draftFromConfig(input: unknown): Draft {
     family: inferFamily(strings(t.include)),
   };
 }
+
+/** Saved workplace list -> Work style: empty means both, unless the search is remote only (no places). */
+function officeFromConfig(v: unknown, hasPlaces: boolean, hasRemote: boolean): Draft["office"] {
+  const picked = strings(v).filter((x): x is "onsite" | "hybrid" => x === "onsite" || x === "hybrid");
+  if (picked.length) return picked;
+  return !hasPlaces && hasRemote ? [] : ["onsite", "hybrid"];
+}
+
+/** Office places that count: none when you only want remote work. */
+export const officePlaces = (d: Pick<Draft, "office" | "places">) => (d.office.length ? d.places : []);
 
 /** Rows that go into the config: trackable now, or coming soon with what they need (Workday needs its site). */
 export function usableCompanies(d: Draft): CompanyRow[] {
@@ -362,9 +376,11 @@ export function draftToConfig(d: Draft): Config {
       titles: { include: d.include, exclude: d.exclude },
       seniority_boost: d.seniority,
       locations: {
-        include: d.places,
+        include: officePlaces(d),
         remote_ok: d.remote ? d.remoteOk : [],
         remote_exclude: d.remote ? d.remoteExclude : [],
+        // Both kinds is the default, written as "any".
+        workplace: d.office.length === 1 ? d.office : [],
       },
       industries: d.industries,
       past_employers: d.pastEmployers,
@@ -385,20 +401,21 @@ export const STEPS = [
   { id: 1, key: "resume", label: "Resume" },
   { id: 2, key: "roles", label: "Roles" },
   { id: 3, key: "locations", label: "Locations" },
-  { id: 4, key: "industries", label: "Industries" },
-  { id: 5, key: "keywords", label: "Topics" },
-  { id: 6, key: "companies", label: "Companies" },
-  { id: 7, key: "review", label: "Review" },
+  { id: 4, key: "keywords", label: "Topics" },
+  { id: 5, key: "review", label: "Review" },
 ] as const;
 
 /** Step numbers by name, so screens never hard-code positions. */
-export const STEP = { welcome: 0, resume: 1, roles: 2, locations: 3, industries: 4, keywords: 5, companies: 6, review: 7 } as const;
+export const STEP = { welcome: 0, resume: 1, roles: 2, locations: 3, keywords: 4, review: 5 } as const;
 export const STEP_COUNT = STEPS.length;
 
-/** Why the user can't continue yet, or null. Resume, Industries and Topics are optional. */
+/** Why the user can't continue yet, or null. Resume and Topics are optional. */
 export function stepBlocker(step: number, d: Draft): string | null {
   if (step === STEP.roles && d.include.length === 0) return "Pick at least one job title.";
-  if (step === STEP.locations && d.places.length === 0 && !(d.remote && d.remoteOk.length > 0)) return "Add a place, or allow remote roles in at least one region.";
+  if (step === STEP.locations) {
+    if (!d.office.length && !d.remote) return "Pick at least one work style.";
+    if (!officePlaces(d).length && !(d.remote && d.remoteOk.length > 0)) return d.office.length ? "Add a place you can work from." : "Pick where you can work remotely.";
+  }
   return null;
 }
 
@@ -415,9 +432,7 @@ export function setupProgress(d: Draft, hasResume = false): SetupProgress {
   // Optional steps only send people back if they never got past them.
   if (furthest <= STEP.resume && !hasResume && d.include.length === 0) return { started, nextStep: STEP.resume };
   for (const s of [STEP.roles, STEP.locations]) if (stepBlocker(s, d)) return { started, nextStep: s };
-  if (furthest <= STEP.industries && d.industries.length === 0) return { started, nextStep: STEP.industries };
   if (furthest <= STEP.keywords && Object.keys(d.keywords).length === 0) return { started, nextStep: STEP.keywords };
-  if (furthest <= STEP.companies && d.companies.length === 0) return { started, nextStep: STEP.companies };
   return { started, nextStep: STEP.review };
 }
 

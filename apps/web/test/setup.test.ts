@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyDraft, rebaseDraft, type Draft } from "../src/lib/setup";
+import { draftFromConfig, draftToConfig, emptyDraft, rebaseDraft, STEP, stepBlocker, type Draft } from "../src/lib/setup";
 
 const base: Draft = { ...emptyDraft(), include: ["product manager"], places: ["dubai"] };
 const row = (slug: string) => ({ id: slug, input: `https://jobs.lever.co/${slug}`, state: "saved" as const, name: slug, ats: "lever" as const, slug });
@@ -22,5 +22,24 @@ describe("rebaseDraft", () => {
     const draft = { ...base, companies: [row("kraken")], muted: ["lever:bybit"] };
     const next = { ...base, companies: [row("kraken")], muted: ["lever:bybit"] };
     expect(JSON.stringify(rebaseDraft(draft, base, next))).toBe(JSON.stringify(next));
+  });
+});
+
+describe("work style", () => {
+  it("round-trips through the config: both kinds save as any, one kind is kept, remote only drops places", () => {
+    expect(draftToConfig(base).profile.locations.workplace).toEqual([]);
+    const hybrid = { ...base, office: ["hybrid"] as Draft["office"] };
+    expect(draftFromConfig(draftToConfig(hybrid)).office).toEqual(["hybrid"]);
+    const remoteOnly = { ...base, office: [] as Draft["office"], remote: true, remoteOk: ["emea"] };
+    const cfg = draftToConfig(remoteOnly);
+    expect(cfg.profile.locations.include).toEqual([]);
+    expect(draftFromConfig(cfg).office).toEqual([]);
+  });
+
+  it("Locations needs a work style, and a place or remote region for it", () => {
+    expect(stepBlocker(STEP.locations, base)).toBeNull();
+    expect(stepBlocker(STEP.locations, { ...base, office: [] })).toBe("Pick at least one work style.");
+    expect(stepBlocker(STEP.locations, { ...base, places: [] })).toBe("Add a place you can work from.");
+    expect(stepBlocker(STEP.locations, { ...base, office: [], remote: true })).toBe("Pick where you can work remotely.");
   });
 });

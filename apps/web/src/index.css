@@ -80,6 +80,11 @@ body {
   outline-offset: 2px;
 }
 
+/* Headings and regions we move focus to (tabindex="-1") for screen readers aren't controls: no ring. */
+[tabindex="-1"]:focus {
+  outline: none;
+}
+
 /* Form controls need a 3:1 border (WCAG 1.4.11). Unlayered, so it beats `border-line`; focused fields keep their accent border. */
 input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]):not(:focus),
 select:not(:focus),

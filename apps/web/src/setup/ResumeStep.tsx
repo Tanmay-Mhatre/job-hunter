@@ -469,6 +469,8 @@ function SavedResume({
   const suggest = useMemo(() => buildSuggestions(text, draft.aiProfile), [text, draft.aiProfile]);
   const patch = useMemo(() => prefillDraft(draft, suggest), [draft, suggest]);
   const fills = Object.keys(patch).filter((k) => k !== "remoteExclude");
+  // Topics alone are shown on the Topics step; with no titles or places there is nothing to show here.
+  const nothing = !suggest.titles.length && !suggest.places.length && !(suggest.remote && suggest.remoteRegions.length);
   const firstLine = text.split("\n").find((l) => l.trim())?.replace(/^#+\s*/, "") ?? "Resume";
 
   useEffect(() => onArrive(), []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -494,6 +496,9 @@ function SavedResume({
         </Button>
       </div>
 
+      {nothing ? (
+        <p className="text-sm text-muted">We couldn't find job titles or places in this resume. You'll pick them in the next steps.</p>
+      ) : (
       <div className="rounded-xl border border-accent/40 bg-accent-soft/30 p-4">
         <p className="flex items-center gap-1.5 text-sm font-semibold">
           <Sparkles className="size-4 text-accent" /> {suggest.source === "ai" ? "From your master resume" : "Suggested from your resume"}
@@ -509,7 +514,7 @@ function SavedResume({
             <Check className="mt-0.5 size-4 shrink-0" />
             {filled
               ? `We've pre-filled ${filled} from your resume. You can change anything.`
-              : "These suggestions fill any step that's still empty and appear next to each step. Nothing you chose is overwritten."}
+              : "Suggestions appear next to each step. Nothing you chose is overwritten."}
           </p>
         ) : applied ? (
           <p className="mt-3 flex items-center gap-1.5 text-sm font-medium text-accent">
@@ -526,24 +531,24 @@ function SavedResume({
             >
               <Wand2 className="size-4" /> Fill empty sections from my resume
             </Button>
-            <span className="text-xs text-muted">Only fills what's still empty. Nothing you chose is overwritten.</span>
+            <span className="text-xs text-muted">Nothing you chose is overwritten.</span>
           </div>
         ) : (
-          <p className="mt-3 text-sm text-muted">
-            Your sections already have answers, so nothing is overwritten. The suggestions appear next to each section for you to add.
-          </p>
+          <p className="mt-3 text-sm text-muted">Suggestions appear next to each step for you to add.</p>
         )}
       </div>
+      )}
     </div>
   );
 }
 
 function Row({ label, items }: { label: string; items: string[] }) {
+  if (!items.length) return null;
   return (
     <>
       <dt className="text-muted">{label}</dt>
       <dd className="flex flex-wrap gap-1">
-        {items.length ? items.slice(0, 10).map((i) => <Chip key={i}>{i}</Chip>) : <span className="text-muted">none found</span>}
+        {items.slice(0, 10).map((i) => <Chip key={i}>{i}</Chip>)}
         {items.length > 10 && <Chip>+{items.length - 10}</Chip>}
       </dd>
     </>

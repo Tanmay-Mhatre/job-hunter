@@ -53,6 +53,8 @@ export function profileFromPicks(draft: Draft, picks: FilterPicks): { patch: Par
       places: unique,
       remote,
       remoteOk: remote && !draft.remoteOk.length ? ["remote"] : draft.remoteOk,
+      // Places only count with an office work style.
+      ...(unique.length && !draft.office.length ? { office: ["onsite", "hybrid"] as Draft["office"] } : {}),
     },
   };
 }

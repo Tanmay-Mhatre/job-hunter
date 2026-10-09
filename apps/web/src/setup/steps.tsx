@@ -9,7 +9,7 @@ import { ToggleChips } from "../components/ToggleChips";
 import { Button, cx, Toggle } from "../components/ui";
 import { displayPlace } from "../lib/format";
 import type { Suggestions } from "../lib/suggest";
-import type { Draft } from "../lib/setup";
+import { inferFamily, type Draft } from "../lib/setup";
 import { CV_DICTIONARY, KEYWORD_PACKS, REMOTE_EXCLUDE_SUGGESTIONS } from "./presets";
 
 export type StepProps = { draft: Draft; update: (patch: Partial<Draft>) => void; suggest?: Suggestions };
@@ -67,6 +67,20 @@ function familyDefaults(f: RoleFamily, suggest?: Suggestions) {
     include: union(fromResume, f.titles).slice(0, Math.max(FAMILY_DEFAULT_TITLES, fromResume.length)),
     exclude: union(f.exclude, union(suggest?.exclude ?? [], ["intern", "junior"])),
   };
+}
+
+/** Secondary settings, collapsed until wanted. The summary says what's inside without opening it. */
+export function MoreOptions({ summary, children }: { summary?: string; children: ReactNode }) {
+  return (
+    <details className="group rounded-xl border border-line">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm font-medium">
+        <ChevronDown className="size-4 text-muted transition-transform group-open:rotate-180" />
+        More options
+        {summary && <span className="ml-auto truncate pl-2 font-normal text-muted">{summary}</span>}
+      </summary>
+      <div className="space-y-6 border-t border-line p-3 sm:p-4">{children}</div>
+    </details>
+  );
 }
 
 function Section({ n, title, hint, action, children }: { n: number; title: string; hint?: ReactNode; action?: ReactNode; children: ReactNode }) {
@@ -130,7 +144,7 @@ export function RolesStep({ draft, update, suggest }: StepProps) {
       <Section
         n={1}
         title="Job family"
-        hint={fam && !choosing ? undefined : "Pick the kind of role you want. Its job titles appear next, ready to select."}
+        hint={undefined}
         action={
           fam && !choosing ? (
             <Button size="sm" onClick={() => setChoosing(true)}>
@@ -207,7 +221,7 @@ export function RolesStep({ draft, update, suggest }: StepProps) {
       <Section
         n={2}
         title={fam ? `Titles in ${fam.label}` : "Job titles"}
-        hint="A job is shown only if its title contains one of the selected titles. Click to select or deselect."
+        hint={undefined}
         action={
           fam ? (
             <div className="flex shrink-0 gap-1">
@@ -256,7 +270,8 @@ export function RolesStep({ draft, update, suggest }: StepProps) {
         </div>
       </Section>
 
-      <Section n={3} title="Never show me" hint="Hide jobs whose title contains any of these.">
+      <MoreOptions summary={[draft.exclude.length && `${draft.exclude.length} hidden`, draft.seniority.length && `${draft.seniority.length} seniority`].filter(Boolean).join(" · ")}>
+        <Field label="Never show me" hint="Hide titles with these words.">
         <ToggleChips
           label="Titles to hide"
           tone="bad"
@@ -265,18 +280,18 @@ export function RolesStep({ draft, update, suggest }: StepProps) {
           onChange={(exclude) => update({ exclude })}
           addPlaceholder="Add another…"
         />
-      </Section>
-
-      <Section n={4} title="Seniority you want — ranks these higher" hint="Titles with these words rank higher. Kept when you change family.">
+        </Field>
+        <Field label="Seniority" hint="Titles with these words rank higher.">
         <ToggleChips
           label="Seniority words"
           tone="plain"
-          options={union(suggest?.seniority ?? [], SENIORITY)}
+          options={union(union(suggest?.seniority ?? [], SENIORITY), draft.seniority)}
           selected={draft.seniority}
           onChange={(seniority) => update({ seniority })}
           addPlaceholder="Add another…"
         />
-      </Section>
+        </Field>
+      </MoreOptions>
     </div>
   );
 }
@@ -296,11 +311,12 @@ const POPULAR_COUNTRIES = [
   "canada",
   "australia",
 ];
-const QUICK_REGIONS = ["emea", "mena", "gcc", "europe", "apac", "americas", "worldwide"];
+const QUICK_REGIONS = ["emea", "europe", "mena", "gcc", "north america", "latam", "apac", "asia", "africa"];
 const countryByName = new Map(COUNTRIES.map((c) => [c.name, c]));
 const regionByName = new Map(REGIONS.map((r) => [r.name, r]));
 const titleCase = displayPlace;
-const regionLabel = (name: string) => (name.length <= 5 ? name.toUpperCase() : titleCase(name));
+const ACRONYMS = new Set(["emea", "mena", "gcc", "apac", "latam", "dach", "cee", "anz", "amer", "eu"]);
+const regionLabel = (name: string) => (ACRONYMS.has(name) ? name.toUpperCase() : titleCase(name));
 /** Display form of any place term: regions like "emea" in capitals, everything else title-cased. */
 export const placeLabel = (term: string) => (regionByName.has(term) ? regionLabel(term) : displayPlace(term));
 
@@ -366,7 +382,7 @@ function GroupedPlaces({ terms, onChange, label, remote }: { terms: string[]; on
                     ? `Remote in ${titleCase(g.name)}`
                     : titleCase(g.name)
                   : g.name === "remote"
-                    ? "Any remote role"
+                    ? "Anywhere"
                     : titleCase(g.name);
           const expandable = g.options.length > 1;
           return (
@@ -424,12 +440,35 @@ function GroupedPlaces({ terms, onChange, label, remote }: { terms: string[]; on
   );
 }
 
+/** The country this browser is set to (from its language, e.g. en-GB), if it's in the catalogue. */
+function localeCountry(): string | undefined {
+  try {
+    const region = new Intl.Locale(navigator.language).maximize().region;
+    const name = region && new Intl.DisplayNames(["en"], { type: "region" }).of(region)?.toLowerCase();
+    return name && countryByName.has(name) ? name : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Short codes in capitals ("US", "UAE"), everything else title-cased. */
+const termLabel = (t: string) => (t.length <= 3 ? t.toUpperCase() : placeLabel(t));
+
+const WORK_STYLES = [
+  { id: "onsite", label: "On-site" },
+  { id: "hybrid", label: "Hybrid" },
+  { id: "remote", label: "Remote" },
+] as const;
+
 export function LocationsStep({ draft, update, suggest }: StepProps) {
   const [withCities, setWithCities] = useState(true);
   const officeSearch = useCallback((q: string) => placeItems(q, { regions: false, remote: false }), []);
   const remoteSearch = useCallback((q: string) => placeItems(q, { regions: true, remote: true }), []);
   const officeGroups = new Set(groupPlaces(draft.places).map((g) => g.key));
   const remoteGroups = new Set(groupPlaces(draft.remoteOk).map((g) => g.key));
+  // Your own country first, then the usual list.
+  const popular = useMemo(() => union([localeCountry()].filter((c): c is string => !!c), POPULAR_COUNTRIES), []);
+  const office = draft.office.length > 0;
 
   /** Quick toggle: on adds the group's terms, off removes every term the group could have added. */
   const toggleGroup = (list: "places" | "remoteOk", key: string, add: string[]) => {
@@ -439,132 +478,127 @@ export function LocationsStep({ draft, update, suggest }: StepProps) {
     update({ [list]: isOn ? current.filter((t) => !all.includes(t)) : union(current, add) } as Partial<Draft>);
   };
 
+  const toggleStyle = (id: (typeof WORK_STYLES)[number]["id"]) => {
+    if (id === "remote") return update({ remote: !draft.remote });
+    update({ office: draft.office.includes(id) ? draft.office.filter((o) => o !== id) : [...draft.office, id] });
+  };
+
   return (
     <div className="space-y-8">
-      <Field label="Where can you work from an office?" hint="Search any country or city in the world. A country adds its name, short names and main cities.">
-        <Combobox
-          label="Search places"
-          placeholder="Type a city or country, e.g. Dubai, Kenya, São Paulo…"
-          search={officeSearch}
-          onPick={(i) => update({ places: union(draft.places, termsFor(i.key, withCities)) })}
-          onFreeText={(t) => update({ places: union(draft.places, [t]) })}
-        />
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="mr-1 text-xs font-medium text-muted">Popular:</span>
-          {POPULAR_COUNTRIES.map((name) => {
-            const key = `country:${name}`;
-            const active = officeGroups.has(key);
-            return (
-              <button
-                key={name}
-                type="button"
-                aria-pressed={active}
-                onClick={() => toggleGroup("places", key, countryTerms(countryByName.get(name)!, withCities))}
-                className={cx(
-                  "inline-flex h-7 items-center gap-1 rounded-lg border px-2 text-xs font-medium",
-                  active ? "border-accent bg-accent-soft text-accent" : "border-dashed border-line text-muted hover:border-accent hover:text-fg",
-                )}
-              >
-                {active ? <Check className="size-3" /> : <Plus className="size-3" />}
-                {titleCase(name)}
-              </button>
-            );
-          })}
+      <Field label="Work style">
+        <div className="flex flex-wrap gap-2">
+          {WORK_STYLES.map((w) => (
+            <PickButton key={w.id} active={w.id === "remote" ? draft.remote : draft.office.includes(w.id)} onClick={() => toggleStyle(w.id)}>
+              {w.label}
+            </PickButton>
+          ))}
         </div>
+      </Field>
+
+      {office && (
+        <Field label={draft.office.length === 2 ? "Office locations" : draft.office[0] === "hybrid" ? "Hybrid locations" : "On-site locations"}>
+          <Combobox
+            label="Search places"
+            placeholder="City or country, e.g. Dubai, London…"
+            search={officeSearch}
+            onPick={(i) => update({ places: union(draft.places, termsFor(i.key, withCities)) })}
+            onFreeText={(t) => update({ places: union(draft.places, [t]) })}
+          />
+          <div className="flex flex-wrap items-center gap-1.5">
+            {popular.map((name) => {
+              const key = `country:${name}`;
+              const active = officeGroups.has(key);
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => toggleGroup("places", key, countryTerms(countryByName.get(name)!, withCities))}
+                  className={cx(
+                    "inline-flex h-7 items-center gap-1 rounded-lg border px-2 text-xs font-medium",
+                    active ? "border-accent bg-accent-soft text-accent" : "border-dashed border-line text-muted hover:border-accent hover:text-fg",
+                  )}
+                >
+                  {active ? <Check className="size-3" /> : <Plus className="size-3" />}
+                  {titleCase(name)}
+                </button>
+              );
+            })}
+          </div>
+          {suggest?.places.length ? (
+            <div>
+              <p className="mb-1.5 text-xs font-medium text-muted">{RESUME_LABEL(suggest)}</p>
+              <ToggleChips
+                size="sm"
+                label="Places from your resume"
+                options={suggest.places}
+                selected={draft.places.filter((p) => suggest.places.includes(p))}
+                format={titleCase}
+                onChange={(next) => update({ places: [...draft.places.filter((p) => !suggest.places.includes(p)), ...next] })}
+              />
+            </div>
+          ) : null}
+          {draft.places.length > 0 && <GroupedPlaces label="Selected places" terms={draft.places} onChange={(places) => update({ places })} />}
+        </Field>
+      )}
+
+      {draft.remote && (
+        <Field label="Remote from">
+          <Combobox
+            label="Search remote regions"
+            placeholder="Region or country, e.g. EMEA, Germany…"
+            search={remoteSearch}
+            onPick={(i) => update({ remoteOk: union(draft.remoteOk, termsFor(i.key, false)) })}
+            onFreeText={(t) => update({ remoteOk: union(draft.remoteOk, [t]) })}
+          />
+          <div className="flex flex-wrap gap-1.5">
+            {[{ key: "term:remote", label: "Anywhere", add: ["remote"] }, ...QUICK_REGIONS.map((r) => ({ key: `region:${r}`, label: regionLabel(r), add: termsFor(`region:${r}`, false) }))].map((g) => {
+              const active = g.key === "term:remote" ? draft.remoteOk.includes("remote") : remoteGroups.has(g.key);
+              return (
+                <PickButton key={g.key} active={active} onClick={() => toggleGroup("remoteOk", g.key, g.add)}>
+                  {g.label}
+                </PickButton>
+              );
+            })}
+          </div>
+          {suggest?.remoteRegions.length ? (
+            <div>
+              <p className="mb-1.5 text-xs font-medium text-muted">{RESUME_LABEL(suggest)}</p>
+              <ToggleChips
+                size="sm"
+                label="Remote regions from your resume"
+                options={suggest.remoteRegions}
+                selected={draft.remoteOk.filter((p) => suggest.remoteRegions.includes(p))}
+                format={regionLabel}
+                onChange={(next) => update({ remoteOk: [...draft.remoteOk.filter((p) => !suggest.remoteRegions.includes(p)), ...next] })}
+              />
+            </div>
+          ) : null}
+          {draft.remoteOk.length > 0 && <GroupedPlaces label="Selected remote regions" remote terms={draft.remoteOk} onChange={(remoteOk) => update({ remoteOk })} />}
+        </Field>
+      )}
+
+      <MoreOptions summary={draft.remote && draft.remoteExclude.length ? `${draft.remoteExclude.length} remote limits skipped` : undefined}>
         <Toggle checked={withCities} onChange={setWithCities}>
           When I pick a country, also add its main cities
         </Toggle>
-        {suggest?.places.length ? (
-          <div>
-            <p className="mb-1.5 text-xs font-medium text-muted">{RESUME_LABEL(suggest)}</p>
-            <ToggleChips
-              size="sm"
-              label="Places from your resume"
-              options={suggest.places}
-              selected={draft.places.filter((p) => suggest.places.includes(p))}
-              format={titleCase}
-              onChange={(next) => update({ places: [...draft.places.filter((p) => !suggest.places.includes(p)), ...next] })}
-            />
-          </div>
-        ) : null}
-        <div className="rounded-xl border border-line p-3">
-          <p className="mb-2 text-xs font-medium text-muted">Selected (click a country to pick its cities)</p>
-          <GroupedPlaces label="Selected places" terms={draft.places} onChange={(places) => update({ places })} />
-        </div>
-      </Field>
-
-      <Field label="Open to remote roles?">
-        <div className="flex gap-2">
-          <PickButton active={!draft.remote} onClick={() => update({ remote: false })}>
-            No, on-site or hybrid only
-          </PickButton>
-          <PickButton
-            active={draft.remote}
-            onClick={() => update({ remote: true, remoteExclude: draft.remoteExclude.length ? draft.remoteExclude : ["us", "usa", "united states", "canada"] })}
-          >
-            Yes
-          </PickButton>
-        </div>
-      </Field>
-
-      {draft.remote && (
-        <>
-          <Field label="Remote in which regions or countries?" hint="Remote jobs count when they mention one of these, e.g. “Remote – EMEA”. A plain “Remote” counts too, but not one limited to another country, like “Remote – India”.">
-            <Combobox
-              label="Search remote regions"
-              placeholder="Type a region or country, e.g. EMEA, Europe, Germany…"
-              search={remoteSearch}
-              onPick={(i) => update({ remoteOk: union(draft.remoteOk, termsFor(i.key, false)) })}
-              onFreeText={(t) => update({ remoteOk: union(draft.remoteOk, [t]) })}
-            />
-            <div className="flex flex-wrap gap-1.5">
-              {[...QUICK_REGIONS.map((r) => ({ key: `region:${r}`, label: regionLabel(r), add: termsFor(`region:${r}`, false) })), { key: "term:remote", label: "Any remote role", add: ["remote"] }].map((g) => {
-                const active = g.key === "term:remote" ? draft.remoteOk.includes("remote") : remoteGroups.has(g.key);
-                return (
-                  <PickButton key={g.key} active={active} onClick={() => toggleGroup("remoteOk", g.key, g.add)}>
-                    {g.label}
-                  </PickButton>
-                );
-              })}
-            </div>
-            {suggest?.remoteRegions.length ? (
-              <div>
-                <p className="mb-1.5 text-xs font-medium text-muted">{RESUME_LABEL(suggest)}</p>
-                <ToggleChips
-                  size="sm"
-                  label="Remote regions from your resume"
-                  options={suggest.remoteRegions}
-                  selected={draft.remoteOk.filter((p) => suggest.remoteRegions.includes(p))}
-                  format={regionLabel}
-                  onChange={(next) => update({ remoteOk: [...draft.remoteOk.filter((p) => !suggest.remoteRegions.includes(p)), ...next] })}
-                />
-              </div>
-            ) : null}
-            <div className="rounded-xl border border-line p-3">
-              <p className="mb-2 text-xs font-medium text-muted">Selected</p>
-              <GroupedPlaces label="Selected remote regions" remote terms={draft.remoteOk} onChange={(remoteOk) => update({ remoteOk })} />
-            </div>
-          </Field>
-          <Field label="…but not remote roles limited to" hint="Skip remote jobs only open to people in these places, e.g. “Remote (US)”.">
+        {draft.remote && (
+          <Field label="Skip remote jobs limited to" hint="For example “Remote (US only)”.">
             <ToggleChips
               label="Remote regions to skip"
               tone="bad"
               options={REMOTE_EXCLUDE_SUGGESTIONS}
               selected={draft.remoteExclude}
               onChange={(remoteExclude) => update({ remoteExclude })}
+              format={termLabel}
               addPlaceholder="Add another…"
             />
           </Field>
-        </>
-      )}
-      {!draft.remote && draft.remoteOk.length > 0 && (
-        <p className="text-xs text-muted">Your remote regions are kept and come back if you switch remote on again.</p>
-      )}
+        )}
+      </MoreOptions>
     </div>
   );
 }
-
-// ---------- 4. Topics ----------
 
 // ---------- Industries ----------
 
@@ -668,9 +702,11 @@ export function IndustriesStep({ draft, update, suggest }: StepProps) {
 
 // ---------- Topics ----------
 
+/** Weight a topic gets when you add it without choosing one. */
+const DEFAULT_WEIGHT = 3;
+
 export function KeywordsStep({ draft, update, suggest, resumeText = "" }: StepProps & { resumeText?: string }) {
   const [cv, setCv] = useState("");
-  const [showCv, setShowCv] = useState(false);
   const entries = Object.entries(draft.keywords).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   const fromPaste = useMemo(
     () =>
@@ -684,134 +720,116 @@ export function KeywordsStep({ draft, update, suggest, resumeText = "" }: StepPr
   // With a saved resume, suggestions are ready without pasting anything.
   const found = fromPaste.length ? fromPaste : (suggest?.keywords ?? []);
   const foundWeight = new Map(found);
+  const fam = ROLE_FAMILIES.find((f) => f.id === (draft.family ?? inferFamily(draft.include)));
   const setWeight = (k: string, w: number) => {
     const next = { ...draft.keywords };
     if (w <= 0) delete next[k];
     else next[k] = Math.min(5, w);
     update({ keywords: next });
   };
-  const addMany = (kw: Record<string, number>) => update({ keywords: { ...kw, ...draft.keywords } });
+  /** Toggle a group of suggestions on or off, keeping everything outside the group. */
+  const toggleGroup = (options: string[], next: string[], weight: (k: string) => number) => {
+    const kw = { ...draft.keywords };
+    for (const k of options) {
+      if (next.includes(k) && !(k in kw)) kw[k] = weight(k);
+      if (!next.includes(k) && k in kw) delete kw[k];
+    }
+    update({ keywords: kw });
+  };
   const packActive = (p: (typeof KEYWORD_PACKS)[number]) => Object.keys(p.keywords).every((k) => k in draft.keywords);
-
   const togglePack = (p: (typeof KEYWORD_PACKS)[number]) => {
-    if (!packActive(p)) return addMany(p.keywords);
+    if (!packActive(p)) return update({ keywords: { ...p.keywords, ...draft.keywords } });
     // Keep words that another selected pack also needs (e.g. "payments" is in Fintech and Payments).
     const keep = new Set(KEYWORD_PACKS.filter((o) => o.id !== p.id && packActive(o)).flatMap((o) => Object.keys(o.keywords)));
     const next = { ...draft.keywords };
     for (const k of Object.keys(p.keywords)) if (!keep.has(k)) delete next[k];
     update({ keywords: next });
   };
-
-  const industryTopics = [...new Set(draft.industries.flatMap((id) => INDUSTRY_BY_ID.get(id)?.topics ?? []))];
+  const resumeTopics = found.map(([k]) => k).filter((k) => !fam?.topics.includes(k));
+  // Everything you picked that isn't offered above, so it can be removed here too.
+  const shown = new Set([...(fam?.topics ?? []), ...resumeTopics]);
+  const yours = entries.map(([k]) => k).filter((k) => !shown.has(k));
 
   return (
     <div className="space-y-8">
-      {industryTopics.length > 0 && (
-        <Field label="Topics for your industries" hint="Click to add or remove. Added at weight 4.">
+      {fam && (
+        <Field label={`Suggested for ${fam.label}`}>
           <ToggleChips
-            label="Topics for your industries"
-            options={industryTopics}
-            selected={industryTopics.filter((k) => k in draft.keywords)}
-            onChange={(next) => {
-              const kw = { ...draft.keywords };
-              for (const k of industryTopics) {
-                if (next.includes(k) && !(k in kw)) kw[k] = 4;
-                if (!next.includes(k) && k in kw) delete kw[k];
-              }
-              update({ keywords: kw });
-            }}
+            label={`Topics for ${fam.label}`}
+            options={fam.topics}
+            selected={fam.topics.filter((k) => k in draft.keywords)}
+            onChange={(next) => toggleGroup(fam.topics, next, () => DEFAULT_WEIGHT)}
           />
         </Field>
       )}
 
-      <Field label="Pick the areas you care about" hint="Each adds topic words. Jobs that mention them rank higher. Click again to remove.">
-        <div className="flex flex-wrap gap-2">
-          {KEYWORD_PACKS.map((p) => (
-            <PickButton key={p.id} active={packActive(p)} onClick={() => togglePack(p)}>
-              {p.label}
-            </PickButton>
-          ))}
-        </div>
+      {resumeTopics.length > 0 && (
+        <Field label={fromPaste.length ? "Found in the text you pasted" : RESUME_LABEL(suggest)}>
+          <ToggleChips
+            label="Suggested topics"
+            options={resumeTopics}
+            selected={resumeTopics.filter((k) => k in draft.keywords)}
+            onChange={(next) => toggleGroup(resumeTopics, next, (k) => foundWeight.get(k) ?? DEFAULT_WEIGHT)}
+          />
+        </Field>
+      )}
+
+      <Field label={fam || resumeTopics.length ? "Add your own" : "Your topics"}>
+        <AddKeyword onAdd={(k) => setWeight(k, DEFAULT_WEIGHT)} />
+        {yours.length > 0 && (
+          <ToggleChips label="Your topics" options={yours} selected={yours} onChange={(next) => toggleGroup(yours, next, () => DEFAULT_WEIGHT)} />
+        )}
       </Field>
 
-      <div className="rounded-xl border border-dashed border-line p-4">
-        {found.length > 0 ? (
-          <div>
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-sm">
-                <span className="font-semibold text-accent">{fromPaste.length ? "Found in the text you pasted" : RESUME_LABEL(suggest)}</span>
-                <span className="text-muted">: click to add or remove</span>
-              </p>
-              <Button size="sm" variant="ghost" onClick={() => addMany(Object.fromEntries(found))} disabled={found.every(([k]) => k in draft.keywords)}>
-                Add all
-              </Button>
-            </div>
-            <ToggleChips
-              size="sm"
-              label="Suggested topics"
-              options={found.map(([k]) => k)}
-              selected={found.map(([k]) => k).filter((k) => k in draft.keywords)}
-              onChange={(next) => {
-                const kw = { ...draft.keywords };
-                for (const [k] of found) {
-                  if (next.includes(k) && !(k in kw)) kw[k] = foundWeight.get(k) ?? 3;
-                  if (!next.includes(k) && k in kw) delete kw[k];
-                }
-                update({ keywords: kw });
-              }}
-            />
+      <MoreOptions summary={entries.length ? `${entries.length} topics` : undefined}>
+        <Field label="Industry topic packs">
+          <div className="flex flex-wrap gap-2">
+            {KEYWORD_PACKS.map((p) => (
+              <PickButton key={p.id} active={packActive(p)} onClick={() => togglePack(p)}>
+                {p.label}
+              </PickButton>
+            ))}
           </div>
-        ) : !showCv ? (
-          <button type="button" onClick={() => setShowCv(true)} className="text-left text-sm">
-            <span className="font-semibold text-accent">Suggest keywords from my CV</span>
-            <span className="block text-muted">
-              {resumeText ? "We didn't find known topic words in your resume. Paste other text to try." : "Paste your CV text and we'll pick out topic words. It stays on this computer."}
-            </span>
-          </button>
-        ) : null}
-        {(showCv || fromPaste.length > 0) && (
+        </Field>
+        <Field label="Find topics in other text" hint={resumeText ? undefined : "Paste your CV or LinkedIn summary. It stays on this computer."}>
           <textarea
             value={cv}
             onChange={(e) => setCv(e.target.value)}
-            rows={4}
-            aria-label="Text to find keywords in"
-            placeholder="Paste your CV or LinkedIn summary here…"
-            className="mt-3 w-full resize-y rounded-lg border border-line bg-surface p-2.5 text-sm outline-none placeholder:text-muted focus:border-accent"
+            rows={3}
+            aria-label="Text to find topics in"
+            placeholder="Paste text here…"
+            className="w-full resize-y rounded-lg border border-line bg-surface p-2.5 text-sm outline-none placeholder:text-muted focus:border-accent"
           />
+        </Field>
+        {entries.length > 0 && (
+          <Field
+            label="Importance"
+            hint={
+              <>
+                <b className="text-fg">5</b> = core, <b className="text-fg">1</b> = nice to have.
+              </>
+            }
+          >
+            <ul className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
+              {entries.map(([k, w]) => (
+                <li key={k} className="flex items-center gap-2 py-1">
+                  <span className="min-w-0 flex-1 truncate text-sm">{k}</span>
+                  <WeightControl keyword={k} weight={w} onChange={(n) => setWeight(k, n)} />
+                  <button
+                    type="button"
+                    onClick={() => setWeight(k, 0)}
+                    aria-label={`Remove ${k}`}
+                    title={`Remove ${k}`}
+                    className="flex size-7 items-center justify-center rounded-lg text-muted hover:bg-surface-2 hover:text-bad"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </Field>
         )}
-      </div>
-
-      <Field
-        label="Your keywords and how much they matter"
-        hint={
-          <>
-            <b className="text-fg">5</b> = core topic, <b className="text-fg">1</b> = nice to have. Matched as whole words in the title and description.
-          </>
-        }
-      >
-        <AddKeyword onAdd={(k) => setWeight(k, 3)} />
-        {entries.length === 0 ? (
-          <p className="text-sm text-muted">No keywords yet. That's OK: jobs are still found, just not ranked by topic.</p>
-        ) : (
-          <ul className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
-            {entries.map(([k, w]) => (
-              <li key={k} className="flex items-center gap-2 py-1">
-                <span className="min-w-0 flex-1 truncate text-sm">{k}</span>
-                <WeightControl keyword={k} weight={w} onChange={(n) => setWeight(k, n)} />
-                <button
-                  type="button"
-                  onClick={() => setWeight(k, 0)}
-                  aria-label={`Remove ${k}`}
-                  title={`Remove ${k}`}
-                  className="flex size-7 items-center justify-center rounded-lg text-muted hover:bg-surface-2 hover:text-bad"
-                >
-                  <X className="size-4" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Field>
+      </MoreOptions>
     </div>
   );
 }

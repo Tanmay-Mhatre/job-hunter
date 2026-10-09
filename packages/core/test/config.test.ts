@@ -22,7 +22,7 @@ describe("parseConfig", () => {
   it("fills defaults", () => {
     const cfg = parseConfig(minimal);
     expect(cfg.profile).toMatchObject({ name: "My profile", seniority_boost: [], keywords: {}, min_score: 70 });
-    expect(cfg.profile.locations).toEqual({ include: ["dubai"], remote_ok: [], remote_exclude: [] });
+    expect(cfg.profile.locations).toEqual({ include: ["dubai"], remote_ok: [], remote_exclude: [], workplace: [] });
     expect(cfg.alerts).toEqual({ telegram: false, email: false, only_new: true });
     expect(cfg.companies[0]!.enabled).toBe(true);
   });

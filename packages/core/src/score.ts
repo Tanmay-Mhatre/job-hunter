@@ -43,7 +43,7 @@ export function scoreJob(job: Scorable, profile: Profile, now: Date, seenAt: Dat
   const location = gateLocation(job);
   const titleOk = titlePasses(title, profile);
   const titlePts = titleOk ? POINTS.titleMatch + (matchesAny(title, profile.seniority_boost) ? POINTS.seniority : 0) : 0;
-  const fit = locationFit(location, profile);
+  const fit = workplaceFit(job, profile) ?? locationFit(location, profile);
   const locationPts = fit.points;
 
   const haystack = `${title}\n${job.description ?? ""}`;
@@ -70,6 +70,13 @@ export function scoreJob(job: Scorable, profile: Profile, now: Date, seenAt: Dat
   if (locationPts === 0) return { score: 0, why: { ...why, gate: "location", ...(fit.note ? { locationNote: fit.note } : {}) } };
   const raw = titlePts + locationPts + keywordPoints + freshness;
   return { score: Math.min(100, Math.round(raw * (why.scale ?? 1))), why };
+}
+
+/** An on-site or hybrid job when the user only takes the other kind: fails the location gate. */
+function workplaceFit(job: Pick<NormalizedJob, "workplace">, profile: Profile): { points: 0; note: string } | undefined {
+  const allowed = profile.locations.workplace ?? [];
+  if (!allowed.length || (job.workplace !== "onsite" && job.workplace !== "hybrid") || allowed.includes(job.workplace)) return undefined;
+  return { points: 0, note: job.workplace === "hybrid" ? "Hybrid role: you asked for on-site only." : "On-site role: you asked for hybrid only." };
 }
 
 /** A remote job counts as "remote" even when its location text doesn't say so. */
@@ -178,6 +185,7 @@ export function locationFit(location: string, profile: Profile): { points: numbe
 /** Which gate a job fails (title is checked first), or undefined if it passes both. No scoring. */
 export function gateOf(job: Pick<NormalizedJob, "title" | "location" | "workplace">, profile: Profile): "title" | "location" | undefined {
   if (!titlePasses(job.title, profile)) return "title";
+  if (workplaceFit(job, profile)) return "location";
   return locationFit(gateLocation(job), profile).points ? undefined : "location";
 }
 

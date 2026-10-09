@@ -44,6 +44,8 @@ export function configToYaml(config: Config): string {
     `    remote_ok: ${list(p.locations.remote_ok)}`,
     "    # ...unless the location also names a region you can't work from.",
     `    remote_exclude: ${list(p.locations.remote_exclude)}`,
+    "    # Office jobs you'll take: onsite, hybrid. Empty = both.",
+    `    workplace: ${list(p.locations.workplace ?? [])}`,
     "",
     "  # Industries you want to work in (ids from the setup's Industries step). Used to suggest companies.",
     `  industries: ${list(p.industries)}`,

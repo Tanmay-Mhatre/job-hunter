@@ -72,7 +72,6 @@ export function prefillDraft(d: Draft, s: Suggestions): Partial<Draft> {
   if (!d.remote && !d.remoteOk.length && s.remote && s.remoteRegions.length) {
     patch.remote = true;
     patch.remoteOk = s.remoteRegions;
-    patch.remoteExclude = d.remoteExclude.length ? d.remoteExclude : ["us", "usa", "united states", "canada"];
   }
   if (!Object.keys(d.keywords).length && s.keywords.length) patch.keywords = Object.fromEntries(s.keywords.slice(0, 25));
   if (!d.industries.length && s.industries.length) patch.industries = s.industries.slice(0, 4);

@@ -135,6 +135,14 @@ describe("catalogues", () => {
     expect(SENIORITY.every(lower)).toBe(true);
   });
 
+  it("roles: every family suggests at least 8 distinct lowercase topics", () => {
+    for (const f of ROLE_FAMILIES) {
+      expect(f.topics.length, f.id).toBeGreaterThanOrEqual(8);
+      expect(new Set(f.topics).size, f.id).toBe(f.topics.length);
+      for (const t of f.topics) expect(lower(t), t).toBe(true);
+    }
+  });
+
   it("places: every country has a lowercase name and a city; no duplicate countries", () => {
     expect(COUNTRIES.length).toBeGreaterThanOrEqual(180);
     expect(new Set(COUNTRIES.map((c) => c.name)).size).toBe(COUNTRIES.length);
