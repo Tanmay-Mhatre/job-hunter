@@ -11,6 +11,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ATS_TYPES, careersUrl, companyKey, guessName, HttpClient } from "../../packages/core/src/index";
+import { readDenylist } from "./lib/denylist";
 import { checkBoard } from "./lib/live-check";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -76,6 +77,7 @@ async function main() {
   const http = new HttpClient({ retries: 1, hostDelayMs: 300, timeoutMs: 20_000, userAgent: "JobHunter-catalog/0.1 (open-source job radar; checking shared boards)" });
   const accepted: Contribution[] = [];
   const rejected: { board: unknown; reason: string }[] = [];
+  const denied = readDenylist();
   for (const item of inbox.items ?? []) {
     for (const raw of (item.boards ?? []).slice(0, 25)) {
       const board = cleanBoard(raw);
@@ -85,6 +87,10 @@ async function main() {
       }
       const key = companyKey(board);
       if (known.has(key)) continue; // already in the directory or shared before
+      if (denied({ key, name: board.name, careers_url: careersUrl(board as never) })) {
+        rejected.push({ board, reason: "removed on request (denylist)" });
+        continue;
+      }
       known.add(key);
       const result = await checkBoard(http, { key, ...board });
       if (result.status !== "live" && result.status !== "dormant") {

@@ -27,7 +27,7 @@ Saving runs your first scan: no company list needed. It finds every job in the c
 
 Setup writes `jobhunter.config.local.yaml` (gitignored, commented, safe to edit by hand). After that, the Radar shows a checklist of anything still missing, explains a scan with no matches (and what to change), and flags companies whose links broke. Change anything later in **Settings**.
 
-Prefer the terminal? Copy `jobhunter.config.yaml` to `jobhunter.config.local.yaml`, edit it, then `pnpm jobhunter validate` and `pnpm jobhunter run`.
+Prefer the terminal? Copy `jobhunter.config.example.yaml` to `jobhunter.config.local.yaml`, edit it, then `pnpm jobhunter validate` and `pnpm jobhunter run`.
 
 ## Dashboard
 
@@ -148,7 +148,19 @@ Terms match whole words, case-insensitively: `ai` matches "AI-native" but not "m
 
 ## Privacy
 
+Your profile, resume, config, Telegram token and run history stay on your computer. The app has no telemetry. It talks to the companies' job boards (to scan), GitHub (to download the shared directory) and, if you set up alerts, Telegram.
+
+**Sharing is on by default:** when you add a company by link that the directory doesn't have, its careers board (hiring system, board name, company name) is sent to the project's contribution inbox so everyone can find it. Nothing about you is sent. Turn it off in **Settings → Sharing** or with `directory.share_additions: false`. Full details: [PRIVACY.md](PRIVACY.md).
+
 Your config lists the companies you're targeting. If you run Job Hunter from GitHub, **create your copy as a private repository** (use "Use this template" → Private, not Fork; forks of public repos must stay public).
+
+## Data & licenses
+
+- **Code:** MIT ([LICENSE](LICENSE)).
+- **Shared directory and job index:** CC BY 4.0. Sources and credits (Common Crawl, the Wayback Machine, Wikidata, permissively licensed board lists, user contributions) are in the directory repo's `NOTICE.md` ([template](services/directory-repo-template/NOTICE.md)).
+- **Public job boards** (Hacker News "Who is hiring", Remotive, Arbeitnow, Remote OK) are added like a company, by pasting their link. They're fetched on your own computer only, at most a few times a day, credited by name with every job linking back to the board, and never shared or redistributed. (The Muse and Jobicy aren't included: their terms weren't confirmed.)
+- **Remove a company:** open a [takedown request](.github/ISSUE_TEMPLATE/takedown.yml). We reply within 7 days, and removed companies go into `denylist.json`.
+- **Running a fork with your own data:** [docs/self-hosting.md](docs/self-hosting.md).
 
 ## Fair use
 
@@ -162,7 +174,7 @@ pnpm test:watch
 pnpm hooks:install  # once per clone: no direct pushes to main, and pnpm check before every push
 ```
 
-Changes go through pull requests. Label a PR `automerge` and the Automerge workflow merges it once CI's `check` passes on its latest commit (a free stand-in for branch protection, which private repos on GitHub Free don't get). It never merges a red or running PR, but doesn't stop a manual merge.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Changes go through pull requests. Label a PR `automerge` and the Automerge workflow merges it once CI's `check` passes on its latest commit (a free stand-in for branch protection, which private repos on GitHub Free don't get). It never merges a red or running PR, but doesn't stop a manual merge.
 
 ```
 packages/core   connectors, normalise, score, run, history (shared Job types)

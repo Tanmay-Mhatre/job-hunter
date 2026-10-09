@@ -198,7 +198,7 @@ export function ScheduledScans() {
 
       <p className="text-xs text-muted">
         Scans run on this computer, even with this page closed, but only while it's on or asleep (it wakes up for them). A scan missed while it was off runs as
-        soon as it's back on. {scope === "all" && "All companies takes about 2 hours: keep the computer on until it's done."}
+        soon as it's back on. {scope === "all" && "All companies usually takes minutes with the daily job feed, up to 2 hours without it: keep the computer on until it's done."}
       </p>
 
       {status.runs.length > 0 && (

@@ -1,4 +1,4 @@
-import { companyKey, getConnector } from "./connectors";
+import { companyOfJobId, getConnector, jobCompanyKey } from "./connectors";
 import { HttpClient, HttpError } from "./http";
 import type { CompanyHealth, CompanyRef, Config, Job } from "./schema";
 import { scoreJob } from "./score";
@@ -29,18 +29,20 @@ export type RunOptions = {
   onCompanyDone?: (h: CompanyHealth) => void;
   /** Each company's health and the jobs kept from it, as soon as it's done (to save progress). */
   onCompanyResult?: (h: CompanyHealth, jobs: Job[]) => void;
-  /** Keys ("ats:slug") of companies already fetched (a resumed scan): skipped. */
+  /** jobCompanyKey()s of companies already fetched (a resumed scan): skipped. */
   skip?: ReadonlySet<string>;
   /** Stop starting new companies once this returns true (companies in flight finish). */
   stopped?: () => boolean;
 };
 
 /**
- * Companies are fetched one at a time per hiring system, and the hiring systems in parallel: each
- * site still gets at most one request per second (HttpClient's per-host spacing), but a scan of
- * many companies isn't held up by the slowest site.
+ * One lane per hiring system, all lanes at once, and a few companies at a time within a lane. Every
+ * site still gets its own pace (HttpClient's per-host spacing): companies sharing one API host just
+ * queue for it, while companies on their own hosts (Workday tenants, Recruitee, BambooHR…) run side by side.
  */
 const laneOf = (c: CompanyRef) => `${c.ats}:${c.region ?? ""}:${c.ats === "workday" ? c.shard : ""}`;
+/** Companies in flight per lane. */
+const LANE_WORKERS = 4;
 
 /**
  * One pass over every enabled company (then any extra `checks`). A failing company never stops the
@@ -60,12 +62,19 @@ export async function runRadar(config: Config, opts: RunOptions = {}): Promise<R
   const jobs: Job[] = [];
   const order = new Map<string, number>();
   const health: CompanyHealth[] = [];
-  const todo = [...companies.map((c) => [c, false] as const), ...checks.map((c) => [c, true] as const)].filter(([c]) => !opts.skip?.has(companyKey(c)));
+  const todo = [...companies.map((c) => [c, false] as const), ...checks.map((c) => [c, true] as const)].filter(([c]) => !opts.skip?.has(jobCompanyKey(c)));
   todo.forEach(([c], i) => order.set(`${c.ats}:${c.slug}`, i));
+
+  /** A company's open jobs from the last fetch, if that was less than `hours` ago. */
+  const recentJobs = (key: string, hours: number): Job[] | undefined => {
+    const last = [...previous.values()].filter((j) => j.status === "open" && companyOfJobId(j.id) === key);
+    const lastSeen = Math.max(0, ...last.map((j) => Date.parse(j.lastSeen)));
+    return last.length && now.getTime() - lastSeen < hours * 3_600_000 ? last : undefined;
+  };
 
   const fetchOne = async (company: CompanyRef, extra: boolean) => {
     const started = Date.now();
-    const h: CompanyHealth = { company: company.name, ats: company.ats, slug: company.slug, ok: false, jobsFound: 0, matches: 0, durationMs: 0 };
+    const h: CompanyHealth = { company: company.name, ats: company.ats, slug: company.slug, key: jobCompanyKey(company), ok: false, jobsFound: 0, matches: 0, durationMs: 0 };
     const kept: Job[] = [];
     const connector = getConnector(company.ats);
     try {
@@ -73,7 +82,14 @@ export async function runRadar(config: Config, opts: RunOptions = {}): Promise<R
         h.unsupported = true;
         throw new Error(`${company.ats} support is coming soon`);
       }
-      const raws = await connector.fetch(company, { http, now });
+      // Boards that ask for few requests a day: between fetches, keep the jobs from the last one.
+      const recent = connector.minIntervalHours ? recentJobs(jobCompanyKey(company), connector.minIntervalHours) : undefined;
+      for (const j of recent ?? []) {
+        const { score, why } = scoreJob(j, config.profile, now, new Date(j.firstSeen));
+        if (!extra || !why.gate) kept.push({ ...j, score, why });
+        if (!why.gate) h.matches++;
+      }
+      const raws = recent ? [] : await connector.fetch(company, { http, now });
       let described = 0;
       for (const raw of raws) {
         const base = connector.normalize(raw, company);
@@ -97,7 +113,7 @@ export async function runRadar(config: Config, opts: RunOptions = {}): Promise<R
         if (!extra || !why.gate) kept.push({ ...base, firstSeen, lastSeen: nowIso, status: "open", score, why });
         if (!why.gate) h.matches++;
       }
-      h.jobsFound = raws.length;
+      h.jobsFound = recent?.length ?? raws.length;
       h.ok = true;
     } catch (err) {
       h.error =
@@ -112,15 +128,19 @@ export async function runRadar(config: Config, opts: RunOptions = {}): Promise<R
     opts.onCompanyResult?.(h, kept);
   };
 
-  // One lane per hiring system (yours first within each), all lanes at once.
+  // One lane per hiring system (yours first within each), all lanes at once, LANE_WORKERS per lane.
   const lanes = new Map<string, (readonly [CompanyRef, boolean])[]>();
   for (const item of todo) lanes.set(laneOf(item[0]), [...(lanes.get(laneOf(item[0])) ?? []), item]);
   await Promise.all(
-    [...lanes.values()].map(async (lane) => {
-      for (const [company, extra] of lane) {
-        if (opts.stopped?.()) return;
-        await fetchOne(company, extra);
-      }
+    [...lanes.values()].flatMap((lane) => {
+      let next = 0;
+      const worker = async () => {
+        while (next < lane.length && !opts.stopped?.()) {
+          const [company, extra] = lane[next++]!;
+          await fetchOne(company, extra);
+        }
+      };
+      return Array.from({ length: Math.min(LANE_WORKERS, lane.length) }, worker);
     }),
   );
   health.sort((a, b) => (order.get(`${a.ats}:${a.slug}`) ?? 0) - (order.get(`${b.ats}:${b.slug}`) ?? 0));

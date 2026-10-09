@@ -1,7 +1,7 @@
 import type { NormalizedJob } from "../schema";
 import { htmlToText, inferWorkplace } from "../text";
 import { detectAs, isoDate } from "./parse";
-import { jobId, type Connector } from "./types";
+import { jobCompanyKey, type Connector } from "./types";
 
 /** A row of a Taleo career section's job board (the section's own REST search). */
 export type TaleoRequisition = {
@@ -84,7 +84,7 @@ export const taleo: Connector<TaleoRequisition> = {
     // Columns that are neither title, location nor date: usually the job field.
     const other = raw.column.find((c, i) => i > 0 && !locCols.has(i) && c !== date && c.length < 80);
     return {
-      id: jobId("taleo", `${ref.slug}|${sectionOf(ref)}`, raw.contestNo || raw.jobId),
+      id: `${jobCompanyKey(ref)}:${raw.contestNo || raw.jobId}`,
       ats: "taleo",
       company: ref.name,
       title: (raw.column[0] ?? "").trim(),

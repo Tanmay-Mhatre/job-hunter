@@ -20,6 +20,10 @@ import { smartrecruiters } from "./smartrecruiters";
 import { successfactors } from "./successfactors";
 import { taleo } from "./taleo";
 import { teamtailor } from "./teamtailor";
+import { arbeitnow } from "./arbeitnow";
+import { hackernews } from "./hackernews";
+import { remoteok } from "./remoteok";
+import { remotive } from "./remotive";
 import type { Connector, DetectedCompany } from "./types";
 import { workable } from "./workable";
 import { workday } from "./workday";
@@ -50,6 +54,11 @@ export const connectors: Partial<Record<AtsType, Connector<any>>> = {
   zoho,
   hibob,
   freshteam,
+  // Job boards (JOB_BOARDS), last so a company's own board is always recognised first.
+  hackernews,
+  remotive,
+  arbeitnow,
+  remoteok,
 };
 
 export function getConnector(ats: AtsType): Connector<unknown> | undefined {
@@ -70,7 +79,7 @@ export function detectCompany(input: string): DetectResult | null {
   try {
     for (const c of Object.values(connectors)) {
       const found = c?.detect(url);
-      if (found) return { name: guessName(nameSource(found)), ...found, supported: true };
+      if (found) return { name: c.label ?? guessName(nameSource(found)), ...found, supported: true };
     }
   } catch {
     return null;
@@ -170,3 +179,4 @@ export function companyKey(c: { ats: string; slug: string; shard?: string; site?
 }
 
 export type { Connector, Ctx, DetectedCompany } from "./types";
+export { companyOfJobId, currentJobId, jobCompanyKey } from "./types";

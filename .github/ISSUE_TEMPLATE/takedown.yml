@@ -1,0 +1,49 @@
+name: Remove a company from the directory
+description: Ask for a company to be left out of the shared directory and job index. We reply within 7 days.
+title: "Takedown: "
+labels: ["takedown"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The shared directory lists companies that have a public job board, and the titles and places of the jobs they post there. If you run a company and don't want it listed, tell us here.
+        This issue is public. Please don't include personal data (names, emails, phone numbers).
+        We reply within 7 days. Once confirmed, the company is added to `denylist.json` and left out of the next release.
+  - type: input
+    id: company
+    attributes:
+      label: Company name
+      placeholder: Acme Inc.
+    validations:
+      required: true
+  - type: input
+    id: board
+    attributes:
+      label: Careers page, job board link or domain
+      description: Any one of these helps us find every listing for the company.
+      placeholder: https://jobs.lever.co/acme or acme.com
+    validations:
+      required: true
+  - type: dropdown
+    id: reason
+    attributes:
+      label: Reason
+      options:
+        - We don't want to be listed
+        - The listing is wrong (not our company, or not our board)
+        - Legal concern
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Anything else
+      description: For a legal concern, say which release or file it is about.
+  - type: checkboxes
+    id: authority
+    attributes:
+      label: Confirmation
+      options:
+        - label: I work for this company or represent it.
+          required: true

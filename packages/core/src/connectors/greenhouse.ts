@@ -41,12 +41,21 @@ export const greenhouse: Connector<GreenhouseJob> = {
     return { ats: "greenhouse", slug, region };
   },
 
+  /**
+   * The light list (content=false) is ~25x smaller than with descriptions (Stripe: 34 KB vs 891 KB
+   * gzipped, 2026-10-09) and answers 304 when unchanged; describe() fetches the jobs that match.
+   */
   async fetch(ref, { http }) {
     const data = await http.getJson<{ jobs?: GreenhouseJob[] }>(
-      `${API}/v1/boards/${encodeURIComponent(ref.slug)}/jobs?content=true`,
+      `${API}/v1/boards/${encodeURIComponent(ref.slug)}/jobs?content=false`,
     );
     if (!Array.isArray(data.jobs)) throw new Error("unexpected Greenhouse response: no jobs array");
     return data.jobs;
+  },
+
+  async describe(raw, ref, { http }) {
+    const job = await http.getJson<GreenhouseJob>(`${API}/v1/boards/${encodeURIComponent(ref.slug)}/jobs/${raw.id}`);
+    return htmlToText(job.content);
   },
 
   normalize(raw, ref: CompanyRef): NormalizedJob {

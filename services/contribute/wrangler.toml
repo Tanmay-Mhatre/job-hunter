@@ -1,4 +1,4 @@
-# Job Hunter contribution inbox. Setup steps: services/contribute/README.md
+# Job Hunter contribution inbox. Setup steps: docs/shared-directory.md (forks: docs/self-hosting.md)
 name = "job-hunter-contribute"
 main = "src/index.ts"
 compatibility_date = "2026-09-01"
@@ -15,6 +15,11 @@ id = "4f1d60f6a7644dfe9a93db87c9560fd0"
 name = "LIMITER"
 namespace_id = "1001"
 simple = { limit = 20, period = 60 }
+
+# Most boards accepted per day (UTC), for everyone together. Over it, apps keep their boards and
+# retry later. Each accepted request costs 2 KV writes (free plan: 1,000 writes a day).
+[vars]
+DAILY_CAP = "2000"
 
 # Secret (not in this file): INBOX_TOKEN, shared with the GitHub workflow.
 #   npx wrangler secret put INBOX_TOKEN

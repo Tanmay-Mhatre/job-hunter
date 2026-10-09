@@ -1,0 +1,50 @@
+# Contributing
+
+Thanks for helping. Small, focused pull requests are easiest to review.
+
+## Set up
+
+Requires Node 22+ and [pnpm](https://pnpm.io).
+
+```bash
+pnpm install
+pnpm hooks:install   # once per clone: no direct pushes to main, and pnpm check before every push
+pnpm check           # typecheck + tests
+```
+
+The contribution inbox (`services/contribute`) is a Cloudflare Worker with its own `package.json`.
+Its tests run with the rest (`pnpm test`); typecheck it with `npm install && npm run typecheck`
+in that folder.
+
+## Pull requests
+
+- Branch from `main` and open a pull request. CI must pass.
+- Add or update tests. Connector tests use saved responses in `packages/core/test/fixtures`, so
+  tests never hit live sites.
+- Write user-facing text in plain English: short sentences, no jargon, no marketing tone.
+- Never commit a personal config, resume or token. `jobhunter.config.local.yaml`, `profile/` and
+  `data/` are gitignored for this reason.
+
+## Rules that keep the project safe to run
+
+- **No telemetry.** Don't add analytics, crash reporting or any call that sends data about the
+  user. If a change sends anything new over the network, update [PRIVACY.md](PRIVACY.md) in the
+  same pull request.
+- **Be polite to job boards.** Read only public postings, keep the per-host delays, identify with
+  the User-Agent, back off on rate limits, and never touch apply endpoints.
+- **Data licences.** Only add sources to the shared directory whose licence allows it (see
+  `services/directory-repo-template/NOTICE.md`). Third-party job APIs (Remotive, The Muse, Jobicy,
+  RemoteOK, Hacker News) are fetched on the user's computer only, never published.
+
+## Adding a company
+
+Use **Add by link** in the app (shared with the directory if sharing is on), or add it to
+`scripts/catalog/seeds/industries.json` in a pull request.
+
+## Reporting
+
+- Bugs: open an issue with the **Bug report** template.
+- A company that wants to be removed from the directory: the **Remove a company** template. We
+  reply within 7 days.
+- Security problems: don't open a public issue. Use GitHub's "Report a vulnerability" on the
+  Security tab.

@@ -10,7 +10,7 @@ import { ConfigSchema, type AtsType, type Config, type Profile } from "./schema"
 import { passesGates } from "./score";
 import { configToYaml } from "./yaml-writer";
 
-/** The user's own config. The shipped jobhunter.config.yaml is only an example. */
+/** The user's own config. The shipped jobhunter.config.example.yaml is only an example. */
 export const PERSONAL_CONFIG = CONFIG_CANDIDATES[0]!;
 
 export type SetupStatus = {

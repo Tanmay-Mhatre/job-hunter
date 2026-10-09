@@ -1,11 +1,10 @@
-# Job Hunter config: the only file you need to edit.
-# Secrets (Telegram token, etc.) never go here; they go in GitHub Actions secrets.
-#
-# Developing locally? Copy this file to jobhunter.config.local.yaml (gitignored) and edit that one.
+# Example Job Hunter config. Setup writes your own to jobhunter.config.local.yaml (gitignored);
+# or copy this file there and edit it. Your config is personal: it never goes in git.
+# Secrets (Telegram token, etc.) never go in any config file.
 # Check it with:  pnpm jobhunter validate
 
 profile:
-  name: "Senior PM, UAE"
+  name: "Product manager, London + remote"
 
   titles:
     # A job's title must contain one of these (whole words, case-insensitive)...
@@ -18,28 +17,24 @@ profile:
 
   locations:
     # +20: the job is in one of these places.
-    include: ["dubai", "abu dhabi", "uae", "united arab emirates"]
+    include: ["london", "united kingdom", "uk"]
     # +15: remote roles you can take from where you live...
-    remote_ok: ["emea", "mena", "remote"]
+    remote_ok: ["emea", "europe", "remote"]
     # ...unless the location also names a region you can't work from (e.g. "Remote (US)").
     remote_exclude: ["us", "usa", "united states", "canada", "americas", "latam", "apac"]
 
   # Industries you want to work in. Companies in them are suggested first.
   # Ids: crypto, crypto-exchange, brokerage, trading-tech, payments, digital-bank, … (see the setup's Industries step)
-  industries: ["crypto-exchange", "brokerage", "payments"]
+  industries: ["payments"]
 
   # Matched as whole words in the title and description. Weight 1 (nice) to 5 (core).
   # Points are summed and capped at 40.
   keywords:
-    crypto: 5
-    tokenization: 5
-    rwa: 5
-    stablecoin: 4
-    exchange: 4
-    payments: 3
-    fintech: 3
-    ai: 3
-    kyc: 2
+    payments: 5
+    fintech: 4
+    api: 3
+    platform: 3
+    b2b: 2
     compliance: 1
 
   # Jobs scoring at least this trigger an alert (when alerts arrive in phase 1).

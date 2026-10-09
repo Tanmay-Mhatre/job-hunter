@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { companyKey } from "./connectors";
+import { companyKey, companyOfJobId, jobCompanyKey } from "./connectors";
 import { toDashboardJob } from "./dashboard";
 import type { MergeResult } from "./diff";
 import type { RunResult } from "./run";
@@ -41,10 +41,14 @@ export function summarize(run: RunResult, merged: MergeResult): RunSummary {
   };
 }
 
-/** Industry ids per company from the published directory (data/catalog/directory.json), if built. */
-function directoryIndustries(dir: string): Map<string, string[]> {
-  const directory = readJson<{ companies: { key: string; tags?: string[] }[] }>(join(dir, "catalog", "directory.json"));
-  return new Map((directory?.companies ?? []).filter((c) => c.tags?.length).map((c) => [c.key, c.tags!]));
+type DirectoryRow = { key: string; ats: string; slug: string; site?: string; tags?: string[] };
+
+/** The published directory's companies (data/catalog/directory.json), if built. */
+const directoryCompanies = (dir: string): DirectoryRow[] => readJson<{ companies: DirectoryRow[] }>(join(dir, "catalog", "directory.json"))?.companies ?? [];
+
+/** Industry ids per company directory key. */
+function directoryIndustries(companies: readonly DirectoryRow[]): Map<string, string[]> {
+  return new Map(companies.filter((c) => c.tags?.length).map((c) => [c.key, c.tags!]));
 }
 
 /**
@@ -64,11 +68,15 @@ export function saveRun(dir: string, config: Config, run: RunResult, merged: Mer
   const history: JobsFile = { version: 1, generatedAt, jobs };
   writeFileSync(join(dir, "history.json"), JSON.stringify(history));
 
-  const industries = directoryIndustries(dir);
-  // Industries for every job's company, so the Radar can filter by industry beyond your own companies.
+  const directory = directoryCompanies(dir);
+  const industries = directoryIndustries(directory);
+  // Job ids carry jobCompanyKey(), which differs from the directory key for Workday and Taleo:
+  // map one to the other so the Radar can match jobs to your companies and their industries.
+  const keyOfJob = new Map([...directory.map((c) => [jobCompanyKey(c), c.key] as const), ...config.companies.map((c) => [jobCompanyKey(c), companyKey(c)] as const)]);
   const dashboard = jobs.map((j) => {
-    const tags = industries.get(j.id.split(":").slice(0, 2).join(":").toLowerCase());
-    return tags ? { ...toDashboardJob(j), industries: tags } : toDashboardJob(j);
+    const key = keyOfJob.get(companyOfJobId(j.id)) ?? companyOfJobId(j.id);
+    const tags = industries.get(key);
+    return { ...toDashboardJob(j), companyKey: key, ...(tags ? { industries: tags } : {}) };
   });
   const file = (list: DashboardJob[]): DashboardJobsFile => ({ version: 2, generatedAt, jobs: list });
   writeFileSync(join(dir, "jobs.json"), JSON.stringify(file(dashboard.filter((j) => !j.why.gate))));

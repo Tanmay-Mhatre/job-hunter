@@ -26,7 +26,15 @@ export const ATS_TYPES = [
   "hibob",
   "freshteam",
 ] as const;
-export type AtsType = (typeof ATS_TYPES)[number];
+
+/**
+ * Public job boards with a free API, added like a company ("Add by link"). Their jobs are fetched on
+ * your own computer, credited to the board and linked back to it; they're never shared, put in the
+ * directory or the job feed (so the catalog only ever works with ATS_TYPES).
+ */
+export const JOB_BOARDS = ["hackernews", "remotive", "arbeitnow", "remoteok"] as const;
+
+export type AtsType = (typeof ATS_TYPES)[number] | (typeof JOB_BOARDS)[number];
 
 export type Workplace = "onsite" | "hybrid" | "remote" | "unknown";
 
@@ -93,6 +101,8 @@ export type CompanyHealth = {
   company: string;
   ats: AtsType;
   slug: string;
+  /** jobCompanyKey() of the company: the prefix of its job ids. Older runs don't have it. */
+  key?: string;
   ok: boolean;
   jobsFound: number;
   /** Jobs that passed the title and location gates. */
@@ -165,7 +175,7 @@ const terms = z.array(term);
 export const CompanySchema = z
   .object({
     name: z.string().trim().min(1),
-    ats: z.enum(ATS_TYPES),
+    ats: z.enum([...ATS_TYPES, ...JOB_BOARDS]),
     /** Board token / site / company id, as it appears in the careers URL. Workday: the tenant. */
     slug: term,
     /** Lever and Greenhouse host region. */

@@ -27,6 +27,13 @@ export interface Connector<Raw = unknown> {
    * describe() for the real one before the location gate, for jobs whose title already matches.
    */
   vagueLocation?(raw: Raw): boolean;
+  /** A job board (JOB_BOARDS): its name, used instead of one guessed from the slug. */
+  label?: string;
+  /**
+   * Fetch at most this often; in between, a scan reuses the jobs from the last fetch. For boards that
+   * ask for few requests a day.
+   */
+  minIntervalHours?: number;
 }
 
 /** What a job's own page adds to its list entry. */
@@ -34,6 +41,31 @@ export type JobDetail = Partial<Pick<NormalizedJob, "description" | "location" |
 
 export function jobId(ats: AtsType, slug: string, atsJobId: string | number): string {
   return `${ats}:${slug.toLowerCase()}:${atsJobId}`;
+}
+
+/** The company part of a job id: "ats:slug", "workday:tenant|site", "taleo:host|section". */
+export function jobCompanyKey(c: { ats: string; slug: string; site?: string }): string {
+  const slug = c.ats === "workday" ? `${c.slug}|${c.site}` : c.ats === "taleo" ? `${c.slug}|${c.site || "2"}` : c.slug;
+  return `${c.ats}:${slug}`.toLowerCase();
+}
+
+/** A job's company, read off its id; equals jobCompanyKey() of the company it came from. */
+export const companyOfJobId = (id: string) => id.split(":", 2).join(":").toLowerCase();
+
+/**
+ * A Workday job's id: the requisition number at the end of its path ("Senior-PM_R12345" -> "R12345"),
+ * so a title edit doesn't look like a new job. Paths without one keep their last segment.
+ */
+export function workdayJobKey(externalPath: string): string {
+  const seg = externalPath.split("/").pop() || externalPath;
+  return seg.match(/_([A-Za-z]*-?\d[\w-]*)$/)?.[1] ?? seg;
+}
+
+/** Ids saved before workdayJobKey() existed, rewritten to the current form so their history carries on. */
+export function currentJobId(id: string): string {
+  if (!id.startsWith("workday:")) return id;
+  const at = id.indexOf(":", "workday:".length);
+  return at < 0 ? id : id.slice(0, at + 1) + workdayJobKey(id.slice(at + 1));
 }
 
 /** First path segment of a URL, decoded; "" if none. */

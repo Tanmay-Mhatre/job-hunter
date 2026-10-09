@@ -122,11 +122,18 @@ export function queueContributions(dataDir: string, boards: SharedBoard[]): numb
   return next.length;
 }
 
-/** Send waiting boards to the inbox; on success the outbox is emptied. Never throws. */
-export async function sendContributions(dataDir: string, opts: { fetchImpl?: typeof fetch; client?: string } = {}): Promise<{ sent: number; message: string }> {
+/**
+ * Send waiting boards to the inbox; on success the outbox is emptied. Never throws.
+ * With sharing turned off (`enabled: false`), waiting boards are discarded, never sent.
+ */
+export async function sendContributions(dataDir: string, opts: { fetchImpl?: typeof fetch; client?: string; enabled?: boolean } = {}): Promise<{ sent: number; message: string }> {
+  const file = join(catalogDir(dataDir), "outbox.json");
+  if (opts.enabled === false) {
+    if (existsSync(file)) writeFileSync(file, JSON.stringify({ boards: [] }, null, 1));
+    return { sent: 0, message: "Sharing is off in your settings." };
+  }
   const url = contributeUrl();
   if (!url) return { sent: 0, message: "Sharing isn't set up for this install." };
-  const file = join(catalogDir(dataDir), "outbox.json");
   const boards = readJson<{ boards: SharedBoard[] }>(file)?.boards ?? [];
   if (!boards.length) return { sent: 0, message: "Nothing to share." };
   let sent = 0;

@@ -28,6 +28,8 @@ const SOURCES = {
   latmay: { family: "latmay", publishable: true },
   kalil: { family: "kalil", publishable: true },
   conors: { family: "openjobsdata", publishable: true },
+  // LastRound AI ATS directory (CC BY 4.0, attribution in the directory repo's NOTICE.md).
+  lastround: { family: "lastround", publishable: true },
   cryptojobs: { family: "cryptojobs", publishable: true },
   // Our own: the industry seed list and the boards resolve.ts found on those companies' websites.
   seeds: { family: "seeds", publishable: true },
@@ -148,6 +150,16 @@ for (const f of ["greenhouse", "lever", "ashby", "smartrecruiters", "workday"]) 
   for (const [name, , url] of rows) if (url) fromUrl("kalil", url, name);
   count("kalil", rows.length);
 }
+withFile(raw("lastround", "ats-directory.csv"), (p) => {
+  // Columns by header name: ats_vendor, company_name, board_slug, last_crawled.
+  const header = readFileSync(p, "utf8").replace(/^﻿/, "").split(/\r?\n/, 1)[0]!.split(",").map((h) => h.trim().toLowerCase());
+  const col = (name: string) => header.indexOf(name);
+  const [ats, name, slug] = [col("ats_vendor"), col("company_name"), col("board_slug")];
+  if (ats < 0 || slug < 0) return console.error("! lastround/ats-directory.csv: unexpected columns, skipped");
+  const rows = csvRows(p);
+  for (const r of rows) add("lastround", { ats: (r[ats] ?? "").trim().toLowerCase(), slug: (r[slug] ?? "").trim(), name: name >= 0 ? r[name]?.trim() : undefined });
+  count("lastround", rows.length);
+});
 withFile(raw("conorscode", "companies.json"), (p) => {
   const rows = JSON.parse(readFileSync(p, "utf8")) as { name: string; platform: string; slug?: string; workday?: { tenant: string; site: string; shard: string } }[];
   for (const r of rows) {

@@ -1,0 +1,95 @@
+# Privacy
+
+Job Hunter runs on your computer. Your profile, resume and searches stay there. This page lists
+everything the app sends over the network, and to whom.
+
+## What stays on your computer
+
+| What | Where |
+|---|---|
+| Your profile: roles, places, topics, companies | `jobhunter.config.local.yaml` (or `jobhunter.config.yaml`), gitignored |
+| Your resume | `profile/resume.md`, gitignored |
+| Telegram bot token and chat id | `profile/secrets.json` (gitignored), or the `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` environment variables |
+| Run history, jobs found, scan results | `data/`, gitignored |
+| Statuses, notes, saved and applied jobs | your browser's storage (export them in Settings for a backup) |
+
+Scoring and filtering happen on your computer. Nothing above is uploaded by the app.
+
+## What the app sends, and to whom
+
+### Company job boards
+Scans fetch public job postings straight from each company's hiring system (Greenhouse, Lever,
+Workday and others). These requests come from your computer, so those sites see your IP address,
+like any website you visit. The app identifies itself with a Job Hunter User-Agent. It never sends
+your profile or resume to them, and never touches apply forms.
+
+### Public job boards you add
+If you add Hacker News "Who is hiring", Remotive, Arbeitnow or Remote OK, the app reads their free
+public APIs from your computer (Hacker News through Algolia's HN API), at most a few times a day.
+Nothing about you is sent; those sites see your IP address, like any website you visit.
+
+### The shared company directory
+The app downloads the company directory and job index (`manifest.json`, `directory.json.gz`,
+`index.json.gz`) and the daily job feed (`jobs-manifest.json` and its shards, from the `jobs` release)
+from GitHub Releases of `Tanmay-Mhatre/job-hunter-directory`. GitHub sees your IP address, as with
+any download. Everyone downloads the same files, and your filters are applied on your computer, so
+nothing about you is uploaded and the downloads don't reveal what you're looking for.
+
+### Sharing companies you add (on by default)
+When you add a company by its careers link, and it isn't in the directory yet, the app sends that
+board to the project's contribution inbox, so everyone can find it. This is **on by default**.
+
+What is sent:
+- the hiring system and the board name (for example `lever` and `acme`), plus the Workday
+  shard and site, or the EU region, when needed;
+- the company's name;
+- the app name (`job-hunter`), optionally with a version number.
+
+Never sent: your profile, resume, searches, statuses, notes, or which jobs you open.
+
+The inbox is a small Cloudflare Worker (`services/contribute`). What it does with a request:
+- **Your IP address** is used only by Cloudflare's rate limiter (20 requests a minute per address).
+  The Worker doesn't store it, and we haven't turned on Cloudflare's request logs. Cloudflare
+  itself handles the traffic under its own privacy policy.
+- **It stores** the boards, the time they arrived, and the `client` field only if it is exactly the
+  app name and version (like `job-hunter/0.1.0`); anything else in that field is dropped. Any
+  other field in the request is ignored.
+- **It also keeps** a list of the boards accepted each day (no IP, no time beyond the date) for 8
+  days, to skip repeats and enforce a daily limit.
+- Stored boards are deleted once the directory workflow has processed them, and after 30 days at
+  most.
+
+Boards that pass a live check are then published in `contributions.json` in the public directory
+repo, as a hiring system, a board name and a company name. They aren't linked to you.
+
+### Telegram alerts (only if you set them up)
+Alerts are sent through Telegram's API (`api.telegram.org`) with your own bot. They contain job
+titles, companies and links.
+
+### No telemetry
+The app has no analytics, no crash reporting and no usage tracking. The web dashboard loads no
+outside scripts or fonts.
+
+## Turning sharing off
+
+Either:
+- **Settings → Your data → Sharing**: switch off "Share companies I add by link with everyone"; or
+- in your config file:
+
+  ```yaml
+  directory:
+    share_additions: false
+  ```
+
+Boards already waiting to be sent (`data/catalog/outbox.json`, shown in the directory bar as
+"waiting to be shared") can still be sent at the next directory update. Delete that file to
+drop them.
+
+## Your company in the directory
+
+If you run a company and want it removed from the published directory, see
+[Takedown and opt-out](https://github.com/Tanmay-Mhatre/job-hunter-directory/blob/main/NOTICE.md#takedown-and-opt-out).
+
+## Questions
+
+Open an issue on [GitHub](https://github.com/Tanmay-Mhatre/job-hunter/issues).

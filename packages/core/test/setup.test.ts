@@ -10,7 +10,7 @@ import { checkCompanies, saveConfig, setupStatus } from "../src/setup";
 import { configToYaml } from "../src/yaml-writer";
 import { profile, fakeHttp, fixture, json } from "./helpers";
 
-const example = parseConfig(readFileSync(new URL("../../../jobhunter.config.yaml", import.meta.url), "utf8"));
+const example = parseConfig(readFileSync(new URL("../../../jobhunter.config.example.yaml", import.meta.url), "utf8"));
 
 describe("configToYaml", () => {
   it("writes an empty company list that reads back as empty, not null", () => {

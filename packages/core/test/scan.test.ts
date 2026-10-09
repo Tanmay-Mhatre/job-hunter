@@ -1,11 +1,11 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseConfig } from "../src/config";
 import { readLedger } from "../src/discover";
 import { readProgress, resumable, scan, type ScanStart } from "../src/scan";
-import { estimateSeconds, scopeCompanies, type DirectoryEntry } from "../src/scope";
+import { estimateSeconds, readSpeeds, recordSpeeds, scopeCompanies, type DirectoryEntry } from "../src/scope";
 import { fakeHttp, fixture, json } from "./helpers";
 
 const now = new Date("2026-10-03T12:00:00Z");
@@ -81,9 +81,22 @@ describe("scopeCompanies", () => {
 });
 
 describe("estimateSeconds", () => {
-  it("counts the busiest hiring system, since systems are fetched in parallel", () => {
-    const c = (ats: string) => ({ ats: ats as "lever" });
+  const c = (ats: string) => ({ ats: ats as "lever" });
+  it("counts the slowest hiring system, since systems are fetched in parallel", () => {
     expect(estimateSeconds([c("lever"), c("lever"), c("ashby")])).toBe(3);
+  });
+
+  it("uses speeds measured by earlier scans", () => {
+    expect(estimateSeconds([c("lever"), c("lever"), c("ashby")], { lever: 0.2, ashby: 4 })).toBe(4);
+  });
+
+  it("learns a lane's speed from durations, counting the companies in flight", () => {
+    const dir = mkdtempSync(join(tmpdir(), "speed-"));
+    const h = (ms: number) => ({ company: "x", ats: "lever" as const, slug: "x", ok: true, jobsFound: 0, matches: 0, durationMs: ms });
+    // 8 companies, 4 at a time, 2 s each: the lane takes 4 s, so 0.5 s per company.
+    expect(recordSpeeds(dir, Array.from({ length: 8 }, () => h(2000)))).toEqual({ lever: 0.5 });
+    expect(readSpeeds(dir)).toEqual({ lever: 0.5 });
+    rmSync(dir, { recursive: true, force: true });
   });
 });
 

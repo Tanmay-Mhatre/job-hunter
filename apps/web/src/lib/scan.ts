@@ -9,6 +9,10 @@ export type ScanState = {
   syncing?: boolean;
   /** What the directory sync said ("Already up to date.", "Updated to …", offline). */
   sync?: string;
+  /** What the job feed sync said ("Job feed is up to date (today).", stale, unavailable). */
+  feed?: string;
+  /** Directory companies the job feed let this scan skip. */
+  skippedByFeed?: number;
   scope?: ScanScope;
   /** Your companies' names, in run order; health arrives as each finishes. */
   companies: string[];
@@ -61,7 +65,7 @@ export function useScan(onFinished: () => void | Promise<void>) {
         await runScan(
           (e) => {
             if (e.type === "sync") setScan((s) => ({ ...s, syncing: true }));
-            else if (e.type === "synced") setScan((s) => ({ ...s, syncing: false, sync: e.message }));
+            else if (e.type === "synced") setScan((s) => ({ ...s, syncing: false, sync: e.message, feed: e.feed }));
             else if (e.type === "start")
               setScan((s) => ({
                 ...s,
@@ -71,6 +75,7 @@ export function useScan(onFinished: () => void | Promise<void>) {
                 done: e.resumed ?? 0,
                 resumed: e.resumed ?? 0,
                 seconds: e.seconds,
+                skippedByFeed: e.skippedByFeed,
               }));
             else if (e.type === "company") {
               const { type: _, done, ...h } = e;
@@ -135,6 +140,7 @@ export function scanLine(scan: ScanState): string {
     // No directory companies on top of yours: say "My companies", not "+ my industries".
     scan.scope && scopeLabel(scan.scope, scan.total > scan.companies.length),
     left > 60 ? `${aboutTime(left)} left` : null,
+    scan.skippedByFeed ? `${scan.skippedByFeed.toLocaleString()} skipped (nothing for you in today's job feed)` : null,
   ]
     .filter(Boolean)
     .join(" · ");

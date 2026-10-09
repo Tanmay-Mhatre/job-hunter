@@ -60,29 +60,26 @@ jobs:
         id: state
         env:
           GH_TOKEN: ${{ secrets.DATA_REPO_TOKEN }}
-        run: |
-          if gh release download state -R "$DATA_REPO" -p catalog-state.tar.gz -D "$RUNNER_TEMP"; then
-            tar xzf "$RUNNER_TEMP/catalog-state.tar.gz" -C scripts/catalog
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "No saved state yet: contributions are recorded now and published at the weekly rebuild."
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-          fi
+        # Without saved state, contributions are recorded now and published at the weekly rebuild.
+        run: bash scripts/catalog/state.sh restore
 
       - if: steps.inbox.outputs.count != '0'
         name: Accept contributions
         id: accept
+        env:
+          DENYLIST_FILE: ${{ github.workspace }}/directory-repo/denylist.json
         run: |
           [ -f directory-repo/contributions.json ] || echo '{"companies":[]}' > directory-repo/contributions.json
           pnpm exec tsx scripts/catalog/contributions.ts --inbox "$RUNNER_TEMP/inbox.json" --into directory-repo/contributions.json > "$RUNNER_TEMP/summary.json"
           cat "$RUNNER_TEMP/summary.json"
           echo "accepted=$(jq .accepted "$RUNNER_TEMP/summary.json")" >> "$GITHUB_OUTPUT"
 
-      - if: steps.accept.outputs.accepted != '0' && steps.accept.outputs.accepted != '' && steps.state.outputs.ready == 'true'
+      - if: steps.accept.outputs.accepted != '0' && steps.accept.outputs.accepted != '' && steps.state.outputs.restored == 'true'
         name: Publish an updated directory
         env:
           GH_TOKEN: ${{ secrets.DATA_REPO_TOKEN }}
           CONTRIBUTIONS_FILE: ${{ github.workspace }}/directory-repo/contributions.json
+          DENYLIST_FILE: ${{ github.workspace }}/directory-repo/denylist.json
         run: |
           pnpm catalog:sources
           pnpm exec tsx scripts/catalog/merge.ts
@@ -93,9 +90,8 @@ jobs:
           pnpm exec tsx scripts/catalog/release.ts --data dist-data --out dist
           tag=$(gh release view -R "$DATA_REPO" --json tagName -q .tagName)
           gh release upload "$tag" dist/* -R "$DATA_REPO" --clobber
-          pnpm exec tsx scripts/catalog/compact.ts
-          tar czf "$RUNNER_TEMP/catalog-state.tar.gz" -C scripts/catalog out/checks.jsonl out/index-all.jsonl out/resolved.json $( [ -f scripts/catalog/raw/commoncrawl/boards.json ] && echo raw/commoncrawl/boards.json )
-          gh release upload state "$RUNNER_TEMP/catalog-state.tar.gz" -R "$DATA_REPO" --clobber
+          # The same files every run saves, so this never wipes the weekly rebuild's progress.
+          bash scripts/catalog/state.sh save
 
       - if: steps.accept.outputs.accepted != '0' && steps.accept.outputs.accepted != ''
         name: Commit contributions.json

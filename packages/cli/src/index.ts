@@ -17,6 +17,7 @@ import {
   setupStatus,
   suggestCompanies,
   syncDirectory,
+  syncJobFeed,
   scanPlan,
   acquireScanLock,
   releaseScanLock,
@@ -65,10 +66,14 @@ import {
   type IndexedCompany,
   type Job,
 } from "@jobhunter/core";
+import { ATS_TYPES } from "@jobhunter/core";
+
+/** A company's own hiring system, not a job board (JOB_BOARDS): boards are never shared or put in the directory. */
+const isAts = (ats: string | undefined) => (ATS_TYPES as readonly string[]).includes(ats ?? "");
 
 /** Remember boards found by "Add by link" that the directory doesn't have yet. */
 function recordAdditions(dataDir: string, results: CompanyCheck[]): void {
-  const fresh = results.filter((r) => (r.status === "live" || r.status === "dormant") && !r.in_directory && r.key);
+  const fresh = results.filter((r) => (r.status === "live" || r.status === "dormant") && !r.in_directory && r.key && isAts(r.ats));
   if (!fresh.length) return;
   const file = resolve(dataDir, "catalog", "additions.json");
   const current = existsSync(file) ? (JSON.parse(readFileSync(file, "utf8")) as { companies: (DirectoryEntry & { added_at: string })[] }).companies : [];
@@ -225,6 +230,7 @@ Options for scan (alias: run):
   -s, --scope <type>    mine: your companies + every directory company in your industries (default)
                         all:  your companies + every company in the directory (about 2 h)
       --offline         Don't sync the company directory first
+      --full            Fetch every directory company live (don't let the shared job feed skip any)
       --fresh           Start over instead of resuming a stopped scan (Ctrl+C stops and saves progress)
       --plan            Print what each scope covers (companies, minutes) as JSON
       --notify          Send the new jobs to Telegram (when set up in Settings → Alerts)
@@ -279,6 +285,7 @@ type RunValues = {
   scope?: string;
   offline: boolean;
   fresh: boolean;
+  full: boolean;
 };
 
 const parseScope = (v: string | undefined): ScanScope => {
@@ -333,6 +340,8 @@ async function cmdRun(args: string[]): Promise<number> {
       scope: { type: "string", short: "s" },
       /** Skip the directory sync (no network for it). */
       offline: { type: "boolean", default: false },
+      /** Fetch every directory company live, without the shared job feed choosing which. */
+      full: { type: "boolean", default: false },
       /** Start over instead of resuming a stopped scan. */
       fresh: { type: "boolean", default: false },
       /** Print what each scope would cover, as JSON, and exit. */
@@ -362,6 +371,7 @@ async function cmdRun(args: string[]): Promise<number> {
     if (fullScan && !values.offline) {
       console.error("Syncing the company directory…");
       console.error(`  ${(await syncDirectory(dataDir)).message}`);
+      if (!values.full) console.error(`  ${(await syncJobFeed(dataDir)).message}`);
     }
 
     const { result, merged, summary, checks, moves, stopped } = await scan(config, {
@@ -371,10 +381,11 @@ async function cmdRun(args: string[]): Promise<number> {
       checkKeys: values.check,
       dryRun: values["dry-run"],
       resume: !values.fresh,
+      feed: !values.full,
       stopped: stopSignal(dataDir),
       onStart: (s) =>
         console.error(
-          `Checking ${values.only?.length ? values.only.join(", ") : `${s.yours.length} of your companies`}${s.extra ? ` and ${s.extra.toLocaleString()} ${s.scope === "all" ? "more from the directory" : "in your industries"}` : ""}${s.resumed ? ` (resuming: ${s.resumed.toLocaleString()} done already)` : ""}, about ${duration(s.seconds)}...\n`,
+          `Checking ${values.only?.length ? values.only.join(", ") : `${s.yours.length} of your companies`}${s.extra ? ` and ${s.extra.toLocaleString()} ${s.scope === "all" ? "more from the directory" : "in your industries"}` : ""}${s.resumed ? ` (resuming: ${s.resumed.toLocaleString()} done already)` : ""}${s.skippedByFeed ? ` (${s.skippedByFeed.toLocaleString()} skipped: nothing for you in the shared job feed)` : ""}, about ${duration(s.seconds)}...\n`,
         ),
       onCompanyDone: (h) => {
         // A whole-directory scan prints your companies, matches and failures, not 17,000 lines.
@@ -459,7 +470,7 @@ async function runNdjson(values: RunValues): Promise<number> {
     try {
       if (fullScan && !values.offline) {
         emit({ type: "sync" });
-        emit({ type: "synced", ...(await syncDirectory(dataDir)) });
+        emit({ type: "synced", ...(await syncDirectory(dataDir)), ...(values.full ? {} : { feed: (await syncJobFeed(dataDir)).message }) });
       }
       const yours = new Set(config.companies.map((c) => `${c.ats}:${c.slug}`));
       let done = 0;
@@ -470,10 +481,11 @@ async function runNdjson(values: RunValues): Promise<number> {
         checkKeys: values.check,
         dryRun: values["dry-run"],
         resume: !values.fresh,
+      feed: !values.full,
         stopped: stopSignal(dataDir),
         onStart: (s) => {
           done = s.resumed;
-          emit({ type: "start", companies: s.yours, total: s.total, extra: s.extra, resumed: s.resumed, scope: s.scope, seconds: s.seconds });
+          emit({ type: "start", companies: s.yours, total: s.total, extra: s.extra, resumed: s.resumed, scope: s.scope, seconds: s.seconds, skippedByFeed: s.skippedByFeed });
         },
         onCompanyDone: (h) => {
           done++;
@@ -665,6 +677,14 @@ async function cmdDirectory(args: string[]): Promise<number> {
   });
   const dataDir = resolve(values.data);
   const out = (o: object, text: string) => console.log(values.json ? JSON.stringify(o) : text);
+  /** Board sharing (on by default); when off, anything still waiting is dropped, not sent. */
+  const sharing = () => {
+    try {
+      return loadConfig().config.directory.share_additions !== false;
+    } catch {
+      return true;
+    }
+  };
   switch (positionals[0] ?? "status") {
     case "status": {
       const s = directoryStatus(dataDir);
@@ -698,13 +718,13 @@ async function cmdDirectory(args: string[]): Promise<number> {
         out({ updated: false, message: "Recent enough." }, "Directory is recent enough.");
         return 0;
       }
-      const shared = await sendContributions(dataDir);
+      const shared = await sendContributions(dataDir, { enabled: sharing() });
       const result = await updateDirectory(dataDir, { force: values.force }).catch((err: Error) => ({ updated: false, message: `Update failed: ${err.message}` }));
       out({ ...result, shared: shared.sent }, `${result.message}${shared.sent ? ` ${shared.message}` : ""}`);
       return 0;
     }
     case "share": {
-      const result = await sendContributions(dataDir);
+      const result = await sendContributions(dataDir, { enabled: sharing() });
       out(result, result.message);
       return 0;
     }
@@ -746,7 +766,7 @@ async function cmdSetup(args: string[]): Promise<number> {
       // Share new boards with the directory (unless turned off in settings). Best effort: the
       // outbox keeps anything that couldn't be sent, and the next update retries it.
       if (status.config?.directory.share_additions !== false) {
-        const fresh = results.filter((r) => (r.status === "live" || r.status === "dormant") && !r.in_directory && r.ats && r.slug);
+        const fresh = results.filter((r) => (r.status === "live" || r.status === "dormant") && !r.in_directory && isAts(r.ats) && r.slug);
         if (fresh.length) {
           queueContributions(
             values.data,

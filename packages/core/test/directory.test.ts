@@ -78,6 +78,15 @@ describe("sharing additions", () => {
     expect(directoryStatus(dir).outbox).toBe(0);
   });
 
+  it("drops waiting boards without sending them once sharing is turned off", async () => {
+    queueContributions(dir, [{ ats: "lever", slug: "acme" }]);
+    let calls = 0;
+    const up = (async () => (calls++, new Response("{}", { status: 202 }))) as unknown as typeof fetch;
+    expect(await sendContributions(dir, { fetchImpl: up, enabled: false })).toMatchObject({ sent: 0 });
+    expect(calls).toBe(0);
+    expect(directoryStatus(dir).outbox).toBe(0);
+  });
+
   it("does nothing when no inbox is configured", async () => {
     process.env.JOBHUNTER_CONTRIBUTE_URL = "";
     queueContributions(dir, [{ ats: "lever", slug: "acme" }]);

@@ -39,18 +39,15 @@ jobs:
           path: directory-repo
 
       - name: Restore the catalog's working state
+        id: state
         env:
           GH_TOKEN: ${{ secrets.DATA_REPO_TOKEN }}
-        run: |
-          if gh release download state -R "$DATA_REPO" -p catalog-state.tar.gz -D "$RUNNER_TEMP"; then
-            tar xzf "$RUNNER_TEMP/catalog-state.tar.gz" -C scripts/catalog
-          else
-            echo "No saved state: this run checks every board from scratch (slow, once)."
-          fi
+        run: bash scripts/catalog/state.sh restore
 
       - name: Build the directory
         env:
           CONTRIBUTIONS_FILE: ${{ github.workspace }}/directory-repo/contributions.json
+          DENYLIST_FILE: ${{ github.workspace }}/directory-repo/denylist.json
         run: |
           [ -f directory-repo/contributions.json ] || echo '{"companies":[]}' > directory-repo/contributions.json
           pnpm catalog:sources
@@ -83,19 +80,12 @@ jobs:
             --notes "Version $version · $companies companies. Download manifest.json first; files are checked against its SHA-256."
 
       - name: Save the working state
-        if: always()
+        # Also after a failure or timeout, so progress isn't lost; but never when the restore failed,
+        # or a run that started from nothing would overwrite good state.
+        if: always() && steps.state.outcome == 'success'
         env:
           GH_TOKEN: ${{ secrets.DATA_REPO_TOKEN }}
-        run: |
-          [ -d scripts/catalog/out ] || exit 0
-          pnpm exec tsx scripts/catalog/compact.ts
-          files="out/checks.jsonl out/index-all.jsonl"
-          for f in out/resolved.json out/resolved-bulk.json out/probe.jsonl out/probe-found.json raw/commoncrawl/boards.json raw/wayback/boards.json; do
-            [ -f "scripts/catalog/$f" ] && files="$files $f"
-          done
-          tar czf "$RUNNER_TEMP/catalog-state.tar.gz" -C scripts/catalog $files
-          gh release view state -R "$DATA_REPO" > /dev/null 2>&1 || gh release create state -R "$DATA_REPO" --prerelease --title "Catalog working state" --notes "Internal: lets the weekly rebuild skip boards checked recently."
-          gh release upload state "$RUNNER_TEMP/catalog-state.tar.gz" -R "$DATA_REPO" --clobber
+        run: bash scripts/catalog/state.sh save
 
       - name: Commit the coverage report
         working-directory: directory-repo

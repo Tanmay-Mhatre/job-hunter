@@ -26,6 +26,11 @@ export const ATS_LABEL: Record<string, string> = {
   zoho: "Zoho Recruit",
   hibob: "HiBob",
   freshteam: "Freshteam",
+  // Job boards: credited by name (Remote OK's terms ask for it), linked back on every job.
+  hackernews: "Hacker News",
+  remotive: "Remotive",
+  arbeitnow: "Arbeitnow",
+  remoteok: "Remote OK",
 };
 
 /** Hiring systems we can scan (every one we recognise). Anything else is kept as "not supported yet". */
@@ -34,7 +39,7 @@ export const SUPPORTED = new Set(Object.keys(ATS_LABEL));
 /** Directory key for a watched company or a directory entry: "ats:slug" (Workday adds shard and site). */
 export const keyOf = (c: { ats?: string; slug?: string; shard?: string; site?: string }) => companyKey({ ats: c.ats ?? "", slug: c.slug ?? "", shard: c.shard, site: c.site });
 
-/** A job's company key: index jobs carry it; scanned job ids start with "ats:slug:". */
+/** A job's directory key: saved jobs carry it; older ones fall back to the "ats:slug:" start of their id. */
 export const jobCompanyKey = (j: { id: string; companyKey?: string }) => j.companyKey ?? j.id.split(":").slice(0, 2).join(":").toLowerCase();
 
 /** What the watchlist needs to know about a company, from any source (suggestion, directory, link). */
@@ -42,12 +47,14 @@ export type CompanyRef = { name: string; ats: string; slug: string; region?: str
 
 /**
  * The company behind a job, to add or mute it from the Radar. A directory job links to the careers
- * page already; a scanned one gets the board's address. (Workday jobs aren't scanned yet, so no shard/site.)
+ * page already; a scanned one gets the board's address. Workday keys are "tenant|shard|site", Taleo "host|section".
  */
 export function refOfJob(j: { id: string; ats: string; company: string; url: string; companyKey?: string; estimated?: boolean }): CompanyRef {
   const key = jobCompanyKey(j);
-  const slug = key.slice(key.indexOf(":") + 1);
-  return { name: j.company, ats: j.ats, slug, careers_url: j.estimated ? j.url : careersUrl({ ats: j.ats as never, slug }) || j.url };
+  const parts = key.slice(key.indexOf(":") + 1).split("|");
+  const slug = parts[0] ?? "";
+  const board: { shard?: string; site?: string } = j.ats === "workday" && parts.length === 3 ? { shard: parts[1], site: parts[2] } : j.ats === "taleo" && parts.length === 2 ? { site: parts[1] } : {};
+  return { name: j.company, ats: j.ats, slug, ...board, careers_url: j.estimated ? j.url : careersUrl({ ats: j.ats as never, slug, ...board }) || j.url };
 }
 
 /** A directory entry as far as grouping needs it. */
