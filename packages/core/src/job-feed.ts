@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
 import { envSetting } from "./env";
-import { gateOf } from "./score";
+import { passesLocationGate, passesTitleGate } from "./score";
 import type { Profile, Workplace } from "./schema";
 
 /**
@@ -102,25 +102,70 @@ export type FeedMatches = {
   matching: Set<string>;
 };
 
-/** Which directory companies the feed can rule out for this profile. Empty sets without a feed. */
+/**
+ * Bump when title or location matching changes, so results remembered by older code are recomputed.
+ * (Results are remembered per feed shard and profile: see feedMatches.)
+ */
+const MATCHING_VERSION = 2;
+
+/** Remembered feedMatches results: per shard (by its SHA-256), for one profile. */
+type MatchCache = {
+  version: number;
+  profile: string;
+  shards: Record<string, { sha256: string; companies: [key: string, fetchedAt: string, matching: 0 | 1][] }>;
+};
+
+/** What in a profile decides the title and location gates. */
+const profileKey = (profile: Profile) => JSON.stringify([MATCHING_VERSION, profile.titles, profile.locations]);
+
+/**
+ * Which directory companies the feed can rule out for this profile. Empty sets without a feed.
+ * Each distinct title and location is checked once (titles first: a quick word check rules most out),
+ * and the answer per company is remembered per shard, so a shard that didn't change since the last
+ * scan, with the same profile, isn't read again.
+ */
 export function feedMatches(dataDir: string, profile: Profile, now = Date.now(), maxAgeDays = FEED_MAX_AGE_DAYS): FeedMatches {
   const covered = new Set<string>();
   const matching = new Set<string>();
-  const manifest = readJson<JobFeedManifest>(join(feedDir(dataDir), "manifest.json"));
+  const dir = feedDir(dataDir);
+  const manifest = readJson<JobFeedManifest>(join(dir, "manifest.json"));
   if (manifest?.schema !== JOB_FEED_SCHEMA) return { covered, matching };
   const cutoff = now - maxAgeDays * 86_400_000;
-  for (const ats of Object.keys(manifest.shards)) {
-    const shard = readJson<JobFeedShard>(join(feedDir(dataDir), `${ats}.json`));
-    if (shard?.schema !== JOB_FEED_SCHEMA) continue;
-    for (const [key, entry] of Object.entries(shard.companies)) {
-      if (Date.parse(entry.fetched_at) < cutoff) continue;
-      covered.add(key);
-      const hit = entry.jobs.some(([, title, location, workplace]) => {
-        const gate = gateOf({ title, location, workplace }, profile);
-        return gate === undefined || (gate === "location" && VAGUE_LOCATION.test(location));
-      });
-      if (hit) matching.add(key);
+  const key = profileKey(profile);
+  const old = readJson<MatchCache>(join(dir, "matches.json"));
+  const cache: MatchCache = { version: MATCHING_VERSION, profile: key, shards: {} };
+  const titleOk = new Map<string, boolean>();
+  const placeOk = new Map<string, boolean>();
+  const passes = ([, title, location, workplace]: FeedRow): boolean => {
+    let t = titleOk.get(title);
+    if (t === undefined) titleOk.set(title, (t = passesTitleGate(title, profile)));
+    if (!t) return false;
+    // "3 Locations": the list doesn't say where, so only the title can rule the job out.
+    if (VAGUE_LOCATION.test(location)) return true;
+    const where = `${workplace}\u0000${location}`;
+    let l = placeOk.get(where);
+    if (l === undefined) placeOk.set(where, (l = passesLocationGate({ location, workplace }, profile)));
+    return l;
+  };
+  for (const [ats, meta] of Object.entries(manifest.shards)) {
+    const known = old?.version === MATCHING_VERSION && old.profile === key && old.shards[ats]?.sha256 === meta.sha256 ? old.shards[ats] : undefined;
+    let rows = known?.companies;
+    if (!rows) {
+      const shard = readJson<JobFeedShard>(join(dir, `${ats}.json`));
+      if (shard?.schema !== JOB_FEED_SCHEMA) continue;
+      rows = Object.entries(shard.companies).map(([k, e]) => [k, e.fetched_at, e.jobs.some(passes) ? 1 : 0]);
     }
+    cache.shards[ats] = { sha256: meta.sha256, companies: rows };
+    for (const [k, fetchedAt, hit] of rows) {
+      if (Date.parse(fetchedAt) < cutoff) continue;
+      covered.add(k);
+      if (hit) matching.add(k);
+    }
+  }
+  try {
+    writeFileSync(join(dir, "matches.json"), JSON.stringify(cache));
+  } catch {
+    // Only a speed-up: without it the next scan checks the feed again.
   }
   return { covered, matching };
 }
