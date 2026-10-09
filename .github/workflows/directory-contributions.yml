@@ -66,6 +66,8 @@ jobs:
       - if: steps.inbox.outputs.count != '0'
         name: Accept contributions
         id: accept
+        env:
+          DENYLIST_FILE: ${{ github.workspace }}/directory-repo/denylist.json
         run: |
           [ -f directory-repo/contributions.json ] || echo '{"companies":[]}' > directory-repo/contributions.json
           pnpm exec tsx scripts/catalog/contributions.ts --inbox "$RUNNER_TEMP/inbox.json" --into directory-repo/contributions.json > "$RUNNER_TEMP/summary.json"
@@ -77,6 +79,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.DATA_REPO_TOKEN }}
           CONTRIBUTIONS_FILE: ${{ github.workspace }}/directory-repo/contributions.json
+          DENYLIST_FILE: ${{ github.workspace }}/directory-repo/denylist.json
         run: |
           pnpm catalog:sources
           pnpm exec tsx scripts/catalog/merge.ts

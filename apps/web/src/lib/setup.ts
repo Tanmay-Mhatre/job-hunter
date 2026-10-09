@@ -87,7 +87,7 @@ export type ScanScope = "mine" | "all";
 export type RunEvent =
   /** Syncing with the shared company directory (the first step of every scan). */
   | { type: "sync" }
-  | { type: "synced"; updated: boolean; offline?: boolean; message: string }
+  | { type: "synced"; updated: boolean; offline?: boolean; message: string; /** What the shared job feed sync said. */ feed?: string }
   | {
       type: "start";
       /** Your companies, in fetch order. */
@@ -101,6 +101,8 @@ export type RunEvent =
       scope?: ScanScope;
       /** About how long the rest takes. */
       seconds?: number;
+      /** Directory companies skipped: the shared job feed shows nothing for you there. */
+      skippedByFeed?: number;
       /** Older CLIs: the last `checking` companies aren't yours. */
       checking?: number;
     }

@@ -8,6 +8,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { careersUrl, guessName, isPlaceholderBoard, type DetectedCompany } from "../../packages/core/src/index";
+import { readDenylist } from "./lib/denylist";
 
 const here = dirname(fileURLToPath(import.meta.url));
 type Merged = { key: string; ats: string; slug: string; region?: string; shard?: string; site?: string; name?: string; families: string[]; confidence: "high" | "single" };
@@ -70,7 +71,9 @@ const rows = merged.map((b) => {
 
 // Directory keeps live + dormant (dormant may come back); dead/unknown stay out, and so do
 // sandbox/training/test boards, which post fake or years-old jobs.
-const directory = rows.filter((r) => (r.status === "live" || r.status === "dormant") && !isPlaceholderBoard(r.name));
+// Companies removed on request never reach the directory (docs/shared-directory.md, "Denylist").
+const denied = readDenylist();
+const directory = rows.filter((r) => (r.status === "live" || r.status === "dormant") && !isPlaceholderBoard(r.name) && !denied(r));
 writeFileSync(join(here, "out", "directory.json"), JSON.stringify({ generated_at: new Date().toISOString(), count: directory.length, companies: directory }));
 
 // ---- summary ----

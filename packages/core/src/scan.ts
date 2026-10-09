@@ -5,6 +5,7 @@ import { mergeHistory, type MergeResult } from "./diff";
 import { keptChecked, readLedger, recordChecks, writeLedger } from "./discover";
 import { HttpClient } from "./http";
 import { FileHttpCache } from "./http-cache";
+import { feedMatches } from "./job-feed";
 import { runRadar, type RunResult } from "./run";
 import type { CompanyHealth, CompanyRef, Config, Job, RunSummary } from "./schema";
 import { estimateSeconds, findMoves, readDirectory, readSpeeds, recordSpeeds, refOfEntry, scopeCompanies, type BoardMove, type ScanScope } from "./scope";
@@ -19,6 +20,8 @@ export type ScanStart = {
   total: number;
   /** Companies already done by the stopped scan this one resumes. */
   resumed: number;
+  /** Directory companies skipped because the shared job feed shows nothing for you there. */
+  skippedByFeed?: number;
   scope?: ScanScope;
   /** About how long the rest takes. */
   seconds: number;
@@ -36,6 +39,11 @@ export type ScanOptions = {
   dryRun?: boolean;
   /** Carry on a stopped scan of the same scope from the last 24 hours (default true). */
   resume?: boolean;
+  /**
+   * Use the shared job feed to skip directory companies with nothing for you (default true). Your own
+   * companies, and companies the feed doesn't cover, are always fetched live.
+   */
+  feed?: boolean;
   /** Stop starting new companies when this returns true; what's done is saved and can be resumed. */
   stopped?: () => boolean;
   http?: HttpClient;
@@ -82,7 +90,8 @@ export function resumable(dataDir: string, scope: ScanScope, now = new Date()): 
 /** Your companies and, by scope, the directory companies a scan would fetch. */
 export function scanPlan(config: Config, dataDir: string, scope: ScanScope) {
   const yours = config.companies.filter((c) => c.enabled);
-  const extra = scopeCompanies(config, readDirectory(dataDir), scope);
+  const feed = feedMatches(dataDir, config.profile);
+  const extra = scopeCompanies(config, readDirectory(dataDir), scope).filter((c) => !feed.covered.has(jobCompanyKey(c)) || feed.matching.has(jobCompanyKey(c)));
   return { yours, extra, seconds: estimateSeconds([...yours, ...extra], readSpeeds(dataDir)) };
 }
 
@@ -103,11 +112,15 @@ export async function scan(config: Config, opts: ScanOptions): Promise<ScanResul
   let ledger = readLedger(opts.dataDir);
 
   const wanted = new Set(opts.checkKeys?.map((k) => k.toLowerCase()));
-  const checks = checkOnly
+  const inScope = checkOnly
     ? directory.filter((c) => wanted.has(c.key) && !tracked.has(c.key)).map(refOfEntry)
     : fullScan
       ? scopeCompanies(config, directory, scope)
       : [];
+  // Yesterday's shared feed says which directory companies have jobs that could be yours: only those
+  // (and ones it doesn't cover) are fetched live, so what's shown is still checked live.
+  const feed = fullScan && opts.feed !== false ? feedMatches(opts.dataDir, config.profile, now.getTime()) : undefined;
+  const checks = feed ? inScope.filter((c) => !feed.covered.has(jobCompanyKey(c)) || feed.matching.has(jobCompanyKey(c))) : inScope;
 
   // Carry on a stopped scan of the same scope: skip what it fetched, keep what it found.
   const progressPath = join(opts.dataDir, progressFile(scope));
@@ -135,6 +148,7 @@ export async function scan(config: Config, opts: ScanOptions): Promise<ScanResul
     total: yours.length + checks.length,
     resumed: done.size,
     ...(fullScan ? { scope } : {}),
+    ...(feed ? { skippedByFeed: inScope.length - checks.length } : {}),
     seconds: estimateSeconds(left, readSpeeds(opts.dataDir)),
   });
 

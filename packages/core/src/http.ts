@@ -17,11 +17,22 @@ export class HttpError extends Error {
   }
 }
 
-/** Saved responses by URL, sent back as If-None-Match so an unchanged feed costs an empty 304. */
+/**
+ * Saved responses by URL, sent back as If-None-Match so an unchanged feed costs an empty 304.
+ * A cache that keeps only the ETag (no body) gets NotModifiedError on a 304 instead.
+ */
 export type HttpCache = {
-  get(url: string): { etag: string; body: string } | undefined;
+  get(url: string): { etag: string; body?: string } | undefined;
   set(url: string, etag: string, body: string): void;
 };
+
+/** The URL answered 304 and the cache kept no body: the caller already has what it would say. */
+export class NotModifiedError extends HttpError {
+  override name = "NotModifiedError";
+  constructor(url: string) {
+    super(`not modified (${url})`, url, 304);
+  }
+}
 
 export type HttpOptions = {
   userAgent?: string;
@@ -96,6 +107,7 @@ export class HttpClient {
     const res = await this.request(url, { headers: { accept: "application/json", ...(cached ? { "if-none-match": cached.etag } : {}) } });
     if (res.status === 304 && cached) {
       this.stats.notModified++;
+      if (cached.body === undefined) throw new NotModifiedError(url);
       return JSON.parse(cached.body) as T;
     }
     const body = await res.text();

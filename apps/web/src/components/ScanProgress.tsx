@@ -74,6 +74,7 @@ export function ScanProgress({ scan, onRetry }: { scan: ScanState; onRetry?: () 
         </p>
       ))}
       {scan.sync && scan.phase !== "running" && <p className="text-xs text-muted">{syncLine(scan.sync)}</p>}
+      {scan.feed && scan.phase !== "running" && <p className="text-xs text-muted">{scan.feed}</p>}
       {scan.error && (
         <div className="rounded-xl bg-bad-soft/50 p-3 text-sm" role="alert">
           <p className="font-medium text-bad">The scan stopped before it finished.</p>

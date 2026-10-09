@@ -93,14 +93,35 @@ Each entry has `reason` and `added` (`YYYY-MM-DD`) and at least one of:
   domain or a subdomain of it;
 - `name`: matches the company name exactly, ignoring case and extra spaces.
 
-**Not wired up yet.** The catalog scripts should do this (`scripts/catalog`):
-- `build.ts`, `index.ts` and `release.ts` drop every matching company from `directory.json`,
-  `index.json` and the release, and log how many were dropped;
+How it's applied (`scripts/catalog/lib/denylist.ts`, read from `DENYLIST_FILE`):
+- `build.ts` leaves matching companies out of `directory.json`, so they're also left out of the
+  index and the release built from it;
+- `jobs.ts` leaves them out of the job feed;
 - `contributions.ts` rejects matching boards, so a user can't add one back by link;
-- both workflows read `denylist.json` from the directory repo they already check out; a missing or
-  empty file means nothing is removed, and an unreadable file fails the run (never publish
-  without it);
+- every workflow reads `denylist.json` from the directory repo; a missing file means nothing is
+  removed, and an unreadable one fails the run (never publish without it);
 - apps need no change: a removed company disappears with the next download.
+
+## Job feed
+
+Every day, `Jobs · daily feed` (`.github/workflows/jobs-daily.yml`, script `scripts/catalog/jobs.ts`)
+reads every live directory board on Greenhouse, Lever, Ashby, SmartRecruiters and Workday once, for
+everyone, and publishes slim rows (job id, title, location, workplace, posted date; no descriptions)
+as one gzipped shard per hiring system on the `jobs` release of the directory repo.
+`jobs-manifest.json` lists the shards with their SHA-256 and `schema` version; it's uploaded last.
+
+- **Cheap to run:** Greenhouse, Lever and Ashby boards that haven't changed answer an empty 304
+  (ETags are kept in the feed's own saved state, the `jobs-state.tar.gz` asset of the `state` release).
+  A board that fails, or that the 5-hour limit leaves out, keeps yesterday's rows and date.
+- **How apps use it** (`packages/core/src/job-feed.ts`): every scan downloads the shards that changed,
+  then fetches live only the directory companies whose jobs could pass the user's filters, plus any
+  the feed doesn't cover or that are more than 3 days old. Every job shown is still checked live;
+  the feed only decides which companies are worth a request. `jobhunter scan --full` skips the feed.
+- **Watching it:** the workflow opens an issue when a run fails, or when jobs or companies move more
+  than 20% from the day before. It also re-enables itself each run, so GitHub doesn't switch the
+  schedule off after 60 quiet days.
+- **Format changes:** bump `JOB_FEED_SCHEMA`; older apps ignore a feed they don't understand and
+  scan live.
 
 ## One-time setup
 
@@ -122,5 +143,6 @@ Each entry has `reason` and `added` (`YYYY-MM-DD`) and at least one of:
 ## Cost
 
 Free tiers cover it: Cloudflare Workers + KV (well under the daily limits), GitHub Releases for the
-files (about 7 MB per release), and GitHub Actions minutes for a private repo (roughly 20 hours a
-month: a 3–5 hour weekly rebuild, most of it the time-boxed discovery steps, plus short contribution runs).
+files (about 7 MB per directory release, roughly 10–20 MB for the job feed), and GitHub Actions, which
+is free and unmetered once the code repo is public. While it's private, the 2,000 free minutes a month
+cover the directory runs (about 20 hours) but not the daily job feed as well.
