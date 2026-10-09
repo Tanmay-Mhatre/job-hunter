@@ -10,7 +10,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { careersUrl, companyKey, guessName, HttpClient } from "../../packages/core/src/index";
+import { ATS_TYPES, careersUrl, companyKey, guessName, HttpClient } from "../../packages/core/src/index";
 import { checkBoard } from "./lib/live-check";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -34,7 +34,11 @@ export type Contribution = {
   added_at: string;
 };
 
-const SCANNABLE = new Set(["greenhouse", "lever", "ashby", "smartrecruiters", "workday"]);
+const SCANNABLE = new Set<string>(ATS_TYPES);
+/** What `shard` may look like per system (the rest have none). */
+const SHARD: Record<string, RegExp> = { workday: /^wd\d{1,3}$/, oracle: /^[a-z0-9-]{2,30}$/, successfactors: /^[a-z0-9.-]{1,60}\.(successfactors|sapsf)\.(com|eu)$/ };
+/** Systems that need `site` (the rest may carry one). */
+const NEEDS_SITE = new Set(["workday", "taleo", "comeet"]);
 const SLUG = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 
 /** A board as sent by an app, cleaned up, or the reason it can't be used. */
@@ -43,13 +47,18 @@ export function cleanBoard(b: SharedBoard): SharedBoard | string {
   if (!SCANNABLE.has(b.ats)) return `unsupported hiring system "${String(b.ats)}"`;
   if (typeof b.slug !== "string" || !SLUG.test(b.slug)) return "bad slug";
   if (b.region !== undefined && b.region !== "eu" && b.region !== "global") return "bad region";
-  if (b.ats === "workday" && !(typeof b.shard === "string" && /^wd\d{1,3}$/.test(b.shard) && typeof b.site === "string" && SLUG.test(b.site))) return "workday needs shard and site";
+  if (b.ats === "workday" && !(typeof b.shard === "string" && SHARD.workday!.test(b.shard) && typeof b.site === "string" && SLUG.test(b.site))) return "workday needs shard and site";
+  if (b.shard !== undefined && !(SHARD[b.ats] && typeof b.shard === "string" && SHARD[b.ats]!.test(b.shard))) return "bad shard";
+  if (b.ats === "oracle" && b.shard === undefined) return "oracle needs shard";
+  if (b.site !== undefined && !(typeof b.site === "string" && SLUG.test(b.site))) return "bad site";
+  if (NEEDS_SITE.has(b.ats) && b.site === undefined) return `${b.ats} needs site`;
   const name = typeof b.name === "string" ? b.name.replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, 100) : undefined;
   return {
     ats: b.ats,
     slug: b.slug,
     ...(b.region === "eu" ? { region: "eu" } : {}),
-    ...(b.ats === "workday" ? { shard: b.shard, site: b.site } : {}),
+    ...(b.shard ? { shard: b.shard } : {}),
+    ...(b.site ? { site: b.site } : {}),
     ...(name ? { name } : {}),
   };
 }
@@ -88,7 +97,7 @@ async function main() {
         ats: board.ats,
         slug: board.slug,
         ...(board.region ? { region: board.region } : {}),
-        ...(board.shard ? { shard: board.shard, site: board.site } : {}),
+        ...(board.shard ? { shard: board.shard } : {}), ...(board.site ? { site: board.site } : {}),
         careers_url: careersUrl(board as never) || `https://${board.slug}`,
         status: result.status,
         open_jobs: result.jobs,

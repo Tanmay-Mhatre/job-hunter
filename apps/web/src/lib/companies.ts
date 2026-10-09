@@ -1,9 +1,6 @@
 import { careersUrl, companyKey } from "@jobhunter/core/detect";
 import { rowId, type CompanyRow, type Draft } from "./setup";
 
-/** Hiring systems we can scan today. The rest are recognised and kept as "coming soon". */
-export const SUPPORTED = new Set(["greenhouse", "lever", "ashby", "smartrecruiters"]);
-
 export const ATS_LABEL: Record<string, string> = {
   greenhouse: "Greenhouse",
   lever: "Lever",
@@ -29,6 +26,9 @@ export const ATS_LABEL: Record<string, string> = {
   hibob: "HiBob",
   freshteam: "Freshteam",
 };
+
+/** Hiring systems we can scan (every one we recognise). Anything else would be kept as "coming soon". */
+export const SUPPORTED = new Set(Object.keys(ATS_LABEL));
 
 /** Directory key for a watched company or a directory entry: "ats:slug" (Workday adds shard and site). */
 export const keyOf = (c: { ats?: string; slug?: string; shard?: string; site?: string }) => companyKey({ ats: c.ats ?? "", slug: c.slug ?? "", shard: c.shard, site: c.site });

@@ -44,6 +44,35 @@ const QUERIES: { url: string; matchType: "prefix" | "domain" }[] = [
   { url: "jobs.smartrecruiters.com/", matchType: "prefix" },
   { url: "careers.smartrecruiters.com/", matchType: "prefix" },
   { url: "myworkdayjobs.com", matchType: "domain" },
+  { url: "apply.workable.com/", matchType: "prefix" },
+  { url: "www.comeet.com/jobs/", matchType: "prefix" },
+  { url: "jobs.jobvite.com/", matchType: "prefix" },
+  { url: "ats.rippling.com/", matchType: "prefix" },
+  { url: "recruitee.com", matchType: "domain" },
+  { url: "jobs.personio.de", matchType: "domain" },
+  { url: "jobs.personio.com", matchType: "domain" },
+  { url: "bamboohr.com", matchType: "domain" },
+  { url: "breezy.hr", matchType: "domain" },
+  { url: "teamtailor.com", matchType: "domain" },
+  { url: "icims.com", matchType: "domain" },
+  { url: "taleo.net", matchType: "domain" },
+  { url: "pinpointhq.com", matchType: "domain" },
+  { url: "applytojob.com", matchType: "domain" },
+  { url: "zohorecruit.com", matchType: "domain" },
+  { url: "zohorecruit.eu", matchType: "domain" },
+  { url: "zohorecruit.in", matchType: "domain" },
+  { url: "careers.hibob.com", matchType: "domain" },
+  { url: "freshteam.com", matchType: "domain" },
+  { url: "successfactors.com", matchType: "domain" },
+  { url: "successfactors.eu", matchType: "domain" },
+  { url: "fa.us2.oraclecloud.com", matchType: "domain" },
+  { url: "fa.us6.oraclecloud.com", matchType: "domain" },
+  { url: "fa.em2.oraclecloud.com", matchType: "domain" },
+  { url: "fa.em3.oraclecloud.com", matchType: "domain" },
+  { url: "fa.em5.oraclecloud.com", matchType: "domain" },
+  { url: "fa.ocs.oraclecloud.com", matchType: "domain" },
+  { url: "fa.ap1.oraclecloud.com", matchType: "domain" },
+  { url: "fa.ca2.oraclecloud.com", matchType: "domain" },
 ];
 
 type Progress = { pages?: number; next: number };
@@ -57,6 +86,8 @@ async function main() {
     saved = { ...saved, completed_at: undefined, pass_started_at: new Date().toISOString(), progress: {} };
   }
   const state: Saved = saved ?? { generated_at: "", pass_started_at: new Date().toISOString(), index_lines: 0, progress: {}, boards: [] };
+  // A query added since the pass finished reopens it (only the new query has pages left).
+  if (state.completed_at && QUERIES.some((q) => !state.progress[`${q.url}|${q.matchType}`])) state.completed_at = undefined;
   if (state.completed_at) {
     console.error(`Pass finished ${state.completed_at.slice(0, 10)}; nothing to do until ${REPASS_DAYS} days later.`);
     return;

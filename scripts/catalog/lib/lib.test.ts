@@ -9,12 +9,16 @@ describe("boardFromUrl", () => {
     expect(boardFromUrl("https://boards-api.greenhouse.io/v1/boards/acme/jobs")).toEqual({ ats: "greenhouse", slug: "acme" });
     expect(boardFromUrl("https://jobs.eu.lever.co/acme/abc")).toEqual({ ats: "lever", slug: "acme", region: "eu" });
     expect(boardFromUrl("https://bank.wd5.myworkdayjobs.com/en-US/Careers/job/x")).toEqual({ ats: "workday", slug: "bank", shard: "wd5", site: "Careers" });
+    expect(boardFromUrl("https://apply.workable.com/acme/j/ABC123")).toEqual({ ats: "workable", slug: "acme" });
+    expect(boardFromUrl("https://aa010.taleo.net/careersection/swd_external/jobdetail.ftl?job=1")).toEqual({ ats: "taleo", slug: "aa010", site: "swd_external" });
+    expect(boardFromUrl("https://career2.successfactors.eu/career?company=Acme")).toEqual({ ats: "successfactors", slug: "Acme", shard: "career2.successfactors.eu" });
   });
-  it("drops host pages, untracked systems and junk", () => {
+  it("drops host pages, incomplete boards and junk", () => {
     expect(boardFromUrl("https://jobs.lever.co/favicon.ico")).toBeNull();
     expect(boardFromUrl("https://jobs.ashbyhq.com/api/non-user-graphql")).toBeNull();
     expect(boardFromUrl("https://bank.wd5.myworkdayjobs.com/")).toBeNull();
-    expect(boardFromUrl("https://apply.workable.com/acme")).toBeNull();
+    // A Taleo pod without a career section isn't one company's board.
+    expect(boardFromUrl("https://aa010.taleo.net/smartorg/smartorg/common/toc.jsf")).toBeNull();
     expect(boardFromUrl("https://jobs.lever.co/acme%22%3E")).toBeNull();
   });
   it("records which crawls saw each board, merging with earlier runs", () => {

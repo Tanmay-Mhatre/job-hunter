@@ -37,7 +37,8 @@ export function refOfEntry(c: DirectoryEntry): CompanyRef {
     ats: c.ats as CompanyRef["ats"],
     slug: c.slug,
     ...(c.region ? { region: c.region as CompanyRef["region"] } : {}),
-    ...(c.shard ? { shard: c.shard, site: c.site } : {}),
+    ...(c.shard ? { shard: c.shard } : {}),
+    ...(c.site ? { site: c.site } : {}),
     ...(c.careers_url ? { careers_url: c.careers_url } : {}),
     enabled: true,
   };

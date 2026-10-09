@@ -50,7 +50,7 @@ describe("pickChecks", () => {
       co("greenhouse:yours", [pm("Dubai", 0)]),
       co("ashby:muted", [pm("Dubai", 0)]),
       co("ashby:recent", [pm("Dubai", 1)]),
-      co("workday:x|wd1|y", [pm("Dubai", 1)]),
+      co("kenexa:x", [pm("Dubai", 1)]), // a hiring system we can't read
       co("greenhouse:old", [pm("Dubai", 20)]),
       co("ashby:older", [pm("Dubai", 25)]),
     ]),

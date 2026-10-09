@@ -32,7 +32,7 @@ const DIRECTORY = [
   entry("lever:leverco", { tags: ["crypto"] }),
   entry("ashby:quiet", { tags: ["payments"] }),
   entry("ashby:mutedco", { tags: ["crypto"] }),
-  entry("workday:bank|wd3|ext", { tags: ["crypto"] }),
+  entry("kenexa:bank", { tags: ["crypto"] }), // a hiring system we can't read
   entry("lever:sleepy", { tags: ["crypto"], status: "dormant" }),
 ];
 

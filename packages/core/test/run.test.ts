@@ -38,7 +38,10 @@ describe("runRadar", () => {
       ["Bank Co", false, 0, 0],
     ]);
     expect(result.health[2]!.error).toMatch(/board not found \(404\): check the slug "broken"/);
-    expect(result.health[3]).toMatchObject({ error: "workday support is coming soon", unsupported: true });
+    // Workday is fetched like the rest (its API answers 404 here).
+    expect(result.health[3]!.error).toMatch(/board not found \(404\)/);
+    expect(result.health[3]!.unsupported).toBeUndefined();
+    expect(calls).toContain("https://bank.wd3.myworkdayjobs.com/wday/cxs/bank/External/jobs");
 
     expect(result.jobs).toHaveLength(5);
     const top = result.jobs[0]!;

@@ -41,30 +41,72 @@ const QUERIES: { url: string; matchType?: "domain" }[] = [
   { url: "careers.smartrecruiters.com/*" },
   { url: "api.smartrecruiters.com/v1/companies/*" },
   { url: "myworkdayjobs.com", matchType: "domain" },
+  // The other hiring systems: boards on a shared path, or one subdomain per company.
+  { url: "apply.workable.com/*" },
+  { url: "www.comeet.com/jobs/*" },
+  { url: "jobs.jobvite.com/*" },
+  { url: "ats.rippling.com/*" },
+  { url: "recruitee.com", matchType: "domain" },
+  { url: "jobs.personio.de", matchType: "domain" },
+  { url: "jobs.personio.com", matchType: "domain" },
+  { url: "bamboohr.com", matchType: "domain" },
+  { url: "breezy.hr", matchType: "domain" },
+  { url: "teamtailor.com", matchType: "domain" },
+  { url: "icims.com", matchType: "domain" },
+  { url: "taleo.net", matchType: "domain" },
+  { url: "pinpointhq.com", matchType: "domain" },
+  { url: "applytojob.com", matchType: "domain" },
+  { url: "zohorecruit.com", matchType: "domain" },
+  { url: "zohorecruit.eu", matchType: "domain" },
+  { url: "zohorecruit.in", matchType: "domain" },
+  { url: "careers.hibob.com", matchType: "domain" },
+  { url: "freshteam.com", matchType: "domain" },
+  { url: "successfactors.com", matchType: "domain" },
+  { url: "successfactors.eu", matchType: "domain" },
+  { url: "fa.us2.oraclecloud.com", matchType: "domain" },
+  { url: "fa.us6.oraclecloud.com", matchType: "domain" },
+  { url: "fa.em2.oraclecloud.com", matchType: "domain" },
+  { url: "fa.em3.oraclecloud.com", matchType: "domain" },
+  { url: "fa.em5.oraclecloud.com", matchType: "domain" },
+  { url: "fa.ocs.oraclecloud.com", matchType: "domain" },
+  { url: "fa.ap1.oraclecloud.com", matchType: "domain" },
+  { url: "fa.ca2.oraclecloud.com", matchType: "domain" },
 ];
 
-type Saved = { generated_at: string; crawls: string[]; index_lines: number; boards: (SeenBoard & { crawls?: string[] })[] };
+/** `queries`: the URL patterns those crawls were read with; a pattern added later is read in them too. */
+type Saved = { generated_at: string; crawls: string[]; queries?: string[]; index_lines: number; boards: (SeenBoard & { crawls?: string[] })[] };
+
+const queryId = (q: { url: string; matchType?: string }) => `${q.url}|${q.matchType ?? ""}`;
 
 async function main() {
   const prev: Saved | undefined = existsSync(OUT) ? JSON.parse(readFileSync(OUT, "utf8")) : undefined;
   // Older files listed crawls per board as `crawls`.
   const boards = new BoardSet((prev?.boards ?? []).map(({ crawls, seen, ...b }) => ({ ...b, seen: seen ?? crawls ?? [] })));
   const done = new Set(prev?.crawls ?? []);
+  const readBefore = new Set(done);
+  // Files from before `queries` was recorded were read with the first 13 patterns.
+  const knownQueries = new Set(prev?.queries ?? (prev ? QUERIES.slice(0, 13).map(queryId) : []));
+  const newQueries = QUERIES.filter((q) => !knownQueries.has(queryId(q)));
   const recent = (await http.getJson<{ id: string }[]>(`${INDEX}/collinfo.json`)).slice(0, CRAWLS_TO_USE).map((c) => c.id);
   // Newest first, so a capped run always picks up the latest crawl.
-  const todo = recent.filter((c) => !done.has(c)).slice(0, PER_RUN);
+  // Crawls not read yet (every pattern), then crawls read before new patterns were added (those only).
+  const todo = [...recent.filter((c) => !done.has(c)), ...(newQueries.length ? recent.filter((c) => done.has(c)) : [])].slice(0, PER_RUN);
+  const backfilled = new Set<string>();
   console.error(`Crawls: ${recent.length} recent, reading ${todo.length} this run${todo.length ? `: ${todo.join(", ")}` : ""}`);
   let lines = prev?.index_lines ?? 0;
 
   const save = () => {
     mkdirSync(dirname(OUT), { recursive: true });
-    const saved: Saved = { generated_at: new Date().toISOString(), crawls: [...done].sort().reverse(), index_lines: lines, boards: boards.list() };
+    // New patterns count as known once every recent crawl has been read with them.
+    const queries = recent.filter((c) => readBefore.has(c)).every((c) => backfilled.has(c)) ? QUERIES.map(queryId) : [...knownQueries];
+    const saved: Saved = { generated_at: new Date().toISOString(), crawls: [...done].sort().reverse(), queries, index_lines: lines, boards: boards.list() };
     writeFileSync(OUT, JSON.stringify(saved));
   };
 
   for (const crawl of todo) {
     let complete = true;
-    for (const q of QUERIES) {
+    const backfill = done.has(crawl);
+    for (const q of backfill ? newQueries : QUERIES) {
       const base = `${INDEX}/${crawl}-index?url=${encodeURIComponent(q.url)}${q.matchType ? `&matchType=${q.matchType}` : ""}&fl=url&filter=!status:404&output=json`;
       let pages = 1;
       try {
@@ -97,7 +139,10 @@ async function main() {
       }
     }
     // A crawl with failed pages is read again next run (boards already found are kept).
-    if (complete) done.add(crawl);
+    if (complete) {
+      if (backfill) backfilled.add(crawl);
+      done.add(crawl);
+    }
     save();
   }
   save();

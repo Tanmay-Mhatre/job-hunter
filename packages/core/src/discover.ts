@@ -99,7 +99,7 @@ const toRef = (c: Pick<CompanyRef, "name" | "ats" | "slug" | "region" | "shard" 
   ats: c.ats,
   slug: c.slug,
   ...(c.region ? { region: c.region } : {}),
-  ...(c.shard ? { shard: c.shard, site: c.site } : {}),
+  ...(c.shard ? { shard: c.shard } : {}), ...(c.site ? { site: c.site } : {}),
   ...(c.careers_url ? { careers_url: c.careers_url } : {}),
   enabled: true,
 });
@@ -150,7 +150,7 @@ export function recordChecks(
       ats: c.ats,
       slug: c.slug,
       ...(c.region ? { region: c.region } : {}),
-      ...(c.shard ? { shard: c.shard, site: c.site } : {}),
+      ...(c.shard ? { shard: c.shard } : {}), ...(c.site ? { site: c.site } : {}),
       ...(c.careers_url ? { careers_url: c.careers_url } : {}),
       lastChecked: now.toISOString(),
       matches: h.matches,

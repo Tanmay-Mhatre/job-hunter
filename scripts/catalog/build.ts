@@ -57,7 +57,7 @@ const rows = merged.map((b) => {
     ats: b.ats,
     slug: b.slug,
     ...(b.region ? { region: b.region } : {}),
-    ...(b.shard ? { shard: b.shard, site: b.site } : {}),
+    ...(b.shard ? { shard: b.shard } : {}), ...(b.site ? { site: b.site } : {}),
     careers_url: careersUrl(b as DetectedCompany),
     tier: curated.has(b.key) ? "curated" : "dump",
     confidence: b.confidence,

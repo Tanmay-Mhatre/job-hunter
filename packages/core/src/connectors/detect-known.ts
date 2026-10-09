@@ -1,8 +1,8 @@
 import { firstPathSegment, type DetectedCompany } from "./types";
 
 /**
- * Careers URLs of ATSs we recognise but don't fetch yet. Detecting them lets setup say
- * "supported soon" and save a config line that starts working once the connector ships.
+ * Careers URLs of the hiring systems whose connectors share this detection (everything beyond
+ * Greenhouse, Lever, Ashby and SmartRecruiters). Each returns what its connector needs to fetch.
  */
 export function detectKnownAts(url: URL): DetectedCompany | null {
   const host = url.hostname.toLowerCase();
@@ -25,12 +25,13 @@ export function detectKnownAts(url: URL): DetectedCompany | null {
   if (host.endsWith(".bamboohr.com") && sub && sub !== "www") return { ats: "bamboohr", slug: sub };
   if (host.endsWith(".breezy.hr") && sub && sub !== "app") return { ats: "breezy", slug: sub };
 
-  // Found by the careers-page resolver (scripts/catalog/resolve.ts); recognised, not fetched yet.
+  // Often found by the careers-page resolver (scripts/catalog/resolve.ts).
   const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
-  // SAP SuccessFactors: career{N}.successfactors.com/career?company=acme (also .eu / sapsf.com hosts)
+  // SAP SuccessFactors: career{N}.successfactors.com/career?company=acme (also .eu / sapsf.com hosts).
+  // The host is the company's data centre, kept in `shard`.
   if (/(^|\.)successfactors\.(com|eu)$|(^|\.)sapsf\.(com|eu)$/.test(host)) {
     const company = url.searchParams.get("company");
-    return company ? { ats: "successfactors", slug: company } : null;
+    return company ? { ats: "successfactors", slug: company, shard: host } : null;
   }
   if (host.endsWith(".teamtailor.com") && sub && !["www", "app", "career", "api"].includes(sub)) return { ats: "teamtailor", slug: sub };
   // Comeet: comeet.com/jobs/{company}/{uid}. Keyed by the company uid; the name goes in `site`.
@@ -41,13 +42,23 @@ export function detectKnownAts(url: URL): DetectedCompany | null {
     const i = parts.findIndex((p) => p.toLowerCase() === "sites");
     return { ats: "oracle", slug: oracle[1]!, shard: oracle[2]!, site: i >= 0 ? parts[i + 1] : undefined };
   }
-  if (host.endsWith(".icims.com") && sub && sub !== "www") return { ats: "icims", slug: sub.replace(/^careers-/, "") };
-  if (host.endsWith(".taleo.net") && sub && sub !== "www") return { ats: "taleo", slug: sub };
+  // iCIMS portals: careers-acme.icims.com, jobs-acme.icims.com… The whole subdomain is the portal.
+  if (host.endsWith(".icims.com") && sub && !["www", "cdn", "cdn01", "cdn02", "community", "careers", "hrjobs"].includes(sub)) return { ats: "icims", slug: sub };
+  // Taleo: {company or pod}.taleo.net/careersection/{section}/jobsearch.ftl. Pods (aa010…) host many
+  // companies, so the section name is part of the key.
+  if (host.endsWith(".taleo.net") && sub && sub !== "www") {
+    const section = parts[0] === "careersection" ? parts[1] : undefined;
+    const real = section && !/^\d{4}PRD|^(rest|iam|theme|careersection|application\.jss)$/i.test(section) ? section : undefined;
+    return { ats: "taleo", slug: sub, ...(real ? { site: real } : {}) };
+  }
   if (host === "jobs.jobvite.com" && seg) return { ats: "jobvite", slug: seg };
   if (host.endsWith(".pinpointhq.com") && sub && !["www", "app", "api"].includes(sub)) return { ats: "pinpoint", slug: sub };
   if (host === "ats.rippling.com" && seg) return { ats: "rippling", slug: seg };
   if (host.endsWith(".applytojob.com") && sub && sub !== "www") return { ats: "jazzhr", slug: sub };
-  if (/\.zohorecruit\.(com|eu|in|com\.au)$/.test(host) && sub && sub !== "www") return { ats: "zoho", slug: sub };
+  // Zoho Recruit: {company}.zohorecruit.com/jobs/{careers page}
+  if (/\.zohorecruit\.(com|eu|in|com\.au)$/.test(host) && sub && sub !== "www") {
+    return { ats: "zoho", slug: sub, ...(parts[0] === "jobs" && parts[1] ? { site: parts[1] } : {}) };
+  }
   if (host.endsWith(".careers.hibob.com") && sub) return { ats: "hibob", slug: sub };
   if (host.endsWith(".freshteam.com") && sub && sub !== "www") return { ats: "freshteam", slug: sub };
   return null;

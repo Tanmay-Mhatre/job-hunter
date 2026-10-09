@@ -18,7 +18,7 @@ const toRef = (r: CompanyCheck, name: string): CompanyRef => ({
   ats: r.ats!,
   slug: r.slug!,
   ...(r.region && r.region !== "global" ? { region: r.region } : {}),
-  ...(r.shard ? { shard: r.shard, site: r.site } : {}),
+  ...(r.shard ? { shard: r.shard } : {}), ...(r.site ? { site: r.site } : {}),
   careers_url: r.careers_url ?? r.input,
 });
 
@@ -84,15 +84,11 @@ export function AddByLink({ watched, onAddMany, onRemove }: { watched: Set<strin
           {error && <span className="text-sm text-bad">{error}</span>}
         </div>
         <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
-          <span>Tracked now:</span>
-          {["greenhouse", "lever", "ashby", "smartrecruiters"].map((a) => (
+          <span>Tracked:</span>
+          {[...SUPPORTED].map((a) => (
             <Chip key={a} tone="accent">
               {ATS_LABEL[a]}
             </Chip>
-          ))}
-          <span className="ml-1">Coming soon:</span>
-          {["workday", "workable", "recruitee", "personio", "bamboohr", "breezy"].map((a) => (
-            <Chip key={a}>{ATS_LABEL[a]}</Chip>
           ))}
         </div>
         {showHelp && (
@@ -104,9 +100,18 @@ export function AddByLink({ watched, onAddMany, onRemove }: { watched: Set<strin
               <li>jobs.ashbyhq.com/<b className="text-fg">company</b></li>
               <li>careers.smartrecruiters.com/<b className="text-fg">Company</b></li>
               <li>
-                <b className="text-fg">company</b>.wd3.myworkdayjobs.com/en-US/<b className="text-fg">Site</b> (coming soon)
+                <b className="text-fg">company</b>.wd3.myworkdayjobs.com/en-US/<b className="text-fg">Site</b>
               </li>
-              <li>apply.workable.com/<b className="text-fg">company</b> (coming soon)</li>
+              <li>apply.workable.com/<b className="text-fg">company</b></li>
+              <li>
+                <b className="text-fg">company</b>.recruitee.com, .bamboohr.com, .breezy.hr, .teamtailor.com, .jobs.personio.com
+              </li>
+              <li>
+                <b className="text-fg">pod</b>.fa.<b className="text-fg">dc</b>.oraclecloud.com/hcmUI/CandidateExperience/en/sites/<b className="text-fg">CX_1</b>
+              </li>
+              <li>
+                <b className="text-fg">host</b>.taleo.net/careersection/<b className="text-fg">section</b>/jobsearch.ftl
+              </li>
             </ul>
           </div>
         )}

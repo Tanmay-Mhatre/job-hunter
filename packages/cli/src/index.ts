@@ -80,7 +80,7 @@ function recordAdditions(dataDir: string, results: CompanyCheck[]): void {
       ats: r.ats!,
       slug: r.slug!,
       ...(r.region ? { region: r.region } : {}),
-      ...(r.shard ? { shard: r.shard, site: r.site } : {}),
+      ...(r.shard ? { shard: r.shard } : {}), ...(r.site ? { site: r.site } : {}),
       careers_url: r.careers_url!,
       status: r.status,
       open_jobs: r.open_jobs ?? null,
@@ -750,7 +750,7 @@ async function cmdSetup(args: string[]): Promise<number> {
         if (fresh.length) {
           queueContributions(
             values.data,
-            fresh.map((r) => ({ ats: r.ats!, slug: r.slug!, ...(r.region === "eu" ? { region: "eu" } : {}), ...(r.shard ? { shard: r.shard, site: r.site } : {}), ...(r.name ? { name: r.name } : {}) })),
+            fresh.map((r) => ({ ats: r.ats!, slug: r.slug!, ...(r.region === "eu" ? { region: "eu" } : {}), ...(r.shard ? { shard: r.shard } : {}), ...(r.site ? { site: r.site } : {}), ...(r.name ? { name: r.name } : {}) })),
           );
           await sendContributions(values.data);
         }

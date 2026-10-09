@@ -34,7 +34,7 @@ export const refOf = (s: CompanySuggestion): CompanyRef => ({
   slug: s.slug,
   careers_url: s.careers_url,
   ...(s.region ? { region: s.region } : {}),
-  ...(s.shard ? { shard: s.shard, site: s.site } : {}),
+  ...(s.shard ? { shard: s.shard } : {}), ...(s.site ? { site: s.site } : {}),
 });
 
 /**

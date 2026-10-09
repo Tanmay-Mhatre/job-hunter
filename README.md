@@ -4,7 +4,7 @@ A free, self-hosted job radar. Describe what you're looking for in one config fi
 
 Good roles often appear on company careers pages (Greenhouse, Lever, Ashby, Workday…) before LinkedIn, or never reach it. Checking 50 careers pages by hand doesn't happen. This does it for you.
 
-> **Status: runs locally.** CLI with Greenhouse, Lever and Ashby connectors, scoring, run history, and a web dashboard. Daily GitHub Actions run and Telegram alerts are next. See [Roadmap](#roadmap).
+> **Status: runs locally.** CLI with connectors for 19 hiring systems (Greenhouse, Lever, Ashby, Workday, SmartRecruiters and 14 more), scoring, run history, and a web dashboard. Daily GitHub Actions run and Telegram alerts are next. See [Roadmap](#roadmap).
 
 ## Getting started
 
@@ -62,15 +62,33 @@ Paste careers URLs into `detect` and copy the lines into `companies:`:
 pnpm jobhunter detect https://jobs.lever.co/somecompany https://job-boards.greenhouse.io/other
 ```
 
-| ATS | Careers URL looks like | Status |
+| ATS | Careers URL looks like | Read from |
 | --- | --- | --- |
-| Greenhouse | `job-boards.greenhouse.io/{slug}` | ✅ |
-| Lever | `jobs.lever.co/{slug}` (EU: `jobs.eu.lever.co`) | ✅ |
-| Ashby | `jobs.ashbyhq.com/{slug}` | ✅ |
-| Workday | `{tenant}.wd{N}.myworkdayjobs.com/{site}` | phase 1 |
-| SmartRecruiters | `careers.smartrecruiters.com/{slug}` | ✅ |
-| Workable | `apply.workable.com/{slug}` | phase 1 |
-| Recruitee, Personio, BambooHR, Breezy | | phase 3 |
+| Greenhouse | `job-boards.greenhouse.io/{slug}` | public API |
+| Lever | `jobs.lever.co/{slug}` (EU: `jobs.eu.lever.co`) | public API |
+| Ashby | `jobs.ashbyhq.com/{slug}` | public API |
+| SmartRecruiters | `careers.smartrecruiters.com/{slug}` | public API |
+| Workday | `{tenant}.wd{N}.myworkdayjobs.com/{site}` | careers-site API (20 per page, capped at 2,000 jobs) |
+| Workable | `apply.workable.com/{slug}` | widget feed |
+| Recruitee | `{slug}.recruitee.com` | careers-site API |
+| Personio | `{slug}.jobs.personio.com` (or `.de`) | XML feed |
+| BambooHR | `{slug}.bamboohr.com/careers` | careers-page JSON |
+| Breezy HR | `{slug}.breezy.hr` | careers-page JSON |
+| Teamtailor | `{slug}.teamtailor.com/jobs` | RSS feed |
+| Pinpoint | `{slug}.pinpointhq.com` | careers-site JSON |
+| Rippling | `ats.rippling.com/{slug}/jobs` | board API |
+| HiBob | `{slug}.careers.hibob.com` | careers-page API |
+| Freshteam | `{slug}.freshteam.com/jobs` | widget feed |
+| Comeet | `www.comeet.com/jobs/{company}/{uid}` | data embedded in the hosted page |
+| Oracle Recruiting | `{pod}.fa.{dc}.oraclecloud.com/hcmUI/CandidateExperience/en/sites/{site}` | candidate-experience API |
+| SAP SuccessFactors | `career{N}.successfactors.com/career?company={id}` (or `.eu`) | XML listing feed |
+| Taleo | `{host}.taleo.net/careersection/{section}/jobsearch.ftl` | career-section search API |
+| iCIMS | `careers-{slug}.icims.com/jobs` | portal search pages |
+| Jobvite | `jobs.jobvite.com/{slug}` | careers search pages |
+| JazzHR | `{slug}.applytojob.com/apply` | careers page |
+| Zoho Recruit | `{slug}.zohorecruit.com/jobs/{page}` | data embedded in the careers page |
+
+iCIMS, Jobvite and JazzHR have no keyless feed, so their connectors read the public careers pages. If a company changes its page template, that connector may need an update.
 
 ## How jobs reach you
 
@@ -156,9 +174,9 @@ Connector tests use saved feed responses in `packages/core/test/fixtures`, so te
 | Phase | Scope |
 | --- | --- |
 | 0. Core ✅ | Schema, config validation, Greenhouse / Lever / Ashby, scoring, CLI, tests |
-| 1. Daily radar | Workday, SmartRecruiters, Workable; `data` branch; daily GitHub Actions run; Telegram digest (new/closed history ✅) |
+| 1. Daily radar | Workday, SmartRecruiters, Workable ✅; `data` branch; daily GitHub Actions run; Telegram digest (new/closed history ✅) |
 | 2. Dashboard | ✅ local dashboard (radar, job detail, pipeline, company health). Cloudflare Pages deploy to come |
-| 3. Open-source launch | Recruitee, Personio, BambooHR, Breezy; setup guide; contributor docs |
+| 3. Open-source launch | Recruitee, Personio, BambooHR, Breezy and 11 more hiring systems ✅; setup guide; contributor docs |
 | 4. Later | Company discovery, GitHub status sync, optional AI re-rank (your own key) |
 
 ## License
