@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { companyKey, connectors } from "./connectors";
 import { companyWords } from "./employers";
@@ -68,11 +68,52 @@ export function scopeCompanies(config: Config, directory: readonly DirectoryEntr
   return [...best.values()].sort((a, b) => (b.open_jobs ?? 0) - (a.open_jobs ?? 0)).map(refOfEntry);
 }
 
-/** About how long a scan of these companies takes: hiring systems run in parallel, ~1.1 s per company each. */
-export function estimateSeconds(companies: readonly Pick<CompanyRef, "ats" | "region">[]): number {
+/**
+ * Seconds a lane spends per company, by hiring system, before a scan has measured it: the shared
+ * APIs of Greenhouse and Ashby take 4 requests a second, the rest 1, and Workday pages.
+ */
+const DEFAULT_SECONDS: Record<string, number> = { greenhouse: 0.35, ashby: 0.35, workday: 1.5 };
+const FALLBACK_SECONDS = 1.1;
+/** Companies in flight per lane (run.ts LANE_WORKERS). */
+const LANE_WORKERS = 4;
+
+/** Measured seconds per company per lane, by hiring system (data/scan-speed.json, updated after each scan). */
+export type ScanSpeeds = Record<string, number>;
+
+export function readSpeeds(dataDir: string): ScanSpeeds {
+  try {
+    const file = join(dataDir, "scan-speed.json");
+    return existsSync(file) ? (JSON.parse(readFileSync(file, "utf8")) as ScanSpeeds) : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Learn from a scan: a lane's time is its companies' summed durations over the companies in flight, so
+ * per company that's sum / (in flight × count). Averaged with what was known, so one slow day doesn't swing it.
+ */
+export function recordSpeeds(dataDir: string, health: readonly CompanyHealth[]): ScanSpeeds {
+  const speeds = readSpeeds(dataDir);
+  const byAts = new Map<string, number[]>();
+  for (const h of health) if (!h.unsupported) byAts.set(h.ats, [...(byAts.get(h.ats) ?? []), h.durationMs]);
+  for (const [ats, ms] of byAts) {
+    if (ms.length < 3) continue;
+    const measured = ms.reduce((a, b) => a + b, 0) / 1000 / (Math.min(LANE_WORKERS, ms.length) * ms.length);
+    speeds[ats] = Math.round((speeds[ats] === undefined ? measured : (speeds[ats] + measured) / 2) * 1000) / 1000;
+  }
+  writeFileSync(join(dataDir, "scan-speed.json"), JSON.stringify(speeds, null, 1));
+  return speeds;
+}
+
+/** About how long a scan of these companies takes: hiring systems run in parallel, so the slowest lane. */
+export function estimateSeconds(companies: readonly Pick<CompanyRef, "ats" | "region">[], speeds: ScanSpeeds = {}): number {
   const lanes = new Map<string, number>();
-  for (const c of companies) lanes.set(`${c.ats}:${c.region ?? ""}`, (lanes.get(`${c.ats}:${c.region ?? ""}`) ?? 0) + 1);
-  return Math.ceil(Math.max(0, ...lanes.values()) * 1.1);
+  for (const c of companies) {
+    const lane = `${c.ats}:${c.region ?? ""}`;
+    lanes.set(lane, (lanes.get(lane) ?? 0) + (speeds[c.ats] ?? DEFAULT_SECONDS[c.ats] ?? FALLBACK_SECONDS));
+  }
+  return Math.ceil(Math.max(0, ...lanes.values()));
 }
 
 export type BoardMove = { name: string; from: CompanyRef; to: CompanyRef };

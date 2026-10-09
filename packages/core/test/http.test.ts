@@ -1,14 +1,28 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { HttpClient } from "../src/http";
 import { json } from "./helpers";
 
-function client(responses: (Response | Error)[], extra: { sleeps?: number[] } = {}) {
+afterEach(() => vi.restoreAllMocks());
+
+/** A clock that sleep() moves forward, so per-host slots behave as in real time. */
+function fakeClock() {
+  let t = 1_000_000;
+  vi.spyOn(Date, "now").mockImplementation(() => t);
+  return (ms: number) => void (t += ms);
+}
+
+function client(responses: (Response | Error)[], extra: { sleeps?: number[]; breakAfter?: number } = {}) {
   const seen: { url: string; ua: string | undefined }[] = [];
+  const tick = fakeClock();
   const http = new HttpClient({
     userAgent: "test-agent",
     hostDelayMs: 0,
     backoffMs: 100,
-    sleep: async (ms) => void extra.sleeps?.push(ms),
+    breakAfter: extra.breakAfter,
+    sleep: async (ms) => {
+      extra.sleeps?.push(ms);
+      tick(ms);
+    },
     fetchImpl: (async (url: string, init?: RequestInit) => {
       seen.push({ url, ua: (init?.headers as Record<string, string>)["user-agent"] });
       const next = responses.shift();
@@ -35,7 +49,40 @@ describe("HttpClient", () => {
     );
     await expect(http.getJson("https://a.example/x")).resolves.toEqual([1]);
     expect(seen).toHaveLength(3);
-    expect(sleeps).toEqual([3000, 200]);
+    // Retry-After 3s, then 200ms backoff; the 429 also slowed the host to 500ms between requests.
+    expect(sleeps).toEqual([3000, 200, 300]);
+  });
+
+  it("revalidates with the saved ETag and reuses the saved body on 304", async () => {
+    const saved = new Map<string, { etag: string; body: string }>();
+    const cache = { get: (u: string) => saved.get(u), set: (u: string, etag: string, body: string) => void saved.set(u, { etag, body }) };
+    const sent: (string | undefined)[] = [];
+    const replies = [new Response(JSON.stringify({ jobs: [1] }), { headers: { etag: 'W/"v1"' } }), new Response(null, { status: 304 })];
+    const http = new HttpClient({
+      hostDelayMs: 0,
+      cache,
+      fetchImpl: (async (_u: string, init?: RequestInit) => {
+        sent.push((init?.headers as Record<string, string>)["if-none-match"]);
+        return replies.shift()!;
+      }) as typeof fetch,
+    });
+    await expect(http.getJson("https://a.example/x")).resolves.toEqual({ jobs: [1] });
+    await expect(http.getJson("https://a.example/x")).resolves.toEqual({ jobs: [1] });
+    expect(sent).toEqual([undefined, 'W/"v1"']);
+    expect(http.stats.notModified).toBe(1);
+  });
+
+  it("skips a host after it fails several times in a row, but not after a 404", async () => {
+    const down = () => new Response("", { status: 503 });
+    const { http, seen } = client([new Response("", { status: 404 }), down(), down()], { breakAfter: 2 });
+    const noRetry = new HttpClient({ hostDelayMs: 0, retries: 0, breakAfter: 2, sleep: async () => {}, fetchImpl: (async () => { seen.push({ url: "", ua: "" }); return down(); }) as unknown as typeof fetch });
+    await expect(http.getJson("https://a.example/404")).rejects.toMatchObject({ status: 404 });
+    await expect(noRetry.getJson("https://h.example/1")).rejects.toMatchObject({ status: 503 });
+    await expect(noRetry.getJson("https://h.example/2")).rejects.toMatchObject({ status: 503 });
+    const before = seen.length;
+    await expect(noRetry.getJson("https://h.example/3")).rejects.toThrow(/failed 2 times in a row/);
+    expect(seen.length).toBe(before);
+    expect(noRetry.stats.brokenHosts).toEqual(["h.example"]);
   });
 
   it("retries network errors, then gives up with the last error", async () => {

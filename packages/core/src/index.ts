@@ -1,6 +1,7 @@
 export * from "./schema";
 export * from "./config";
 export * from "./http";
+export * from "./http-cache";
 export * from "./score";
 export * from "./run";
 export * from "./diff";

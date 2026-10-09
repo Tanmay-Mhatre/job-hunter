@@ -8,11 +8,11 @@ import { company, fakeHttp, fixture, json } from "./helpers";
 const now = new Date("2026-10-03T12:00:00Z");
 
 describe("greenhouse", () => {
-  it("fetches the board with content and normalises jobs", async () => {
+  it("fetches the light board list and normalises jobs (content when the list has it)", async () => {
     const { http, calls } = fakeHttp(() => json(fixture("greenhouse.json")));
     const ref = company("greenhouse");
     const raws = await greenhouse.fetch(ref, { http, now });
-    expect(calls).toEqual(["https://boards-api.greenhouse.io/v1/boards/acme/jobs?content=true"]);
+    expect(calls).toEqual(["https://boards-api.greenhouse.io/v1/boards/acme/jobs?content=false"]);
     expect(raws).toHaveLength(3);
 
     const [first, second, third] = raws.map((r) => greenhouse.normalize(r, ref));
@@ -37,7 +37,14 @@ describe("greenhouse", () => {
   it("uses the one board API for EU-hosted boards too", async () => {
     const { http, calls } = fakeHttp(() => json({ jobs: [] }));
     await greenhouse.fetch(company("greenhouse", { region: "eu" }), { http, now });
-    expect(calls[0]).toBe("https://boards-api.greenhouse.io/v1/boards/acme/jobs?content=true");
+    expect(calls[0]).toBe("https://boards-api.greenhouse.io/v1/boards/acme/jobs?content=false");
+  });
+
+  it("describes one job from its own endpoint", async () => {
+    const { http, calls } = fakeHttp(() => json({ id: 1001, title: "PM", content: "&lt;p&gt;Own payments&lt;/p&gt;" }));
+    const d = await greenhouse.describe!({ id: 1001, title: "PM", absolute_url: "" }, company("greenhouse"), { http, now });
+    expect(calls).toEqual(["https://boards-api.greenhouse.io/v1/boards/acme/jobs/1001"]);
+    expect(d).toBe("Own payments");
   });
 
   it("throws on an unexpected shape", async () => {
