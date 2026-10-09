@@ -492,6 +492,64 @@ const CITY_ALIASES: Record<string, string> = {
   "city of london": "london",
 };
 
+/**
+ * Names for the same place, so picking one finds the others ("dubai" finds "DXB"). Hand-curated;
+ * GeoNames (CC BY 4.0) is the place to extend it from offline later, with attribution.
+ * An upper-case entry is only read in capitals and never as a state code after a comma
+ * ("LA" is Los Angeles, "New Orleans, LA" is Louisiana).
+ */
+export const PLACE_ALIASES: string[][] = [
+  ["san francisco", "sf", "san francisco bay area", "sf bay area", "bay area"],
+  ["new york", "nyc", "new york city"],
+  ["los angeles", "LA"],
+  ["washington dc", "dc", "washington d c", "district of columbia"],
+  ["bangalore", "bengaluru"],
+  ["mumbai", "bombay"],
+  ["gurgaon", "gurugram"],
+  ["chennai", "madras"],
+  ["kolkata", "calcutta"],
+  ["delhi", "new delhi"],
+  ["dubai", "dxb"],
+  ["abu dhabi", "auh"],
+  ["saudi arabia", "ksa"],
+  ["united arab emirates", "uae"],
+  ["united kingdom", "uk", "great britain", "britain", "gb"],
+  ["united states", "usa", "us", "united states of america"],
+  ["ho chi minh city", "saigon"],
+  ["zurich", "zürich"],
+  ["munich", "münchen"],
+  ["cologne", "köln"],
+];
+
+/** Parts a place always includes: picking the UK also finds "England". */
+const PLACE_PARTS: Record<string, string[]> = {
+  "united kingdom": ["england", "scotland", "wales", "northern ireland"],
+};
+
+/** Your place terms plus their other names ("sf" -> "san francisco", "bay area"…). Upper-case-only names stay out. */
+export function expandPlaces(terms: readonly string[]): string[] {
+  const out = new Set<string>();
+  for (const term of terms) {
+    const t = term.toLowerCase().trim();
+    out.add(t);
+    const group = PLACE_ALIASES.find((g) => g.includes(t));
+    for (const name of group ?? []) {
+      if (name !== name.toUpperCase()) out.add(name);
+      for (const part of PLACE_PARTS[name] ?? []) out.add(part);
+    }
+  }
+  return [...out];
+}
+
+const SHORT_NAMES = PLACE_ALIASES.flatMap((g) => g.filter((n) => n === n.toUpperCase()).map((n) => [new RegExp(`(?<!,\\s*)\\b${n}\\b`, "g"), g[0]!] as const));
+
+/** Spell out upper-case-only place names in a job's location: "LA / SF" -> "los angeles / SF". */
+export function spellOutPlaces(location: string): string {
+  let s = location;
+  for (const [re, name] of SHORT_NAMES) s = s.replace(re, name);
+  return s;
+}
+
 /** Wording in a location that isn't a place. */
 const NOT_A_PLACE =
   /\b(fully|remote|remotely|hybrid|office|offices|hq|headquarters|on-?site|onsite|in-?office|within|only|based|any|anywhere|time ?zones?|zone|flexible|first|friendly|travel|required|job|requisitions?|location|locations|multiple|various|global|worldwide|roles?)\b/gi;

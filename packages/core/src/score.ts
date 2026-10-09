@@ -1,6 +1,6 @@
-import { allPlaceNames, countriesIn, LOCATION_SEGMENTS, placeOwner, placeOwnerName, SUBDIVISIONS } from "./catalog/places";
+import { allPlaceNames, countriesIn, expandPlaces, LOCATION_SEGMENTS, placeOwner, placeOwnerName, spellOutPlaces, SUBDIVISIONS } from "./catalog/places";
 import type { NormalizedJob, Profile, ScoreBreakdown } from "./schema";
-import { matchesAny, matchesTerm, termRegex } from "./text";
+import { matchesAny, matchesTerm, matchesTitle, termRegex, titleForms } from "./text";
 
 export const POINTS = {
   titleMatch: 20,
@@ -10,6 +10,8 @@ export const POINTS = {
   keywordCap: 40,
   /** Matched topic weight that fills the topic bar (about three core topics at weight 4). */
   keywordTarget: 12,
+  /** Most topic points a job's title alone can give: half the bar, so a description can still prove more. */
+  titleKeywordCap: 20,
   fresh3d: 10,
   fresh7d: 6,
   older: 2,
@@ -28,7 +30,10 @@ const NON_KEYWORD_MAX = POINTS.titleMatch + POINTS.seniority + POINTS.locationCi
  *   title      20, +10 with a seniority term
  *   location   20 one of your places, 15 remote in your regions
  *   topics     up to 40: the share of your topic weight a job mentions, where min(total weight, 12)
- *              fills the bar (so three core topics are enough; a short list isn't penalised)
+ *              fills the bar (so three core topics are enough; a short list isn't penalised).
+ *              A topic in the title counts on its own too: up to 20, your top topic filling it, so
+ *              jobs with no description ("Payments PM") aren't 0 on topics. The title is part of
+ *              every job, so this never puts a job without a description ahead of the same job with one.
  *   freshness  10 within 3 days, 6 within 7, else 2
  * With no topics at all, title + location + freshness (max 60) is scaled to 0..100 (`why.scale`),
  * so a strong match means the right title, in your place, posted recently.
@@ -40,19 +45,29 @@ const NON_KEYWORD_MAX = POINTS.titleMatch + POINTS.seniority + POINTS.locationCi
  */
 export function scoreJob(job: Scorable, profile: Profile, now: Date, seenAt: Date = now): { score: number; why: ScoreBreakdown } {
   const title = job.title;
+  const forms = titleForms(title);
   const location = gateLocation(job);
-  const titleOk = titlePasses(title, profile);
-  const titlePts = titleOk ? POINTS.titleMatch + (matchesAny(title, profile.seniority_boost) ? POINTS.seniority : 0) : 0;
+  const titleOk = titlePasses(title, profile, forms);
+  const titlePts = titleOk ? POINTS.titleMatch + (matchesTitle(title, profile.seniority_boost, forms) ? POINTS.seniority : 0) : 0;
   const fit = workplaceFit(job, profile) ?? locationFit(location, profile);
   const locationPts = fit.points;
 
-  const haystack = `${title}\n${job.description ?? ""}`;
+  const description = job.description ?? "";
+  const inTitle = new Set(Object.keys(profile.keywords).filter((k) => matchesTitle(title, [k], forms)));
   const matched = Object.entries(profile.keywords)
-    .filter(([k]) => matchesTerm(haystack, k))
+    .filter(([k]) => inTitle.has(k) || matchesTerm(description, k))
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-  const totalWeight = Object.values(profile.keywords).reduce((sum, w) => sum + w, 0);
+  const weights = Object.values(profile.keywords);
+  const totalWeight = weights.reduce((sum, w) => sum + w, 0);
   const matchedWeight = matched.reduce((sum, [, w]) => sum + w, 0);
-  const keywordPoints = totalWeight > 0 ? Math.round(POINTS.keywordCap * Math.min(1, matchedWeight / Math.min(totalWeight, POINTS.keywordTarget))) : 0;
+  const titleWeight = matched.reduce((sum, [k, w]) => sum + (inTitle.has(k) ? w : 0), 0);
+  const keywordPoints =
+    totalWeight > 0
+      ? Math.max(
+          Math.round(POINTS.keywordCap * Math.min(1, matchedWeight / Math.min(totalWeight, POINTS.keywordTarget))),
+          Math.round(POINTS.titleKeywordCap * Math.min(1, titleWeight / Math.max(...weights))),
+        )
+      : 0;
 
   const posted = job.postedAt ? new Date(job.postedAt) : seenAt;
   const ageDays = Number.isNaN(posted.getTime()) ? Infinity : (now.getTime() - posted.getTime()) / DAY_MS;
@@ -84,8 +99,9 @@ function gateLocation(job: Pick<NormalizedJob, "location" | "workplace">): strin
   return job.workplace === "remote" && !matchesTerm(job.location, "remote") ? `${job.location} remote` : job.location;
 }
 
-function titlePasses(title: string, profile: Profile): boolean {
-  return matchesAny(title, profile.titles.include) && !matchesAny(title, profile.titles.exclude);
+/** Include and exclude terms are read the same way (matchesTitle): "Sr. PMM" is still "product marketing". */
+function titlePasses(title: string, profile: Profile, forms = titleForms(title)): boolean {
+  return matchesTitle(title, profile.titles.include, forms) && !matchesTitle(title, profile.titles.exclude, forms);
 }
 
 /** Remote wording that names no place: stripped before checking what else a remote job names. */
@@ -101,19 +117,34 @@ type LocationRules = {
   codes: RegExp | null;
   /** remote_ok terms that name a region or place (everything except plain "remote"). */
   regions: string[];
+  /** remote_ok terms written with "remote" ("remote - us", "US remote"): the place, for remote jobs only. */
+  remoteRegions: string[];
   /** The user takes remote jobs that name no place at all. */
   bareRemote: boolean;
   exclude: string[];
   /** Longer place names that contain one of the user's terms but are somewhere else. */
   mask: RegExp | null;
 };
+/** "remote - us", "US remote", "Remote (USA)" -> "us" / "usa"; undefined when the term isn't remote plus a place. */
+function remotePlace(term: string): string | undefined {
+  if (!matchesTerm(term, "remote")) return undefined;
+  const place = term.toLowerCase().replace(/\bremote\b/g, " ").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  return place || undefined;
+}
+
 const rulesCache = new WeakMap<Profile["locations"], LocationRules>();
 
 function rulesFor(profile: Profile): LocationRules {
   const loc = profile.locations;
   let rules = rulesCache.get(loc);
   if (!rules) {
-    const mine = [...loc.include, ...loc.remote_ok, ...loc.remote_exclude].map((t) => t.toLowerCase());
+    // Every name of each place ("sf" is "san francisco"), and "remote (usa)" read as "usa" for remote jobs.
+    const include = expandPlaces(loc.include);
+    const plainOk = loc.remote_ok.filter((t) => t.toLowerCase() !== "remote" && !remotePlace(t));
+    const regions = expandPlaces(plainOk);
+    const remoteRegions = expandPlaces(loc.remote_ok.map(remotePlace).filter((t): t is string => !!t));
+    const exclude = expandPlaces(loc.remote_exclude.map((t) => remotePlace(t) ?? t));
+    const mine = [...include, ...regions, ...remoteRegions, ...exclude];
     const owners = new Map(mine.map((t) => [t, placeOwner(t)]));
     // "New South Wales" hides "wales", "North America" hides "america", unless the user picked them
     // or they belong to the same place ("united arab emirates" never hides "emirates").
@@ -121,16 +152,17 @@ function rulesFor(profile: Profile): LocationRules {
       (p) => p.includes(" ") && !mine.includes(p) && mine.some((t) => t !== p && matchesTerm(p, t) && (!owners.get(t) || owners.get(t) !== placeOwner(p))),
     );
     // Countries the user picked (by any of their names or cities).
-    const countries = new Set(loc.include.map((t) => placeOwner(t)).filter((o): o is string => !!o?.startsWith("country:")).map((o) => o.slice(8)));
+    const countries = new Set(include.map((t) => placeOwner(t)).filter((o): o is string => !!o?.startsWith("country:")).map((o) => o.slice(8)));
     const subs = [...countries].map((c) => SUBDIVISIONS[c]).filter((x) => !!x);
     const codes = subs.flatMap((x) => x!.codes);
     rules = {
-      include: loc.include,
+      include,
       subdivisions: subs.flatMap((x) => x!.names),
       codes: codes.length ? new RegExp(`(?:,\\s*|\\()(?:${codes.join("|")})(?![\\p{L}])`, "u") : null,
-      regions: loc.remote_ok.filter((t) => t.toLowerCase() !== "remote"),
+      regions,
+      remoteRegions,
       bareRemote: loc.remote_ok.some((t) => GENERIC_REMOTE.includes(t.toLowerCase())),
-      exclude: loc.remote_exclude,
+      exclude,
       mask: hide.length ? new RegExp(hide.map((p) => `(?:${termRegex(p).source})`).join("|"), "giu") : null,
     };
     rulesCache.set(loc, rules);
@@ -167,11 +199,12 @@ export function locationFit(location: string, profile: Profile): { points: numbe
   const r = rulesFor(profile);
   // "U.S." -> "US", "D.C." -> "DC", so abbreviations match like the plain words.
   const plain = location.replace(/\bU\.S\.A\.?/g, "USA").replace(/\bU\.S\.?/g, "US").replace(/\bD\.C\.?/g, "DC");
-  const text = r.mask ? plain.replace(r.mask, " ") : plain;
+  const spelled = spellOutPlaces(plain);
+  const text = r.mask ? spelled.replace(r.mask, " ") : spelled;
   if (inYourPlaces(text, r)) return { points: POINTS.locationCity };
   const excluded = matchesAny(text, r.exclude);
-  if (!excluded && matchesAny(text, r.regions)) return { points: POINTS.locationRemote };
   const remote = matchesTerm(location, "remote");
+  if (!excluded && (matchesAny(text, r.regions) || (remote && matchesAny(text, r.remoteRegions)))) return { points: POINTS.locationRemote };
   if (!remote) return { points: 0 };
   // What's left once remote wording and punctuation are gone is a place: the job is remote there only.
   const rest = plain.replace(REMOTE_WORDS, " ").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
