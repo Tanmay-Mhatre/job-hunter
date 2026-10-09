@@ -170,3 +170,4 @@ export function companyKey(c: { ats: string; slug: string; shard?: string; site?
 }
 
 export type { Connector, Ctx, DetectedCompany } from "./types";
+export { companyOfJobId, currentJobId, jobCompanyKey } from "./types";

@@ -1,3 +1,4 @@
+import { companyOfJobId, currentJobId, jobCompanyKey } from "./connectors";
 import { byScore, type RunResult } from "./run";
 import type { CompanyRef, Job } from "./schema";
 
@@ -14,8 +15,6 @@ export type MergeResult = {
   closedIds: Set<string>;
 };
 
-export const companyKey = (ats: string, slug: string) => `${ats}:${slug.toLowerCase()}`;
-const keyOfJob = (j: Job) => j.id.split(":", 2).join(":");
 
 /**
  * Merge this run into the stored history: new / still open / missing / closed.
@@ -25,12 +24,18 @@ const keyOfJob = (j: Job) => j.id.split(":", 2).join(":");
 export function mergeHistory(
   previous: readonly Job[],
   run: RunResult,
-  companies: readonly Pick<CompanyRef, "ats" | "slug">[],
+  companies: readonly Pick<CompanyRef, "ats" | "slug" | "site">[],
   now = new Date(run.startedAt),
 ): MergeResult {
-  const configured = new Set(companies.map((c) => companyKey(c.ats, c.slug)));
-  const fetchedOk = new Set(run.health.filter((h) => h.ok).map((h) => companyKey(h.ats, h.slug)));
+  // Job ids carry their company's jobCompanyKey(); Workday and Taleo ones include the site.
+  const configured = new Set(companies.map(jobCompanyKey));
+  const fetchedOk = new Set(run.health.filter((h) => h.ok).map((h) => h.key ?? jobCompanyKey(h)));
   const current = new Map(run.jobs.map((j) => [j.id, j]));
+  // Older saves may hold ids in an earlier form; rewrite them so their history carries on.
+  previous = previous.map((j) => {
+    const id = currentJobId(j.id);
+    return id === j.id ? j : { ...j, id };
+  });
   const prevById = new Map(previous.map((j) => [j.id, j]));
   const cutoff = now.getTime() - KEEP_CLOSED_DAYS * 86_400_000;
 
@@ -45,7 +50,7 @@ export function mergeHistory(
 
   for (const p of previous) {
     if (current.has(p.id)) continue;
-    const key = keyOfJob(p);
+    const key = companyOfJobId(p.id);
     if (!configured.has(key)) continue;
     if (!fetchedOk.has(key)) {
       if (p.status === "open" || Date.parse(p.lastSeen) >= cutoff) jobs.push(p);

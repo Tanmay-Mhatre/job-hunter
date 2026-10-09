@@ -1,7 +1,7 @@
 import type { NormalizedJob, Workplace } from "../schema";
 import { htmlToText, inferWorkplace } from "../text";
 import { detectAs, isoDate, relativePosted } from "./parse";
-import { jobId, type Connector } from "./types";
+import { jobCompanyKey, workdayJobKey, type Connector } from "./types";
 
 /** The careers site's own JSON API (/wday/cxs/{tenant}/{site}/jobs), keyless. */
 export type WorkdayPosting = {
@@ -60,7 +60,7 @@ export const workday: Connector<WorkdayPosting> = {
   normalize(raw, ref): NormalizedJob {
     const location = raw.locationsText ?? "";
     return {
-      id: jobId("workday", `${ref.slug}|${ref.site}`, raw.externalPath.split("/").pop() || raw.externalPath),
+      id: `${jobCompanyKey(ref)}:${workdayJobKey(raw.externalPath)}`,
       ats: "workday",
       company: ref.name,
       title: raw.title.trim(),

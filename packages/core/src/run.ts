@@ -1,4 +1,4 @@
-import { companyKey, getConnector } from "./connectors";
+import { companyKey, getConnector, jobCompanyKey } from "./connectors";
 import { HttpClient, HttpError } from "./http";
 import type { CompanyHealth, CompanyRef, Config, Job } from "./schema";
 import { scoreJob } from "./score";
@@ -65,7 +65,7 @@ export async function runRadar(config: Config, opts: RunOptions = {}): Promise<R
 
   const fetchOne = async (company: CompanyRef, extra: boolean) => {
     const started = Date.now();
-    const h: CompanyHealth = { company: company.name, ats: company.ats, slug: company.slug, ok: false, jobsFound: 0, matches: 0, durationMs: 0 };
+    const h: CompanyHealth = { company: company.name, ats: company.ats, slug: company.slug, key: jobCompanyKey(company), ok: false, jobsFound: 0, matches: 0, durationMs: 0 };
     const kept: Job[] = [];
     const connector = getConnector(company.ats);
     try {

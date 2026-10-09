@@ -30,7 +30,7 @@ describe("workday connector", () => {
     expect(calls).toEqual(["https://bank.wd3.myworkdayjobs.com/wday/cxs/bank/External/jobs", "https://bank.wd3.myworkdayjobs.com/wday/cxs/bank/External/jobs"]);
     expect(jobs).toHaveLength(25);
     expect(jobs[0]).toMatchObject({
-      id: "workday:bank|external:PM_0",
+      id: "workday:bank|external:0",
       title: "Product Manager 0",
       location: "Dubai",
       workplace: "hybrid",

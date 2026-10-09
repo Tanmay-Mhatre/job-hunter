@@ -93,6 +93,8 @@ export type CompanyHealth = {
   company: string;
   ats: AtsType;
   slug: string;
+  /** jobCompanyKey() of the company: the prefix of its job ids. Older runs don't have it. */
+  key?: string;
   ok: boolean;
   jobsFound: number;
   /** Jobs that passed the title and location gates. */

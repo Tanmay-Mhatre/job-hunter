@@ -665,6 +665,14 @@ async function cmdDirectory(args: string[]): Promise<number> {
   });
   const dataDir = resolve(values.data);
   const out = (o: object, text: string) => console.log(values.json ? JSON.stringify(o) : text);
+  /** Board sharing (on by default); when off, anything still waiting is dropped, not sent. */
+  const sharing = () => {
+    try {
+      return loadConfig().config.directory.share_additions !== false;
+    } catch {
+      return true;
+    }
+  };
   switch (positionals[0] ?? "status") {
     case "status": {
       const s = directoryStatus(dataDir);
@@ -698,13 +706,13 @@ async function cmdDirectory(args: string[]): Promise<number> {
         out({ updated: false, message: "Recent enough." }, "Directory is recent enough.");
         return 0;
       }
-      const shared = await sendContributions(dataDir);
+      const shared = await sendContributions(dataDir, { enabled: sharing() });
       const result = await updateDirectory(dataDir, { force: values.force }).catch((err: Error) => ({ updated: false, message: `Update failed: ${err.message}` }));
       out({ ...result, shared: shared.sent }, `${result.message}${shared.sent ? ` ${shared.message}` : ""}`);
       return 0;
     }
     case "share": {
-      const result = await sendContributions(dataDir);
+      const result = await sendContributions(dataDir, { enabled: sharing() });
       out(result, result.message);
       return 0;
     }

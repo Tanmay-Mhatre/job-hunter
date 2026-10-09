@@ -35,6 +35,63 @@ const health = (ok: boolean): CompanyHealth[] => [
 const run = (at: string, jobs: Job[], ok = true): RunResult => ({ startedAt: at, finishedAt: at, jobs, health: health(ok), partial: false, checked: 0 });
 const companies = [{ ats: "greenhouse" as const, slug: "acme" }];
 
+describe("mergeHistory: Workday and Taleo", () => {
+  const wd = { ats: "workday" as const, slug: "bank", shard: "wd3", site: "External" };
+  const wdJob = (req: string, o: Partial<Job> = {}) => job(req, { id: `workday:bank|external:${req}`, ats: "workday", ...o });
+  const wdHealth = (ok: boolean): CompanyHealth[] => [{ company: "Bank", ats: "workday", slug: "bank", key: "workday:bank|external", ok, jobsFound: 0, matches: 0, durationMs: 1 }];
+  const wdRun = (at: string, jobs: Job[], ok = true): RunResult => ({ startedAt: at, finishedAt: at, jobs, health: wdHealth(ok), partial: false, checked: 0 });
+
+  it("closes a Workday job after it's missing twice, like any other", () => {
+    const m1 = mergeHistory([wdJob("R1")], wdRun(T1, []), [wd]);
+    expect(m1.jobs.map((j) => [j.id, j.status, j.missedRuns])).toEqual([["workday:bank|external:R1", "open", 1]]);
+    const m2 = mergeHistory(m1.jobs, wdRun(T2, []), [wd]);
+    expect([...m2.closedIds]).toEqual(["workday:bank|external:R1"]);
+  });
+
+  it("keeps a Workday company's jobs when its fetch fails, so they don't come back as new", () => {
+    const m1 = mergeHistory([wdJob("R1")], wdRun(T1, [], false), [wd]);
+    expect(m1.jobs.map((j) => j.id)).toEqual(["workday:bank|external:R1"]);
+    const m2 = mergeHistory(m1.jobs, wdRun(T2, [wdJob("R1", { lastSeen: T2 })]), [wd]);
+    expect(m2.newIds.size).toBe(0);
+  });
+
+  it("carries history over from ids saved with the title in them", () => {
+    const old = wdJob("R1", { id: "workday:bank|external:Senior-PM_R1", firstSeen: T0 });
+    const m = mergeHistory([old], wdRun(T1, [wdJob("R1", { firstSeen: T1, lastSeen: T1 })]), [wd]);
+    expect(m.newIds.size).toBe(0);
+    expect(m.jobs).toHaveLength(1);
+  });
+
+  it("handles Taleo career sections", () => {
+    const tl = { ats: "taleo" as const, slug: "corp", site: "ext" };
+    const tlJob = job("9", { id: "taleo:corp|ext:9", ats: "taleo" });
+    const r: RunResult = { startedAt: T1, finishedAt: T1, jobs: [], health: [{ company: "Corp", ats: "taleo", slug: "corp", key: "taleo:corp|ext", ok: true, jobsFound: 0, matches: 0, durationMs: 1 }], partial: false, checked: 0 };
+    expect(mergeHistory([tlJob], r, [tl]).jobs[0]?.missedRuns).toBe(1);
+  });
+});
+
+describe("job ids carry their company's key", () => {
+  it("for every connector, jobCompanyKey() of the company is the start of its job ids", async () => {
+    const { connectors, jobCompanyKey, companyOfJobId } = await import("../src/connectors");
+    const refs = [
+      { name: "A", ats: "workday", slug: "Bank", shard: "wd3", site: "External" },
+      { name: "A", ats: "taleo", slug: "corp", site: "ext" },
+      { name: "A", ats: "taleo", slug: "corp" },
+      { name: "A", ats: "greenhouse", slug: "Acme" },
+    ] as const;
+    const raws: Record<string, unknown> = {
+      workday: { title: "PM", externalPath: "/job/Dubai/Senior-PM_R-123", locationsText: "Dubai", postedOn: "Posted Today" },
+      taleo: { contestNo: "77", column: ["PM", "Dubai", "Oct 1, 2026"] },
+      greenhouse: { id: 5, title: "PM", absolute_url: "https://x", location: { name: "Dubai" }, updated_at: "2026-10-01T00:00:00Z" },
+    };
+    for (const ref of refs) {
+      const c = connectors[ref.ats]!;
+      const j = c.normalize(raws[ref.ats] as never, ref as never);
+      expect(companyOfJobId(j.id)).toBe(jobCompanyKey(ref));
+    }
+  });
+});
+
 describe("mergeHistory", () => {
   it("marks jobs never seen before as new", () => {
     const m = mergeHistory([job("1")], run(T1, [job("1", { lastSeen: T1 }), job("2", { firstSeen: T1, lastSeen: T1 })]), companies);
