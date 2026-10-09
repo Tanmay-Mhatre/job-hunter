@@ -243,7 +243,7 @@ export function App() {
   const lastTab = useRef<Tab | null>(tab);
   useEffect(() => {
     // Setup routes set their own title.
-    if (viewLabel) document.title = `${viewLabel} · RawJobs`;
+    if (viewLabel) document.title = `RawJobs · ${viewLabel}`;
     if (tab && lastTab.current !== tab) headingRef.current?.focus({ preventScroll: true });
     lastTab.current = tab;
   }, [tab, viewLabel]);
