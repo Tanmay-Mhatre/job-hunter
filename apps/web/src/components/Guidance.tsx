@@ -1,16 +1,22 @@
 import { diagnoseNoMatches } from "@jobhunter/core/diagnose";
 import { ArrowRight, Bell, Check, ChevronRight, LoaderCircle, Radar as RadarIcon, RefreshCw, SearchX, TriangleAlert, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { scheduleStatus } from "../lib/automation";
 import type { Config } from "@jobhunter/core/schema";
 import { keyOf } from "../lib/companies";
-import type { DataMeta, Job } from "../lib/data";
+import { canRunLocally, type DataMeta, type Job } from "../lib/data";
 import { scanLine, type ScanState } from "../lib/scan";
 import { STEP, STEP_COUNT } from "../lib/setup";
 import { load, save } from "../lib/storage";
 import { ScanProgress } from "./ScanProgress";
-import { Button, Card, Chip, cx } from "./ui";
+import { Button, Card, cx } from "./ui";
 
-type Item = { key: string; label: string; detail: string; done: boolean; step?: number; soon?: boolean; /** Nice to have: not counted in progress. */ optional?: boolean };
+/** Settings > Scheduled scans (Telegram alerts sit right below it). */
+export const goDailyAlerts = () => {
+  location.hash = "settings?section=schedule";
+};
+
+type Item = { key: string; label: string; detail: string; done: boolean; step?: number; /** Nice to have: not counted in progress. */ optional?: boolean };
 
 /** What's set up and what's missing, from the saved config and the latest run. */
 export function checklistItems(config: Config | undefined, meta: DataMeta | undefined, hasResume = false): Item[] {
@@ -42,7 +48,8 @@ export function checklistItems(config: Config | undefined, meta: DataMeta | unde
       optional: true,
     },
     { key: "scan", label: "First scan", detail: last ? "Done" : "Not run yet", done: !!last },
-    { key: "daily", label: "Daily scan + Telegram alerts", detail: "Coming in the next update", done: false, soon: true },
+    // Scheduled scans and Telegram need this computer, so a hosted copy doesn't offer them.
+    ...(canRunLocally ? [{ key: "daily", label: "Daily scans + Telegram alerts", detail: "Optional: get new jobs on your phone every day", done: false, optional: true }] : []),
   ];
 }
 
@@ -52,7 +59,7 @@ function ChecklistRows({ items, onStep, onScan, onCompanies }: { items: Item[]; 
   return (
     <ul className="grid divide-y divide-line sm:grid-cols-2 sm:divide-y-0">
       {items.map((i) => {
-        const action = i.soon ? undefined : i.key === "scan" ? onScan : i.key === "companies" ? onCompanies : i.step ? () => onStep(i.step!) : undefined;
+        const action = i.key === "scan" ? onScan : i.key === "companies" ? onCompanies : i.key === "daily" ? goDailyAlerts : i.step ? () => onStep(i.step!) : undefined;
         return (
           <li key={i.key} className="sm:border-b sm:border-line sm:odd:border-r">
             <button
@@ -64,16 +71,16 @@ function ChecklistRows({ items, onStep, onScan, onCompanies }: { items: Item[]; 
               <span
                 className={cx(
                   "flex size-6 shrink-0 items-center justify-center rounded-full border",
-                  i.done ? "border-accent bg-accent text-accent-fg" : i.soon ? "border-dashed border-line text-muted" : "border-line",
+                  i.done ? "border-accent bg-accent text-accent-fg" : i.key === "daily" ? "border-line text-muted" : "border-line",
                 )}
               >
-                {i.done ? <Check className="size-3.5" /> : i.soon ? <Bell className="size-3" /> : null}
+                {i.done ? <Check className="size-3.5" /> : i.key === "daily" ? <Bell className="size-3" /> : null}
               </span>
               <span className="min-w-0 flex-1">
-                <span className={cx("block text-sm font-medium", i.soon && "text-muted")}>{i.label}</span>
+                <span className="block text-sm font-medium">{i.label}</span>
                 <span className={cx("block truncate text-xs", i.detail.includes("failing") ? "text-bad" : "text-muted")}>{i.detail}</span>
               </span>
-              {i.soon ? <Chip>soon</Chip> : action && <ChevronRight className="size-4 text-muted" />}
+              {action && <ChevronRight className="size-4 text-muted" />}
             </button>
           </li>
         );
@@ -83,13 +90,21 @@ function ChecklistRows({ items, onStep, onScan, onCompanies }: { items: Item[]; 
 }
 
 const countDone = (items: Item[]) => {
-  const core = items.filter((i) => !i.soon && !i.optional);
+  const core = items.filter((i) => !i.optional);
   return { done: core.filter((i) => i.done).length, total: core.length };
 };
 
 function ProgressBar({ done, total, className }: { done: number; total: number; className?: string }) {
   return (
-    <div className={cx("h-1.5 overflow-hidden rounded-full bg-surface-2", className)}>
+    <div
+      className={cx("h-1.5 overflow-hidden rounded-full bg-surface-2", className)}
+      role="progressbar"
+      aria-label="Setup progress"
+      aria-valuemin={0}
+      aria-valuemax={total}
+      aria-valuenow={done}
+      aria-valuetext={`${done} of ${total} done`}
+    >
       <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${(done / total) * 100}%` }} />
     </div>
   );
@@ -110,21 +125,34 @@ export function SetupChecklist({
   const [dismissed, setDismissed] = useState(() => load(DISMISS_KEY, false));
   const { done, total } = countDone(items);
   const complete = done === total;
+  // Already scanning on a schedule: no need to point at it.
+  const [scheduled, setScheduled] = useState(false);
+  useEffect(() => {
+    if (complete && !dismissed && canRunLocally) void scheduleStatus().then((s) => setScheduled(!!s.installed), () => {});
+  }, [complete, dismissed]);
   if (complete && dismissed) return null;
   if (complete) {
-    const soon = items.find((i) => i.soon);
+    const daily = items.find((i) => i.key === "daily");
     return (
       <div className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-2.5 text-sm">
         <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-accent text-accent-fg">
           <Check className="size-3" />
         </span>
         <span className="min-w-0 flex-1">
-          <b>Setup complete.</b> <span className="text-muted">{soon ? `Next: ${soon.label.toLowerCase()} (coming soon).` : ""}</span>
+          <b>Setup complete.</b>{" "}
+          {daily && !scheduled && (
+            <span className="text-muted">
+              Next:{" "}
+              <button type="button" className="font-medium text-accent hover:underline" onClick={goDailyAlerts}>
+                get new jobs on Telegram every day <span aria-hidden="true">&rarr;</span>
+              </button>
+            </span>
+          )}
         </span>
         <button
           type="button"
-          aria-label="Hide"
-          className="rounded p-1 text-muted hover:text-fg"
+          aria-label="Hide setup checklist"
+          className="inline-flex size-8 items-center justify-center rounded-lg text-muted hover:bg-surface-2 hover:text-fg"
           onClick={() => {
             save(DISMISS_KEY, true);
             setDismissed(true);
@@ -174,7 +202,7 @@ export function SetupHero({
           <RadarIcon className="size-6" />
         </span>
         <div className="min-w-0 flex-1">
-          <h1 className="text-lg font-semibold">{started ? "Finish setting up your radar" : "Set up your radar"}</h1>
+          <h2 className="text-lg font-semibold">{started ? "Finish setting up your radar" : "Set up your radar"}</h2>
           <p className="mt-0.5 text-sm text-muted">
             Tell us the roles and places you want, and we'll find and rank matching jobs across thousands of companies. About 3 minutes.
           </p>
@@ -196,16 +224,21 @@ export function SetupHero({
   );
 }
 
-/** The config file exists but doesn't validate (usually a hand edit). */
+/** The saved settings exist but don't validate (usually a hand edit). */
 export function ConfigProblemCard({ errors, onFix }: { errors?: string; onFix: () => void }) {
   return (
     <Card className="border-warn/40 p-5">
       <div className="flex items-start gap-3">
         <TriangleAlert className="mt-0.5 size-5 shrink-0 text-warn" />
         <div className="min-w-0 flex-1">
-          <h2 className="font-semibold">Your config file has a problem</h2>
-          <p className="mt-0.5 text-sm text-muted">Scans can't run until it's fixed. Setup loads everything it can read, so you only fix what's wrong.</p>
-          {errors && <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded-lg bg-surface-2 p-2.5 font-mono text-xs text-muted">{errors}</pre>}
+          <h2 className="font-semibold">Some of your saved settings can't be read</h2>
+          <p className="mt-0.5 text-sm text-muted">Scans can't run until they're fixed. Setup loads everything it can read, so you only fix what's wrong.</p>
+          {errors && (
+            <details className="mt-2 text-xs text-muted">
+              <summary className="cursor-pointer">Technical details</summary>
+              <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded-lg bg-surface-2 p-2.5 font-mono">{errors}</pre>
+            </details>
+          )}
         </div>
       </div>
       <Button variant="primary" className="mt-4" onClick={onFix}>
@@ -222,15 +255,15 @@ export function FirstScanCard({ scan, onScan }: { scan: ScanState; onScan: () =>
     <Card className="p-6 text-center sm:p-8">
       <h2 className="text-lg font-semibold">{running ? "Finding jobs for you…" : "Ready for your first scan"}</h2>
       <p className="mx-auto mt-1 max-w-md text-sm text-muted">
-        We sync the company directory, check your companies and every company in your industries live, and score each job against your profile.
+        We update the company directory, scan your companies and every company in your industries live, and score each job against your profile.
       </p>
       {running ? (
         <div className="mx-auto mt-5 max-w-md text-left">
-          <ScanProgress scan={scan} />
+          <ScanProgress scan={scan} onRetry={onScan} />
         </div>
       ) : (
         <Button variant="primary" className="mt-5 h-11 px-5 text-base" onClick={onScan}>
-          <RefreshCw className="size-4" /> Run my first scan
+          <RefreshCw className="size-4" /> Start my first scan
         </Button>
       )}
     </Card>
@@ -298,7 +331,7 @@ export function NoMatches({ jobs, onStep, onCompanies }: { jobs: Job[]; onStep: 
         <button type="button" className="font-medium text-accent" onClick={onCompanies}>
           add companies you'd like to work at
         </button>
-        : we check them every scan, even ones the directory doesn't list.
+        : we scan them every time, even ones the directory doesn't list.
       </p>
     </Card>
   );
@@ -316,9 +349,9 @@ export function FailingBanner({ count, onOpen }: { count: number; onOpen: () => 
         <b>
           {count} compan{count === 1 ? "y" : "ies"}
         </b>{" "}
-        couldn't be checked in the last scan. Usually the careers link changed.
+        couldn't be scanned last time. Usually the careers page moved.
       </span>
-      <span className="font-medium text-warn">Review</span>
+      <span className="font-medium text-warn">Review failing companies</span>
     </button>
   );
 }
@@ -327,14 +360,23 @@ export function ScanningBar({ scan, onStop }: { scan: ScanState; onStop?: () => 
   if (scan.phase !== "running") return null;
   return (
     <Card className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 text-sm">
-      <LoaderCircle className="size-4 animate-spin text-accent" />
-      <span className="min-w-0 flex-1">{scanLine(scan)}</span>
-      <div className="h-1.5 w-28 overflow-hidden rounded-full bg-surface-2">
+      <LoaderCircle className="size-4 animate-spin text-accent" aria-hidden="true" />
+      <span className="min-w-0 flex-1" role="status">
+        {scanLine(scan)}
+      </span>
+      <div
+        className="h-1.5 w-28 overflow-hidden rounded-full bg-surface-2"
+        role="progressbar"
+        aria-label="Scan progress"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={scan.total ? Math.round((scan.done / scan.total) * 100) : 0}
+      >
         <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${scan.total ? (scan.done / scan.total) * 100 : 4}%` }} />
       </div>
       {onStop && (
         <Button size="sm" variant="ghost" onClick={onStop} disabled={scan.stopping}>
-          {scan.stopping ? "Stopping…" : "Stop"}
+          {scan.stopping ? "Stopping…" : "Stop scan"}
         </Button>
       )}
     </Card>

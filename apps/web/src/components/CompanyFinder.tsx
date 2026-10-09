@@ -1,12 +1,13 @@
 import { INDUSTRIES } from "@jobhunter/core/catalog/industries";
-import { ChevronDown, ExternalLink, LoaderCircle, Search } from "lucide-react";
+import { isPlaceholderBoard } from "@jobhunter/core/text";
+import { ChevronDown, CloudDownload, ExternalLink, Link2, LoaderCircle, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ATS_LABEL, groupBoards, SUPPORTED, type CompanyRef } from "../lib/companies";
-import { AddByLink } from "./AddByLink";
-import { DirectoryBar } from "./DirectoryBar";
+import { canRunLocally } from "../lib/data";
+import { DirectoryBar, updateDirectory } from "./DirectoryBar";
 import { AddButton } from "./CompanyButtons";
 import { fitOf } from "./companies/SuggestionCard";
-import { Card, cx, Pagination, Segmented, Select } from "./ui";
+import { Button, cx, Pagination, Segmented, Select } from "./ui";
 
 /** Directory entry served at data/catalog/directory.json (see scripts/catalog/publish.ts). */
 export type DirCompany = CompanyRef & {
@@ -24,8 +25,6 @@ export type DirCompany = CompanyRef & {
 
 const BROWSE_PAGE = 25;
 
-type Tab = "search" | "link";
-
 type Props = {
   /** Keys of the companies in your list (saved or not yet). */
   watched: Set<string>;
@@ -36,66 +35,49 @@ type Props = {
   directoryError: string | null;
   onAddMany: (list: CompanyRef[]) => string[];
   onRemove: (key: string) => void;
+  /** Reload the directory (after an update, or to retry a failed load). */
   onDirectoryUpdated: () => void;
   /** Fit score per company key, from the suggestions (when worked out). */
   fit?: ReadonlyMap<string, number>;
   /** Your industries, offered first in the industry filter. */
   industries?: string[];
-  /** A search handed over from the bar at the top of the page ("See all results"); `n` changes each time. */
-  query?: { text: string; n: number };
+  /** The search from the page header (the page has one search box). */
+  q: string;
+  /** Open "Add by link" (for a company the directory doesn't have). */
+  onAddByLink: () => void;
+  /** The page's one company count (countCompanies), for the directory bar. */
+  companyCount?: number;
 };
 
-/** Add companies you'd like to work at: search the directory, or paste a careers link. */
-export function CompanyFinder({ watched, forYou, directory, directoryError, onAddMany, onRemove, onDirectoryUpdated, fit, industries, query }: Props) {
-  const [tab, setTab] = useState<Tab>("search");
-  useEffect(() => {
-    if (query) setTab("search");
-  }, [query]);
+/** Browse all: the whole directory, filtered by the header search, industry, hiring system or jobs for you. */
+export function CompanyFinder({ watched, forYou, directory, directoryError, onAddMany, onRemove, onDirectoryUpdated, fit, industries, q, onAddByLink, companyCount }: Props) {
   return (
-    <Card className="scroll-mt-20 p-5 sm:p-6" id="browse-companies">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold">Browse all companies</h2>
-          <p className="mt-0.5 text-sm text-muted">Filter the whole directory by industry, hiring system or jobs for you, or add a company by its careers link.</p>
-        </div>
-        <Segmented
-          label="How to add companies"
-          value={tab}
-          onChange={setTab}
-          options={[
-            { value: "search", label: "Search the directory" },
-            { value: "link", label: "Paste a link" },
-          ]}
-        />
-      </div>
-      <div className="mt-5">
-        <DirectoryBar onUpdated={onDirectoryUpdated} />
-        {tab === "search" ? (
-          <Browse
-            all={directory}
-            error={directoryError}
-            forYou={forYou}
-            fit={fit}
-            mine={industries ?? []}
-            watched={watched}
-            onAdd={(c) => void onAddMany([c])}
-            onRemove={onRemove}
-            query={query}
-          />
-        ) : (
-          <AddByLink watched={watched} onAddMany={onAddMany} onRemove={onRemove} />
-        )}
-      </div>
-    </Card>
+    <div className="space-y-4">
+      <DirectoryBar onUpdated={onDirectoryUpdated} companies={companyCount} />
+      <Browse
+        all={directory}
+        error={directoryError}
+        forYou={forYou}
+        fit={fit}
+        mine={industries ?? []}
+        watched={watched}
+        onAdd={(c) => void onAddMany([c])}
+        onRemove={onRemove}
+        q={q}
+        onAddByLink={onAddByLink}
+        onReload={onDirectoryUpdated}
+      />
+    </div>
   );
 }
 
 // ---------- search the whole directory ----------
 
 /**
- * Directory search, one row per company (its other boards fold under it). Browsing lists companies
+ * Directory search, one row per company (its other careers pages fold under it). Browsing lists companies
  * with open jobs; a search finds any, and yours always show. Name matches first, then companies
- * hiring for you now, then the best fit for your profile, then the biggest.
+ * hiring for you now, then the best fit for your profile, then the biggest. Sandbox and test boards
+ * never show (unless one is already in My companies).
  */
 export function searchDirectory(
   all: readonly DirCompany[],
@@ -113,6 +95,7 @@ export function searchDirectory(
   const jobsFor = (c: DirCompany) => o.forYou.get(c.key) ?? 0;
   const system = o.system ?? "all";
   const sorted = all
+    .filter((c) => o.watched.has(c.key) || !isPlaceholderBoard(c.name))
     .filter((c) => c.status === "live" || !!s || o.watched.has(c.key))
     .filter((c) => system === "all" || (system === "supported") === SUPPORTED.has(c.ats))
     .filter((c) => !o.onlyForYou || jobsFor(c) > 0)
@@ -128,6 +111,43 @@ export function searchDirectory(
   return groupBoards(sorted, new Set(o.watched));
 }
 
+/** The directory couldn't load: say so, and offer the fix (download it) and a retry. */
+function DirectoryMissing({ onReload }: { onReload: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  return (
+    <div role="alert" className="space-y-2 rounded-xl bg-warn-soft/50 p-4 text-sm">
+      <p className="font-medium">The company directory isn't available yet.</p>
+      <p className="text-muted">
+        {canRunLocally ? "It hasn't been downloaded to this computer. Download it to browse and search every company." : "It couldn't be loaded. Check your connection and try again."}
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        {canRunLocally && (
+          <Button
+            size="sm"
+            variant="primary"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              setNote(null);
+              const r = await updateDirectory();
+              setBusy(false);
+              if (r.ok) onReload();
+              else setNote(r.text);
+            }}
+          >
+            {busy ? <LoaderCircle className="size-3.5 animate-spin" /> : <CloudDownload className="size-3.5" />} {busy ? "Updating…" : "Update directory"}
+          </Button>
+        )}
+        <Button size="sm" onClick={onReload} disabled={busy}>
+          <RefreshCw className="size-3.5" /> Try again
+        </Button>
+      </div>
+      {note && <p className="text-xs text-bad">{note}</p>}
+    </div>
+  );
+}
+
 function Browse({
   all,
   error,
@@ -137,7 +157,9 @@ function Browse({
   watched,
   onAdd,
   onRemove,
-  query,
+  q,
+  onAddByLink,
+  onReload,
 }: {
   all: DirCompany[] | null;
   error: string | null;
@@ -147,12 +169,10 @@ function Browse({
   watched: Set<string>;
   onAdd: (c: DirCompany) => void;
   onRemove: (key: string) => void;
-  query?: { text: string; n: number };
+  q: string;
+  onAddByLink: () => void;
+  onReload: () => void;
 }) {
-  const [q, setQ] = useState(query?.text ?? "");
-  useEffect(() => {
-    if (query) setQ(query.text);
-  }, [query]);
   const [onlyForYou, setOnlyForYou] = useState(false);
   const [system, setSystem] = useState<"all" | "supported" | "soon">("all");
   const [industry, setIndustry] = useState("");
@@ -172,38 +192,31 @@ function Browse({
     top.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   };
 
-  if (error) return <p className="rounded-lg bg-warn-soft/50 p-3 text-sm text-warn">{error}</p>;
+  if (error) return <DirectoryMissing onReload={onReload} />;
   if (!all)
     return (
-      <p className="flex items-center gap-2 py-6 text-sm text-muted">
+      <p role="status" className="flex items-center gap-2 py-6 text-sm text-muted">
         <LoaderCircle className="size-4 animate-spin" /> Loading the directory…
       </p>
     );
 
   const hiring = all.filter((c) => jobsFor(c) > 0).length;
   const pageItems = results.slice((page - 1) * BROWSE_PAGE, page * BROWSE_PAGE);
+  const from = (page - 1) * BROWSE_PAGE + 1;
+  const to = Math.min(results.length, page * BROWSE_PAGE);
+  const term = q.trim();
 
   return (
     <div className="space-y-3">
-      <div ref={top} className="relative scroll-mt-20">
-        <Search className="pointer-events-none absolute left-3 top-3 size-4 text-muted" />
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder={`Search ${all.length.toLocaleString()} companies by name…`}
-          aria-label="Search companies"
-          className="h-11 w-full rounded-xl border border-line bg-surface pl-9 pr-3 text-sm outline-none placeholder:text-muted focus:border-accent"
-        />
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
+      <div ref={top} className="flex scroll-mt-20 flex-wrap items-center gap-2">
         <Segmented
           label="Hiring system"
           value={system}
           onChange={setSystem}
           options={[
             { value: "all", label: "All" },
-            { value: "supported", label: "Trackable now" },
-            { value: "soon", label: "Coming soon" },
+            { value: "supported", label: "Can scan now" },
+            { value: "soon", label: "Not supported yet" },
           ]}
         />
         <Select value={industry} onChange={(e) => setIndustry(e.target.value)} aria-label="Industry">
@@ -232,7 +245,12 @@ function Browse({
           </label>
         )}
       </div>
-      <Pagination page={page} pageSize={BROWSE_PAGE} total={results.length} onPage={goTo} />
+      {/* Filtered counts stay exact, and say what they count (the directory size is the rounded one). */}
+      <p role="status" className="tabular text-xs text-muted">
+        {results.length === 0
+          ? "No matching companies"
+          : `Showing ${from.toLocaleString()}–${to.toLocaleString()} of ${results.length.toLocaleString()} matching ${results.length === 1 ? "company" : "companies"}${term ? ` for “${term}”` : ""}`}
+      </p>
       <ul className="divide-y divide-line rounded-xl border border-line">
         {pageItems.map((g) => (
           <BrowseRow
@@ -247,7 +265,25 @@ function Browse({
           />
         ))}
         {results.length === 0 && (
-          <li className="px-3 py-6 text-center text-sm text-muted">{q ? <>No company matches “{q}”. Try Paste a link.</> : "No company matches these filters."}</li>
+          <li className="space-y-3 px-3 py-6 text-center text-sm text-muted">
+            <p>{term ? <>No company matches “{term}”. If you know its careers page, add it by link.</> : "No company matches these filters."}</p>
+            {term ? (
+              <Button size="sm" onClick={onAddByLink}>
+                <Link2 className="size-3.5" /> Add by link
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={() => {
+                  setSystem("all");
+                  setIndustry("");
+                  setOnlyForYou(false);
+                }}
+              >
+                Clear filters
+              </Button>
+            )}
+          </li>
         )}
       </ul>
       {results.length > BROWSE_PAGE && <Pagination page={page} pageSize={BROWSE_PAGE} total={results.length} onPage={goTo} />}
@@ -282,21 +318,21 @@ function BoardLine({ c, watched, jobsFor, fitFor, onAdd, onRemove, sub }: LinePr
         <p className="text-xs text-muted">
           {mine > 0 && <span className="font-medium text-accent">{mine === 1 ? "1 job for you · " : `${mine} jobs for you · `}</span>}
           {[
-            !sub && (ATS_LABEL[c.ats] ?? c.ats),
+            !sub && `Hiring system: ${ATS_LABEL[c.ats] ?? c.ats}`,
             c.open_jobs ? `${c.open_jobs.toLocaleString()} open jobs` : c.status === "dormant" ? "no open jobs right now" : c.status === "unverified" ? "not checked yet" : null,
             c.origin === "user" && "added by you",
-            soon && "support coming soon",
+            soon && "not supported yet",
           ]
             .filter(Boolean)
             .join(" · ")}
         </p>
       </div>
-      <AddButton added={watched.has(c.key)} onAdd={() => onAdd(c)} onRemove={() => onRemove(c.key)} soon={soon} />
+      <AddButton added={watched.has(c.key)} onAdd={() => onAdd(c)} onRemove={() => onRemove(c.key)} soon={soon} name={c.name} />
     </div>
   );
 }
 
-/** A company and, folded under it, its other live boards (or ones you watch). */
+/** A company and, folded under it, its other live careers pages (or ones in My companies). */
 export function BrowseRow({ lead, others, ...line }: LineProps & { lead: DirCompany; others: DirCompany[] }) {
   const [open, setOpen] = useState(() => others.some((o) => line.watched.has(o.key)));
   return (
@@ -305,7 +341,7 @@ export function BrowseRow({ lead, others, ...line }: LineProps & { lead: DirComp
       {others.length > 0 && (
         <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="inline-flex items-center gap-1 text-xs font-medium text-accent">
           <ChevronDown className={cx("size-3.5 transition-transform", !open && "-rotate-90")} />
-          {others.length} other board{others.length === 1 ? "" : "s"}
+          {others.length} other careers page{others.length === 1 ? "" : "s"}
         </button>
       )}
       {open && others.map((o) => <BoardLine key={o.key} c={o} sub {...line} />)}
@@ -321,6 +357,7 @@ export function useDirectory(rev: number): { directory: DirCompany[] | null; err
     const get = (path: string) => fetch(path, { cache: "no-store" }).then((r) => (r.ok ? (r.json() as Promise<{ companies: DirCompany[] }>) : null));
     let live = true;
     setError(null);
+    setDirectory(null);
     Promise.all([get("./catalog/directory.json"), get("./catalog/additions.json").catch(() => null)])
       .then(([dir, adds]) => {
         if (!dir) throw new Error("no directory");
@@ -328,7 +365,7 @@ export function useDirectory(rev: number): { directory: DirCompany[] | null; err
         const extra = (adds?.companies ?? []).filter((c) => !known.has(c.key)).map((c): DirCompany => ({ ...c, tier: "dump", indexed: false, origin: "user" }));
         if (live) setDirectory([...dir.companies, ...extra]);
       })
-      .catch(() => live && setError("The company directory isn't downloaded yet. Use Download directory above, or run: pnpm jobhunter directory update"));
+      .catch(() => live && setError("The company directory isn't downloaded yet."));
     return () => {
       live = false;
     };

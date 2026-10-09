@@ -1,4 +1,5 @@
 import { careersUrl, companyKey } from "@jobhunter/core/detect";
+import { isPlaceholderBoard } from "@jobhunter/core/text";
 import { rowId, type CompanyRow, type Draft } from "./setup";
 
 export const ATS_LABEL: Record<string, string> = {
@@ -27,7 +28,7 @@ export const ATS_LABEL: Record<string, string> = {
   freshteam: "Freshteam",
 };
 
-/** Hiring systems we can scan (every one we recognise). Anything else would be kept as "coming soon". */
+/** Hiring systems we can scan (every one we recognise). Anything else is kept as "not supported yet". */
 export const SUPPORTED = new Set(Object.keys(ATS_LABEL));
 
 /** Directory key for a watched company or a directory entry: "ats:slug" (Workday adds shard and site). */
@@ -85,6 +86,16 @@ export function groupBoards<T extends Board>(boards: readonly T[], keep: Readonl
     const [lead, ...others] = list.filter((b) => !live || b.status === "live" || keep.has(b.key)).sort(better);
     return { lead: lead!, others };
   });
+}
+
+/**
+ * How many companies the directory holds: real employers (no sandbox or test boards), one per company
+ * however many careers pages it has. The one "directory size" shown anywhere (H9), via roughCount().
+ */
+export function countCompanies(boards: readonly Board[]): number {
+  const names = new Set<string>();
+  for (const b of boards) if (!isPlaceholderBoard(b.name)) names.add(companyName(b.name) || b.key);
+  return names.size;
 }
 
 export function toRow(c: CompanyRef): CompanyRow {

@@ -1,12 +1,14 @@
-import { ChevronDown, LoaderCircle, RefreshCw, Square } from "lucide-react";
+import { ChevronDown, LoaderCircle, RefreshCw, Square, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { aboutTime, SCOPE_LABEL, scanPrefs, setScanPrefs, useScanPrefs, type ScanState } from "../lib/scan";
+import { roughCount } from "../lib/format";
+import { aboutTime, SCOPE_LABEL, scanPrefs, scopeLabel, setScanPrefs, useScanPrefs, type ScanState } from "../lib/scan";
 import { scanPlan, type ScanPlan, type ScanScope } from "../lib/setup";
-import { Button, Card, cx } from "./ui";
+import { Dialog } from "./Dialog";
+import { Button, Card, cx, IconButton } from "./ui";
 
 const SCOPE_HINT: Record<ScanScope, string> = {
   mine: "Your companies, plus every company in the directory tagged with your industries.",
-  all: "Every company in the directory we can check. Keep this computer on while it runs; you can stop it and carry on later.",
+  all: "Every company in the directory we can scan. Keep this computer on while it runs; you can stop it and carry on later.",
 };
 
 /**
@@ -47,38 +49,43 @@ export function ScanChooser({ open, onClose, onStart }: { open: boolean; onClose
     setScope(p.scope);
     setAlways(!p.ask);
     void scanPlan().then(setPlan);
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", esc);
-    return () => document.removeEventListener("keydown", esc);
-  }, [open, onClose]);
+  }, [open]);
 
-  if (!open) return null;
   const start = () => {
     setScanPrefs({ scope, ask: !always });
     onClose();
     onStart(scope);
   };
+  // No industry companies on top of yours: the "mine" scan is just My companies.
+  const hasIndustries = !plan || plan.mine.extra > 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="scan-chooser-title">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <Card className="relative w-full max-w-md p-5 shadow-2xl sm:p-6">
-        <h2 id="scan-chooser-title" className="text-lg font-semibold">
-          Which scan?
-        </h2>
-        <p className="mt-0.5 text-sm text-muted">Both sync the company directory first, then check each company live for new jobs.</p>
+    <Dialog open={open} onClose={onClose} labelledBy="scan-chooser-title" placement="bottom" initialFocus="[data-autofocus]">
+      <Card className="relative p-5 shadow-2xl sm:p-6">
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <h2 id="scan-chooser-title" className="text-lg font-semibold">
+              Which scan?
+            </h2>
+            <p className="mt-0.5 text-sm text-muted">Both update the company directory first, then scan each company live for new jobs.</p>
+          </div>
+          <IconButton label="Close" className="-mr-2 -mt-1" onClick={onClose}>
+            <X className="size-4" />
+          </IconButton>
+        </div>
 
         <div role="radiogroup" aria-label="Scan type" className="mt-4 space-y-2">
           {(["mine", "all"] as const).map((s) => {
             const p = plan?.[s];
+            const count = p ? p.yours + p.extra : 0;
             return (
               <label key={s} className={cx("flex cursor-pointer gap-3 rounded-xl border p-3.5 transition-colors", scope === s ? "border-accent bg-accent-soft/30" : "border-line hover:border-muted/50")}>
                 <input type="radio" name="scan-scope" checked={scope === s} onChange={() => setScope(s)} className="mt-1 accent-[var(--accent)]" />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold">{SCOPE_LABEL[s]}</span>
-                  <span className="block text-xs text-muted">{SCOPE_HINT[s]}</span>
+                  <span className="block text-sm font-semibold">{scopeLabel(s, hasIndustries)}</span>
+                  <span className="block text-xs text-muted">{s === "mine" && !hasIndustries ? "The companies you've added. Add industries in Settings to scan more." : SCOPE_HINT[s]}</span>
                   <span className="mt-1.5 block text-xs font-medium tabular">
-                    {p ? `${(p.yours + p.extra).toLocaleString()} companies · ${aboutTime(p.seconds)}` : <LoaderCircle className="inline size-3 animate-spin text-muted" />}
+                    {p ? `${s === "all" ? roughCount(count) : count.toLocaleString()} companies · ${aboutTime(p.seconds)}` : <LoaderCircle className="inline size-3 animate-spin text-muted" />}
                   </span>
                   {p?.resumable && <span className="mt-0.5 block text-xs text-accent">Carries on a stopped scan ({p.resumable.done.toLocaleString()} done)</span>}
                 </span>
@@ -99,12 +106,12 @@ export function ScanChooser({ open, onClose, onStart }: { open: boolean; onClose
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={start} autoFocus>
+          <Button variant="primary" onClick={start} data-autofocus>
             <RefreshCw className="size-4" /> Start scan
           </Button>
         </div>
       </Card>
-    </div>
+    </Dialog>
   );
 }
 

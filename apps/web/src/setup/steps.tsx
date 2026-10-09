@@ -2,22 +2,30 @@ import { matchesTerm } from "@jobhunter/core/text";
 import { COUNTRIES, countryTerms, groupPlaces, REGIONS, searchPlaces } from "@jobhunter/core/catalog/places";
 import { INDUSTRY_BY_ID } from "@jobhunter/core/catalog/industries";
 import { allTitles, COMMON_EXCLUDES, ROLE_FAMILIES, SENIORITY, type RoleFamily } from "@jobhunter/core/catalog/roles";
-import { Check, ChevronDown, Minus, Plus, Search, X } from "lucide-react";
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { Check, ChevronDown, Plus, Search, X } from "lucide-react";
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Combobox, type ComboItem } from "../components/Combobox";
 import { ToggleChips } from "../components/ToggleChips";
 import { Button, cx, Toggle } from "../components/ui";
+import { displayPlace } from "../lib/format";
 import type { Suggestions } from "../lib/suggest";
 import type { Draft } from "../lib/setup";
 import { CV_DICTIONARY, KEYWORD_PACKS, REMOTE_EXCLUDE_SUGGESTIONS } from "./presets";
 
 export type StepProps = { draft: Draft; update: (patch: Partial<Draft>) => void; suggest?: Suggestions };
 
+/** Heading level for section titles inside a step: 2 under the wizard's h1, 3 under a Settings h2. */
+export const HeadingLevel = createContext<2 | 3>(3);
+function SectionHeading({ children }: { children: ReactNode }) {
+  const H = useContext(HeadingLevel) === 2 ? "h2" : "h3";
+  return <H className="text-sm font-semibold">{children}</H>;
+}
+
 export function Field({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
   return (
     <div className="space-y-2">
       <div>
-        <h3 className="text-sm font-semibold">{label}</h3>
+        <SectionHeading>{label}</SectionHeading>
         {hint && <p className="mt-0.5 text-sm text-muted">{hint}</p>}
       </div>
       {children}
@@ -67,7 +75,7 @@ function Section({ n, title, hint, action, children }: { n: number; title: strin
       <div className="flex flex-wrap items-start gap-x-2.5 gap-y-2">
         <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent">{n}</span>
         <div className="min-w-[14rem] flex-1">
-          <h3 className="text-sm font-semibold">{title}</h3>
+          <SectionHeading>{title}</SectionHeading>
           {hint && <p className="mt-0.5 text-sm text-muted">{hint}</p>}
         </div>
         {action}
@@ -161,7 +169,7 @@ export function RolesStep({ draft, update, suggest }: StepProps) {
                     )}
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold">{f.label}</span>
+                      <span className="line-clamp-2 block text-sm font-semibold">{f.label}</span>
                       <span className="block text-xs text-muted">
                         {f.titles.length} titles{f.id === suggestedFamily ? " · matches your resume" : ""}
                       </span>
@@ -259,7 +267,7 @@ export function RolesStep({ draft, update, suggest }: StepProps) {
         />
       </Section>
 
-      <Section n={4} title="Seniority you want (+10 points)" hint="Titles with these words rank higher. Kept when you change family.">
+      <Section n={4} title="Seniority you want — ranks these higher" hint="Titles with these words rank higher. Kept when you change family.">
         <ToggleChips
           label="Seniority words"
           tone="plain"
@@ -291,13 +299,10 @@ const POPULAR_COUNTRIES = [
 const QUICK_REGIONS = ["emea", "mena", "gcc", "europe", "apac", "americas", "worldwide"];
 const countryByName = new Map(COUNTRIES.map((c) => [c.name, c]));
 const regionByName = new Map(REGIONS.map((r) => [r.name, r]));
-const SMALL_WORDS = new Set(["and", "of", "the", "la", "de", "es", "au", "al"]);
-const titleCase = (s: string) =>
-  s
-    .split(" ")
-    .map((w, i) => (i > 0 && SMALL_WORDS.has(w) ? w : w.replace(/^\p{L}/u, (ch) => ch.toUpperCase())))
-    .join(" ");
+const titleCase = displayPlace;
 const regionLabel = (name: string) => (name.length <= 5 ? name.toUpperCase() : titleCase(name));
+/** Display form of any place term: regions like "emea" in capitals, everything else title-cased. */
+export const placeLabel = (term: string) => (regionByName.has(term) ? regionLabel(term) : displayPlace(term));
 
 function placeItems(q: string, opts: { regions: boolean; remote: boolean }): ComboItem[] {
   return searchPlaces(q, 14)
@@ -563,12 +568,22 @@ export function LocationsStep({ draft, update, suggest }: StepProps) {
 
 // ---------- Industries ----------
 
+// Broadest first, so someone outside finance doesn't open on a list of trading niches.
 const INDUSTRY_GROUPS: { label: string; ids: string[] }[] = [
-  { label: "Trading, crypto & investing", ids: ["crypto-exchange", "crypto", "brokerage", "trading-tech", "market-making", "digital-assets", "tokenization", "wealth"] },
-  { label: "Payments & banking", ids: ["payments", "digital-bank", "banking", "lending", "fintech", "regtech", "insurtech"] },
   { label: "Tech & other", ids: ["ai", "devtools", "cybersecurity", "ecommerce", "gaming", "media", "mobility", "travel", "healthtech", "edtech", "proptech"] },
+  { label: "Payments & banking", ids: ["payments", "digital-bank", "banking", "lending", "fintech", "regtech", "insurtech"] },
+  { label: "Trading, crypto & investing", ids: ["crypto-exchange", "crypto", "brokerage", "trading-tech", "market-making", "digital-assets", "tokenization", "wealth"] },
 ];
 const industryLabel = (id: string) => INDUSTRY_BY_ID.get(id)?.label ?? id;
+
+/** Industries that fit the resume or the chosen roles and topics, for ordering the groups. */
+function relevantIndustries(draft: Draft, fromResume: string[]): Set<string> {
+  const text = [...draft.include, ...Object.keys(draft.keywords)].join(" ; ");
+  const out = new Set([...fromResume, ...draft.industries]);
+  for (const g of INDUSTRY_GROUPS)
+    for (const id of g.ids) if (text && INDUSTRY_BY_ID.get(id)?.terms.some((t) => matchesTerm(text, t))) out.add(id);
+  return out;
+}
 
 export function IndustriesStep({ draft, update, suggest }: StepProps) {
   const [q, setQ] = useState("");
@@ -580,6 +595,15 @@ export function IndustriesStep({ draft, update, suggest }: StepProps) {
   };
   // Topics the picked industries suggest, for the next step.
   const topics = [...new Set(draft.industries.flatMap((id) => INDUSTRY_BY_ID.get(id)?.topics ?? []))].filter((t) => !(t in draft.keywords));
+  const [showAll, setShowAll] = useState(false);
+  // Groups that fit you come first (stable otherwise); the rest wait behind "Show all industries".
+  const relevant = relevantIndustries(draft, fromResume);
+  const groups = INDUSTRY_GROUPS.map((g) => ({ ...g, hits: g.ids.filter((id) => relevant.has(id)).length }))
+    .sort((a, b) => b.hits - a.hits)
+    .map((g, i) => ({ ...g, ids: [...g.ids].sort((a, b) => Number(relevant.has(b)) - Number(relevant.has(a))), first: i === 0 }));
+  const expanded = showAll || !!query;
+  const visible = groups.filter((g) => expanded || g.first || g.hits > 0);
+  const hidden = groups.length - visible.length;
 
   return (
     <div className="space-y-6">
@@ -610,7 +634,7 @@ export function IndustriesStep({ draft, update, suggest }: StepProps) {
         />
       </div>
 
-      {INDUSTRY_GROUPS.map((g) => {
+      {visible.map((g) => {
         const ids = g.ids.filter(matches);
         if (!ids.length) return null;
         return (
@@ -626,11 +650,16 @@ export function IndustriesStep({ draft, update, suggest }: StepProps) {
           </Field>
         );
       })}
+      {hidden > 0 && (
+        <Button size="sm" variant="ghost" onClick={() => setShowAll(true)}>
+          <ChevronDown className="size-4" /> Show all industries
+        </Button>
+      )}
 
       <p className="text-sm text-muted">
         {draft.industries.length === 0
           ? "None picked. That's OK: your jobs are found by your roles and places."
-          : `${draft.industries.length} picked. You can narrow your Radar to ${draft.industries.length === 1 ? "this industry" : "these industries"}.`}
+          : `${draft.industries.length} picked. We'll scan and suggest companies in ${draft.industries.length === 1 ? "this industry" : "these industries"}, and you can narrow your Radar to ${draft.industries.length === 1 ? "it" : "them"}.`}
         {topics.length > 0 && <> Next we'll offer topics like {topics.slice(0, 5).join(", ")}.</>}
       </p>
     </div>
@@ -768,26 +797,55 @@ export function KeywordsStep({ draft, update, suggest, resumeText = "" }: StepPr
             {entries.map(([k, w]) => (
               <li key={k} className="flex items-center gap-2 py-1">
                 <span className="min-w-0 flex-1 truncate text-sm">{k}</span>
-                <div className="flex items-center gap-0.5" role="group" aria-label={`${k} weight`}>
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => setWeight(k, i)}
-                      aria-label={`Weight ${i}`}
-                      aria-pressed={i === w}
-                      className={cx("h-2.5 w-5 rounded-full transition-colors", i <= w ? "bg-accent" : "bg-surface-2 hover:bg-line")}
-                    />
-                  ))}
-                </div>
-                <button type="button" onClick={() => setWeight(k, 0)} aria-label={`Remove ${k}`} className="rounded p-1 text-muted hover:text-bad">
-                  <Minus className="size-3.5" />
+                <WeightControl keyword={k} weight={w} onChange={(n) => setWeight(k, n)} />
+                <button
+                  type="button"
+                  onClick={() => setWeight(k, 0)}
+                  aria-label={`Remove ${k}`}
+                  title={`Remove ${k}`}
+                  className="flex size-7 items-center justify-center rounded-lg text-muted hover:bg-surface-2 hover:text-bad"
+                >
+                  <X className="size-4" />
                 </button>
               </li>
             ))}
           </ul>
         )}
       </Field>
+    </div>
+  );
+}
+
+/** 1–5 importance as a radio group: arrow keys move, only the checked one is in the tab order. */
+function WeightControl({ keyword, weight, onChange }: { keyword: string; weight: number; onChange: (n: number) => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const onKey = (e: KeyboardEvent) => {
+    const step = e.key === "ArrowRight" || e.key === "ArrowUp" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowDown" ? -1 : 0;
+    if (!step) return;
+    e.preventDefault();
+    const next = Math.min(5, Math.max(1, weight + step));
+    onChange(next);
+    ref.current?.querySelectorAll<HTMLButtonElement>("[role=radio]")[next - 1]?.focus();
+  };
+  return (
+    <div ref={ref} role="radiogroup" aria-label={`Importance of ${keyword}`} onKeyDown={onKey} className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <button
+          key={i}
+          type="button"
+          role="radio"
+          aria-checked={i === weight}
+          aria-label={String(i)}
+          tabIndex={i === weight ? 0 : -1}
+          onClick={() => onChange(i)}
+          className={cx(
+            "flex size-6 items-center justify-center rounded-md text-xs font-medium tabular transition-colors",
+            i === weight ? "bg-accent text-accent-fg" : i < weight ? "bg-accent-soft text-accent" : "bg-surface-2 text-muted hover:bg-line",
+          )}
+        >
+          {i}
+        </button>
+      ))}
     </div>
   );
 }

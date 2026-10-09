@@ -63,6 +63,21 @@ describe("scopeCompanies", () => {
     const dir = [entry("lever:binance", { name: "Binance", open_jobs: 40 }), entry("ashby:binance", { name: "Binance", open_jobs: 3 }), entry("ashby:ghco2", { name: "GH Co" })];
     expect(scopeCompanies(cfg, dir, "all").map((c) => `${c.ats}:${c.slug}`)).toEqual(["lever:binance"]);
   });
+
+  it("skips sandbox and training boards, unless you added them yourself", () => {
+    const dir = [
+      entry("lever:leverdemo", { name: "Lever Implementation Training Environment", tags: ["crypto"] }),
+      entry("greenhouse:rhaegal", { name: "Rhaegal - Arago Sandbox", tags: ["crypto"] }),
+      entry("ashby:sandboxvr", { name: "Sandbox VR", tags: ["crypto"] }),
+      entry("ashby:mysandbox", { name: "Acme Sandbox", origin: "user" }),
+    ];
+    expect(scopeCompanies(cfg, dir, "mine").map((c) => c.slug)).toEqual(["sandboxvr"]);
+    expect(scopeCompanies(cfg, dir, "all").map((c) => c.slug).sort()).toEqual(["mysandbox", "sandboxvr"]);
+    // Your own companies are always scanned: scopeCompanies only adds directory ones.
+    const mine = config(`  - { name: "Rhaegal - Arago Sandbox", ats: greenhouse, slug: "rhaegal" }`);
+    expect(scopeCompanies(mine, dir, "all").map((c) => c.slug)).not.toContain("rhaegal");
+    expect(mine.companies.map((c) => c.slug)).toContain("rhaegal");
+  });
 });
 
 describe("estimateSeconds", () => {

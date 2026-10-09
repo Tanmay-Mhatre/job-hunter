@@ -20,7 +20,7 @@ export * from "./catalog/places";
 export * from "./catalog/industries";
 export * from "./catalog/find-boards";
 export * from "./catalog/seniority";
-export { htmlToText, inferWorkplace, matchesTerm, termRegex } from "./text";
+export { htmlToText, inferWorkplace, isPlaceholderBoard, matchesTerm, termRegex } from "./text";
 export { careersUrl, companyKey, connectors, getConnector, detectCompany, guessName, type DetectResult } from "./connectors";
 export type { Connector, Ctx, DetectedCompany } from "./connectors";
 export * from "./employers";

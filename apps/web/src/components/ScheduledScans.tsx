@@ -1,20 +1,32 @@
-import { CircleAlert, Clock, LoaderCircle, Plus, Power, Play, X } from "lucide-react";
+import { CircleAlert, Clock, LoaderCircle, Plus, Power, Play, RefreshCw, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { removeSchedule, runScheduleNow, saveSchedule, scheduleStatus, type ScheduledRun, type ScheduleStatus } from "../lib/automation";
-import { formatDateTime, timeAgo } from "../lib/format";
-import { aboutTime, SCOPE_LABEL } from "../lib/scan";
+import { formatDateTime, roughCount, timeAgo } from "../lib/format";
+import { aboutTime, scopeLabel } from "../lib/scan";
 import { scanPlan, type ScanPlan, type ScanScope } from "../lib/setup";
+import { toast } from "./Toast";
 import { Button, cx } from "./ui";
 
 const NOTIFIED: Record<string, string> = { sent: "sent to Telegram", "nothing-new": "nothing new to send", off: "Telegram not set up" };
 
 function runLine(r: ScheduledRun): string {
-  if (!r.ok) return r.error ?? "failed";
+  if (!r.ok) return "Didn't finish. It runs again at the next scheduled time.";
   const parts = [`${r.matches ?? 0} matches, ${r.newMatches ?? 0} new`];
   if (r.notified) parts.push(NOTIFIED[r.notified] ?? r.notified);
   if (r.stopped) parts.push("stopped early");
   return parts.join(" · ");
 }
+
+type Kind = "save" | "remove" | "run";
+
+/** What failed, and how to fix it. The raw reason goes under "Technical details". */
+const FAILED: Record<Kind, string> = {
+  save: "Couldn't save the schedule. Your computer's task scheduler didn't accept it. Try again; if it keeps failing, restart Job Hunter.",
+  remove: "Couldn't turn off scheduled scans. Try again; if it keeps failing, restart Job Hunter.",
+  run: "Couldn't start the scan. Try again in a moment.",
+};
+
+type Note = { tone: "ok" | "bad"; text: string; detail?: string; retry?: Kind };
 
 /**
  * Scans on a timer, run by this computer's own scheduler (Task Scheduler on Windows), so they
@@ -25,8 +37,8 @@ export function ScheduledScans() {
   const [plan, setPlan] = useState<ScanPlan | null>(null);
   const [times, setTimes] = useState<string[]>(["08:00"]);
   const [scope, setScope] = useState<ScanScope>("mine");
-  const [busy, setBusy] = useState<"save" | "remove" | "run" | null>(null);
-  const [note, setNote] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
+  const [busy, setBusy] = useState<Kind | null>(null);
+  const [note, setNote] = useState<Note | null>(null);
 
   const refresh = useCallback(async () => {
     const s = await scheduleStatus();
@@ -41,16 +53,31 @@ export function ScheduledScans() {
     void scanPlan().then(setPlan);
   }, [refresh]);
 
-  const run = async (kind: "save" | "remove" | "run") => {
+  const run = async (kind: Kind) => {
     setBusy(kind);
     setNote(null);
+    // Turning off can be undone by installing the same schedule again.
+    const previous = status?.installed ? status.settings : undefined;
     try {
       const s = kind === "save" ? await saveSchedule(times, scope) : kind === "remove" ? await removeSchedule() : await runScheduleNow();
-      if (!s.ok) setNote({ tone: "bad", text: s.error ?? "Something went wrong." });
-      else
+      if (!s.ok) setNote({ tone: "bad", text: FAILED[kind], detail: s.error, retry: kind });
+      else if (kind === "remove") {
+        setNote({ tone: "ok", text: "Scheduled scans are off." });
+        if (previous)
+          toast({
+            message: "Scheduled scans turned off.",
+            actionLabel: "Undo",
+            onAction: () =>
+              void saveSchedule(previous.times, previous.scope).then(async (r) => {
+                if (!r.ok) toast({ message: "Couldn't turn scheduled scans back on. Turn them on again below.", tone: "bad" });
+                else setNote({ tone: "ok", text: "Scheduled scans are back on." });
+                await refresh();
+              }),
+          });
+      } else
         setNote({
           tone: "ok",
-          text: kind === "save" ? "Saved. Your computer will scan at these times." : kind === "remove" ? "Scheduled scans are off." : "Started. It runs in the background; the result shows below when it's done.",
+          text: kind === "save" ? "Saved. Your computer will scan at these times." : "Started. It runs in the background; the result shows below when it's done.",
         });
       await refresh();
     } finally {
@@ -63,6 +90,8 @@ export function ScheduledScans() {
 
   const saved = status.settings;
   const changed = !saved || saved.times.join() !== [...times].sort().join() || saved.scope !== scope;
+  // No industry companies on top of yours: the "mine" scan is just My companies.
+  const hasIndustries = !plan || plan.mine.extra > 0;
 
   return (
     <div className="space-y-4">
@@ -70,7 +99,7 @@ export function ScheduledScans() {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-accent-soft/50 p-3 text-sm">
           <Clock className="size-4 text-accent" />
           <span>
-            On: <b>{SCOPE_LABEL[saved.scope]}</b>, daily at <b>{saved.times.join(" and ")}</b>.
+            On: <b>{scopeLabel(saved.scope, hasIndustries)}</b>, daily at <b>{saved.times.join(" and ")}</b>.
             {status.nextRun && <> Next scan {formatDateTime(status.nextRun)}.</>}
           </span>
         </div>
@@ -83,8 +112,8 @@ export function ScheduledScans() {
       )}
 
       <div className="space-y-3">
-        <div>
-          <p className="text-sm font-medium">When</p>
+        <fieldset>
+          <legend className="text-sm font-medium">When</legend>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
             {times.map((t, i) => (
               <span key={i} className="inline-flex items-center gap-1">
@@ -96,8 +125,14 @@ export function ScheduledScans() {
                   className="h-9 rounded-lg border border-line bg-surface px-2 text-sm outline-none focus:border-accent"
                 />
                 {times.length > 1 && (
-                  <button type="button" aria-label="Remove this time" className="rounded p-1 text-muted hover:text-fg" onClick={() => setTimes(times.filter((_, j) => j !== i))}>
-                    <X className="size-3.5" />
+                  <button
+                    type="button"
+                    aria-label={`Remove ${t}`}
+                    title="Remove this time"
+                    className="inline-flex size-8 items-center justify-center rounded-lg text-muted hover:bg-surface-2 hover:text-fg"
+                    onClick={() => setTimes(times.filter((_, j) => j !== i))}
+                  >
+                    <X className="size-4" />
                   </button>
                 )}
               </span>
@@ -108,24 +143,25 @@ export function ScheduledScans() {
               </Button>
             )}
           </div>
-        </div>
-        <div>
-          <p className="text-sm font-medium">What to scan</p>
+        </fieldset>
+        <fieldset>
+          <legend className="text-sm font-medium">What to scan</legend>
           <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
             {(["mine", "all"] as const).map((s) => {
               const p = plan?.[s];
+              const count = p ? p.yours + p.extra : 0;
               return (
                 <label key={s} className={cx("flex cursor-pointer gap-2.5 rounded-xl border p-3", scope === s ? "border-accent bg-accent-soft/30" : "border-line")}>
                   <input type="radio" name="schedule-scope" checked={scope === s} onChange={() => setScope(s)} className="mt-0.5 accent-[var(--accent)]" />
                   <span className="text-sm">
-                    <b>{SCOPE_LABEL[s]}</b>
-                    <span className="block text-xs text-muted">{p ? `${(p.yours + p.extra).toLocaleString()} companies · ${aboutTime(p.seconds)}` : "…"}</span>
+                    <b>{scopeLabel(s, hasIndustries)}</b>
+                    <span className="block text-xs text-muted">{p ? `${s === "all" ? roughCount(count) : count.toLocaleString()} companies · ${aboutTime(p.seconds)}` : "…"}</span>
                   </span>
                 </label>
               );
             })}
           </div>
-        </div>
+        </fieldset>
         <div className="flex flex-wrap gap-2">
           <Button variant="primary" onClick={() => void run("save")} disabled={!!busy || (status.installed && !changed)}>
             {busy === "save" && <LoaderCircle className="size-3.5 animate-spin" />}
@@ -134,7 +170,7 @@ export function ScheduledScans() {
           {status.installed && (
             <>
               <Button onClick={() => void run("run")} disabled={!!busy}>
-                {busy === "run" ? <LoaderCircle className="size-3.5 animate-spin" /> : <Play className="size-3.5" />} Run it now
+                {busy === "run" ? <LoaderCircle className="size-3.5 animate-spin" /> : <Play className="size-3.5" />} Scan now
               </Button>
               <Button variant="ghost" onClick={() => void run("remove")} disabled={!!busy}>
                 <Power className="size-3.5" /> Turn off
@@ -142,7 +178,22 @@ export function ScheduledScans() {
             </>
           )}
         </div>
-        {note && <p className={cx("text-sm", note.tone === "bad" ? "text-bad" : "text-good")}>{note.text}</p>}
+        {note && (
+          <div role={note.tone === "bad" ? "alert" : "status"} className="text-sm">
+            <p className={note.tone === "bad" ? "text-bad" : "text-good"}>{note.text}</p>
+            {note.retry && (
+              <Button size="sm" variant="ghost" className="mt-1" onClick={() => void run(note.retry!)} disabled={!!busy}>
+                <RefreshCw className="size-3.5" /> Try again
+              </Button>
+            )}
+            {note.detail && (
+              <details className="mt-1 text-xs text-muted">
+                <summary className="cursor-pointer">Technical details</summary>
+                <p className="mt-1 whitespace-pre-wrap font-mono">{note.detail}</p>
+              </details>
+            )}
+          </div>
+        )}
       </div>
 
       <p className="text-xs text-muted">
@@ -159,8 +210,16 @@ export function ScheduledScans() {
                 <span className="w-32 shrink-0 text-muted" title={formatDateTime(r.startedAt)}>
                   {timeAgo(r.startedAt)}
                 </span>
-                <span className={cx("min-w-0 flex-1", !r.ok && "text-bad")}>{runLine(r)}</span>
-                <span className="text-xs text-muted">{SCOPE_LABEL[r.scope]}</span>
+                <span className={cx("min-w-0 flex-1", !r.ok && "text-bad")}>
+                  {runLine(r)}
+                  {!r.ok && r.error && (
+                    <details className="text-xs text-muted">
+                      <summary className="cursor-pointer">Technical details</summary>
+                      <span className="mt-1 block whitespace-pre-wrap font-mono">{r.error}</span>
+                    </details>
+                  )}
+                </span>
+                <span className="text-xs text-muted">{scopeLabel(r.scope, hasIndustries)}</span>
               </li>
             ))}
           </ul>

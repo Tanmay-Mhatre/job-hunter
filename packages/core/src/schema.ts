@@ -33,12 +33,22 @@ export type Workplace = "onsite" | "hybrid" | "remote" | "unknown";
 export type Salary = { min?: number; max?: number; currency?: string; period?: string };
 
 /** Why a job got its score. Every number is the points awarded for that part. */
+/**
+ * How a score was made. Points out of: title 30, location 20, keywordPoints 40, freshness 10.
+ * score = round((title + location + keywordPoints + freshness) * (scale ?? 1)).
+ */
 export type ScoreBreakdown = {
   title: number;
   location: number;
   keywords: string[];
+  /** Topic points, 0..40: share of the profile's topic weight matched (min(total, 12) fills it). */
   keywordPoints: number;
   freshness: number;
+  /**
+   * Set (100/60) when the profile has no topics: title + location + freshness, out of 60, are
+   * scaled to 0..100 and there's no topic part. The other fields stay raw points.
+   */
+  scale?: number;
   /** Set when the job failed a gate and was scored 0. */
   gate?: "title" | "location";
   /** Why the location didn't fit, when it's worth saying (e.g. "Remote, but only in India…"). */

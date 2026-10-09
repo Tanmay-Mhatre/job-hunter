@@ -21,10 +21,36 @@ describe("scoreJob", () => {
       title: 30,
       location: 20,
       keywords: ["crypto", "exchange", "payments", "kyc"],
-      keywordPoints: 14,
+      keywordPoints: 40,
       freshness: 10,
     });
-    expect(r.score).toBe(74);
+    expect(r.score).toBe(100);
+  });
+
+  it("topic points are the share of min(total weight, 12) matched", () => {
+    // Matched weight 5 of 12: 40 * 5/12 = 16.7 -> 17.
+    const r = scoreJob(job({ description: "A crypto company." }), profile(), now);
+    expect(r.why).toMatchObject({ keywords: ["crypto"], keywordPoints: 17 });
+    expect(r.why.scale).toBeUndefined();
+    expect(r.score).toBe(30 + 20 + 17 + 10);
+  });
+
+  it("three topics at weight 3 can fill the topic bar", () => {
+    const three = profile({ keywords: { crypto: 3, payments: 3, kyc: 3 } });
+    expect(scoreJob(job({ description: "crypto payments kyc" }), three, now)).toMatchObject({ score: 100, why: { keywordPoints: 40 } });
+    expect(scoreJob(job({ description: "crypto payments" }), three, now)).toMatchObject({ score: 87, why: { keywordPoints: 27 } });
+    expect(scoreJob(job({ title: "Product Manager", location: "Remote - EMEA", description: "crypto", postedAt: daysAgo(30) }), three, now).score).toBe(20 + 15 + 13 + 2);
+  });
+
+  it("with no topics, title + location + freshness are scaled to 0..100", () => {
+    const none = profile({ keywords: {} });
+    const best = scoreJob(job(), none, now);
+    expect(best.why).toMatchObject({ keywordPoints: 0, scale: 100 / 60 });
+    expect(best.score).toBe(100);
+    // Right title and place, posted this week: a strong match.
+    expect(scoreJob(job({ title: "Product Manager", postedAt: daysAgo(5) }), none, now).score).toBe(Math.round((20 + 20 + 6) * (100 / 60)));
+    expect(scoreJob(job({ title: "Product Manager", location: "Remote - EMEA", postedAt: daysAgo(30) }), none, now).score).toBe(62);
+    expect(scoreJob(job({ location: "London" }), none, now).score).toBe(0);
   });
 
   it("gives 20 for a title without a seniority term", () => {

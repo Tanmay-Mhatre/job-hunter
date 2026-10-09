@@ -3,14 +3,21 @@ import { useState } from "react";
 import { keyOf, SUPPORTED, type CompanyRef } from "../lib/companies";
 import { Button } from "./ui";
 
-export function AddButton({ added, onAdd, onRemove, soon }: { added: boolean; onAdd: () => void; onRemove: () => void; soon?: boolean }) {
+/** Add to / remove from My companies. `name` makes the label specific for screen readers ("Add Acme"). */
+export function AddButton({ added, onAdd, onRemove, soon, name }: { added: boolean; onAdd: () => void; onRemove: () => void; soon?: boolean; name?: string }) {
   return added ? (
-    <Button size="sm" onClick={onRemove} aria-pressed className="border-accent bg-accent-soft text-accent">
+    <Button size="sm" onClick={onRemove} aria-pressed className="border-accent bg-accent-soft text-accent" aria-label={name ? `Added ${name}` : undefined} title="In My companies. Click to remove">
       <Check className="size-3.5" /> Added
     </Button>
   ) : (
-    <Button size="sm" variant={soon ? "outline" : "primary"} onClick={onAdd}>
-      <Plus className="size-3.5" /> {soon ? "Add (coming soon)" : "Add"}
+    <Button
+      size="sm"
+      variant={soon ? "outline" : "primary"}
+      onClick={onAdd}
+      aria-label={name ? `Add ${name}` : undefined}
+      title={soon ? "Not supported yet: we'll scan it once its hiring system is supported" : "Add to My companies"}
+    >
+      <Plus className="size-3.5" /> Add
     </Button>
   );
 }
@@ -20,13 +27,13 @@ export function AddAll({ items, watched, onAddMany, onRemoveMany }: { items: Com
   const [last, setLast] = useState<{ keys: string[]; soon: number } | null>(null);
   const todo = items.filter((c) => !watched.has(keyOf(c)));
   if (last && last.keys.some((k) => watched.has(k))) {
-    const trackable = last.keys.length - last.soon;
+    const scannable = last.keys.length - last.soon;
     return (
       <span className="inline-flex flex-wrap items-center gap-x-2 text-xs text-muted">
         <span>
           <Check className="mr-1 inline size-3.5 text-accent" />
           Added {last.keys.length}
-          {last.soon > 0 && ` (${trackable} trackable now, ${last.soon} coming soon)`}
+          {last.soon > 0 && ` (${scannable} can scan now, ${last.soon} not supported yet)`}
         </span>
         <button
           type="button"

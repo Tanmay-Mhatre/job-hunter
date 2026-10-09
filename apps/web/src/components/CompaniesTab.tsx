@@ -1,16 +1,20 @@
-import { ArrowRight, Building2, Check, CircleAlert, EyeOff, LoaderCircle, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { addCompanies, jobCompanyKey, keyOf, type CompanyRef } from "../lib/companies";
+import { ArrowRight, Building2, Check, CircleAlert, EyeOff, LoaderCircle, RefreshCw, X } from "lucide-react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { addCompanies, countCompanies, jobCompanyKey, keyOf, type CompanyRef } from "../lib/companies";
+import { useCompanySuggestions, type SuggestState } from "../lib/companySuggest";
 import type { DataMeta, Job } from "../lib/data";
-import { canRunLocally } from "../lib/data";
+import { canRunLocally, useDirectorySize } from "../lib/data";
 import { draftToConfig, saveConfig, type Draft } from "../lib/setup";
+import { load, save } from "../lib/storage";
+import { AddByLink } from "./AddByLink";
 import { MyCompanies, RecentRuns } from "./Companies";
-import { useCompanySuggestions } from "../lib/companySuggest";
 import { CompanyFinder, useDirectory } from "./CompanyFinder";
 import { ForYou } from "./companies/ForYou";
 import { QuickAdd } from "./companies/QuickAdd";
+import { TabList, TabPanel, useTabIds } from "./companies/Tabs";
 import { EmptyState } from "./EmptyState";
-import { Button, Card } from "./ui";
+import { toast } from "./Toast";
+import { Button, Card, IconButton } from "./ui";
 
 type Props = {
   /** A valid personal config exists (companies are saved into it). */
@@ -77,14 +81,14 @@ function useAutoSave(draft: Draft, saved: Draft, onSaved: () => Promise<void>, e
   return { state: pending && state.kind !== "error" && state.kind !== "saving" ? ({ kind: "saving" } as SaveState) : state, retry: run };
 }
 
-/** "Saving…", "Saved · used in your next scan", or what went wrong. */
+/** "Saving…", "Saved · used in your next scan", or what went wrong (with the reason and Retry, inline). */
 function SaveStatus({ state, retry, onScan, scanning }: { state: SaveState; retry: () => void; onScan: () => void; scanning: boolean }) {
-  if (!canRunLocally) return <span className="text-xs text-muted">Changes stay in this browser (run the app locally to save them).</span>;
+  if (!canRunLocally) return <span className="text-xs text-muted">Changes stay in this browser.</span>;
   if (state.kind === "error")
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-bad" title={state.message}>
-        <CircleAlert className="size-3.5" /> Couldn't save.
-        <button type="button" className="font-medium underline" onClick={retry}>
+      <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-bad">
+        <CircleAlert className="size-3.5 shrink-0" /> Couldn't save your changes{state.message ? `: ${state.message}` : "."}
+        <button type="button" className="min-h-6 font-medium underline" onClick={retry}>
           Retry
         </button>
       </span>
@@ -101,7 +105,7 @@ function SaveStatus({ state, retry, onScan, scanning }: { state: SaveState; retr
         <Check className="size-3.5 text-good" /> {state.kind === "saved" ? "Saved. Used in your next scan." : "Changes save automatically."}
       </span>
       {state.kind === "saved" && (
-        <button type="button" className="inline-flex items-center gap-1 font-medium text-accent disabled:opacity-50" onClick={onScan} disabled={scanning}>
+        <button type="button" className="inline-flex min-h-6 items-center gap-1 font-medium text-accent disabled:opacity-50" onClick={onScan} disabled={scanning}>
           <RefreshCw className="size-3" /> Scan now
         </button>
       )}
@@ -109,23 +113,49 @@ function SaveStatus({ state, retry, onScan, scanning }: { state: SaveState; retr
   );
 }
 
+type Tab = "mine" | "suggestions" | "browse";
+const TAB_KEY = "jobhunter.companiesTab";
+const TABS: Tab[] = ["mine", "suggestions", "browse"];
+
 /**
- * Companies tab: the companies you'd love to work at (checked every scan, listed first on the Radar),
- * adding more (directory search or a careers link), and companies you've hidden.
+ * Companies tab: one search and "Add by link" on top, then My companies (scanned every time, listed first
+ * on the Radar), Suggestions (picked for your profile) and Browse all (the whole directory).
  */
 export function CompaniesTab({ configured, meta, jobs, draft, saved, update, onSaved, onScan, scanning, toSetup, hiddenNames, onUnhideName }: Props) {
-  /** A search handed from the top bar to the full finder. */
-  const [browseQuery, setBrowseQuery] = useState<{ text: string; n: number }>();
-  /** Bumped after the directory updates, so search reloads it. */
+  const ids = useTabIds("companies");
+  const linkPanelId = useId();
+  const [tab, setTabState] = useState<Tab>(() => {
+    const last = load<string | null>(TAB_KEY, null);
+    return TABS.includes(last as Tab) ? (last as Tab) : draft.companies.length ? "mine" : "suggestions";
+  });
+  const setTab = (t: Tab) => {
+    setTabState(t);
+    save(TAB_KEY, t);
+  };
+  /** The page's one search: its results show in Browse all. */
+  const [q, setQ] = useState("");
+  const [linkOpen, setLinkOpen] = useState(false);
+  /** Bumped after the directory updates (or to retry loading it), so search reloads it. */
   const [rev, setRev] = useState(0);
   const { directory, error: directoryError } = useDirectory(rev);
+  /** The one directory size shown on this page (H9). */
+  const directorySize = useDirectorySize(rev);
+  const companyCount = useMemo(() => directorySize ?? (directory ? countCompanies(directory) : undefined), [directorySize, directory]);
   const autosave = useAutoSave(draft, saved, onSaved, configured && canRunLocally);
   const savedKeys = useMemo(() => new Set(saved.companies.map(keyOf)), [saved.companies]);
   const watched = useMemo(() => new Set(draft.companies.map(keyOf)), [draft.companies]);
   const muted = useMemo(() => new Set(draft.muted), [draft.muted]);
   // From the saved profile (not half-made Settings edits), with the past employers edited here.
   const suggestFrom = useMemo(() => ({ ...saved, pastEmployers: draft.pastEmployers }), [saved, draft.pastEmployers]);
-  const suggestions = useCompanySuggestions(suggestFrom, configured);
+  // Retry = switch the request off for a moment and back on, which asks again.
+  const [retrying, setRetrying] = useState(false);
+  useEffect(() => {
+    if (!retrying) return;
+    const t = setTimeout(() => setRetrying(false), 50);
+    return () => clearTimeout(t);
+  }, [retrying]);
+  const fetched = useCompanySuggestions(suggestFrom, configured && !retrying);
+  const suggestions: SuggestState = retrying ? { kind: "loading" } : fetched;
   /** Fit scores from the suggestions, for ordering and labelling search results. */
   const fit = useMemo(() => {
     const m = new Map<string, number>();
@@ -143,6 +173,10 @@ export function CompaniesTab({ configured, meta, jobs, draft, saved, update, onS
     return m;
   }, [jobs]);
 
+  // Undo needs the draft as it is when clicked, not when the toast was made.
+  const latest = useRef(draft);
+  latest.current = draft;
+
   if (!configured) {
     return (
       <EmptyState
@@ -154,7 +188,7 @@ export function CompaniesTab({ configured, meta, jobs, draft, saved, update, onS
           </Button>
         }
       >
-        Tell us the roles and places you want. Then pick the companies you'd love to work at: we check them every scan and list their jobs first.
+        Tell us the roles and places you want. Then pick the companies you'd love to work at: we scan them every time and list their jobs first.
       </EmptyState>
     );
   }
@@ -169,6 +203,22 @@ export function CompaniesTab({ configured, meta, jobs, draft, saved, update, onS
     const drop = new Set(keys);
     update({ companies: draft.companies.filter((r) => !drop.has(keyOf(r))) });
   };
+  /** Remove right away, with Undo in a toast that puts the same entries back (H11). */
+  const removeWithUndo = (keys: readonly string[]) => {
+    const drop = new Set(keys);
+    const removed = draft.companies.filter((r) => drop.has(keyOf(r)));
+    if (!removed.length) return;
+    removeMany(keys);
+    const one = removed.length === 1 ? removed[0]!.name || removed[0]!.slug : null;
+    toast({
+      message: one ? `Removed ${one} from My companies.` : `Removed ${removed.length} companies from My companies.`,
+      actionLabel: "Undo",
+      onAction: () => {
+        const have = new Set(latest.current.companies.map(keyOf));
+        update({ companies: [...latest.current.companies, ...removed.filter((r) => !have.has(keyOf(r)))] });
+      },
+    });
+  };
 
   // Hidden companies: muted in your config (by key) and hidden on the Radar (by name), shown once each.
   const names = new Map((directory ?? []).map((c) => [c.key, c.name]));
@@ -176,77 +226,142 @@ export function CompaniesTab({ configured, meta, jobs, draft, saved, update, onS
   const mutedNames = new Set(mutedRows.map((m) => m.name).filter(Boolean));
   const hidden = [...mutedRows, ...hiddenNames.filter((n) => !mutedNames.has(n)).map((name) => ({ key: undefined, name }))];
 
+  const openLink = () => {
+    setLinkOpen(true);
+    setTimeout(() => document.getElementById(linkPanelId)?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
+  };
+
   return (
     <div className="space-y-4">
       <QuickAdd
-        directory={directory}
-        watched={watched}
-        forYou={forYou}
-        fit={fit}
-        onAddMany={addMany}
-        onRemove={(k) => removeMany([k])}
-        onSeeAll={(text) => {
-          setBrowseQuery((b) => ({ text, n: (b?.n ?? 0) + 1 }));
-          setTimeout(() => document.getElementById("browse-companies")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+        q={q}
+        onQ={(text) => {
+          setQ(text);
+          if (text.trim() && tab !== "browse") setTab("browse");
         }}
-        status={<SaveStatus state={autosave.state} retry={() => void autosave.retry()} onScan={onScan} scanning={scanning} />}
+        count={companyCount}
+        linkOpen={linkOpen}
+        onToggleLink={() => setLinkOpen((v) => !v)}
+        linkPanelId={linkPanelId}
+        status={
+          <span role="status">
+            <SaveStatus state={autosave.state} retry={() => void autosave.retry()} onScan={onScan} scanning={scanning} />
+          </span>
+        }
       />
 
-      <ForYou
-        state={suggestions}
-        watched={watched}
-        muted={muted}
-        pastEmployers={draft.pastEmployers}
-        onPastEmployers={(pastEmployers) => update({ pastEmployers })}
-        onAddMany={addMany}
-        onRemoveMany={removeMany}
-        onMute={(key) => update({ muted: [...new Set([...draft.muted, key])], companies: draft.companies.filter((r) => keyOf(r) !== key) })}
-        onUnmute={(key) => update({ muted: draft.muted.filter((k) => k !== key) })}
-        offHint={canRunLocally ? undefined : "Suggestions are worked out by the local app. Run it on your computer (pnpm dev) to see companies picked for you."}
-      />
-
-      <MyCompanies rows={draft.companies} savedKeys={savedKeys} meta={meta} forYou={forYou} onRemove={(k) => removeMany([k])} onRemoveMany={removeMany} />
-
-      <CompanyFinder
-        watched={watched}
-        forYou={forYou}
-        directory={directory}
-        directoryError={directoryError}
-        onAddMany={addMany}
-        onRemove={(k) => removeMany([k])}
-        onDirectoryUpdated={() => setRev((r) => r + 1)}
-        fit={fit}
-        industries={draft.industries}
-        query={browseQuery}
-      />
-
-      {hidden.length > 0 && (
-        <Card className="p-5 sm:p-6">
-          <h2 className="flex items-center gap-2 text-base font-semibold">
-            <EyeOff className="size-4 text-muted" /> Hidden companies <span className="tabular font-normal text-muted">({hidden.length})</span>
-          </h2>
-          <p className="mt-0.5 text-sm text-muted">Their jobs don't show on your Radar, and scans don't check them.</p>
-          <ul className="mt-3 flex flex-wrap gap-1.5">
-            {hidden.map((h) => (
-              <li key={h.key ?? h.name} className="inline-flex h-8 items-center gap-2 rounded-lg border border-line pl-2.5 pr-1.5 text-sm">
-                <span className="font-medium">{h.name ?? h.key}</span>
-                <button
-                  type="button"
-                  className="text-xs font-medium text-accent"
-                  onClick={() => {
-                    if (h.key) update({ muted: draft.muted.filter((k) => k !== h.key) });
-                    if (h.name) onUnhideName(h.name);
-                  }}
-                >
-                  Show again
-                </button>
-              </li>
-            ))}
-          </ul>
+      {linkOpen && (
+        <Card className="p-4 sm:p-5" id={linkPanelId}>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-base font-semibold">Add by link</h2>
+            <IconButton label="Close" onClick={() => setLinkOpen(false)}>
+              <X className="size-4" />
+            </IconButton>
+          </div>
+          <AddByLink watched={watched} onAddMany={addMany} onRemove={(k) => removeMany([k])} autoFocus />
         </Card>
       )}
 
-      {meta && <RecentRuns meta={meta} />}
+      <TabList
+        tabs={[
+          { id: "mine", label: "My companies", count: draft.companies.length },
+          { id: "suggestions", label: "Suggestions" },
+          { id: "browse", label: "Browse all" },
+        ]}
+        value={tab}
+        onChange={setTab}
+        label="Companies"
+        ids={ids}
+      />
+
+      {tab === "mine" && (
+        <TabPanel id="mine" ids={ids} className="space-y-4">
+          <MyCompanies
+            rows={draft.companies}
+            savedKeys={savedKeys}
+            meta={meta}
+            forYou={forYou}
+            onRemove={(k) => removeWithUndo([k])}
+            onRemoveMany={removeWithUndo}
+            onScan={onScan}
+            scanning={scanning}
+          />
+          {draft.companies.length === 0 && (
+            <div className="flex flex-wrap gap-2">
+              <Button variant="primary" onClick={() => setTab("suggestions")}>
+                See suggestions
+              </Button>
+              <Button onClick={() => setTab("browse")}>Browse all companies</Button>
+            </div>
+          )}
+
+          {hidden.length > 0 && (
+            <Card className="p-5 sm:p-6">
+              <h2 className="flex items-center gap-2 text-base font-semibold">
+                <EyeOff className="size-4 text-muted" /> Hidden companies <span className="tabular font-normal text-muted">({hidden.length})</span>
+              </h2>
+              <p className="mt-0.5 text-sm text-muted">Their jobs don't show on your Radar, and scans skip them.</p>
+              <ul className="mt-3 flex flex-wrap gap-1.5">
+                {hidden.map((h) => (
+                  <li key={h.key ?? h.name} className="inline-flex h-8 items-center gap-2 rounded-lg border border-line pl-2.5 pr-1.5 text-sm">
+                    <span className="font-medium">{h.name ?? h.key}</span>
+                    <button
+                      type="button"
+                      className="min-h-6 text-xs font-medium text-accent"
+                      aria-label={`Show ${h.name ?? h.key} again`}
+                      onClick={() => {
+                        if (h.key) update({ muted: draft.muted.filter((k) => k !== h.key) });
+                        if (h.name) onUnhideName(h.name);
+                      }}
+                    >
+                      Show again
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          {meta && <RecentRuns meta={meta} />}
+        </TabPanel>
+      )}
+
+      {tab === "suggestions" && (
+        <TabPanel id="suggestions" ids={ids}>
+          <ForYou
+            state={suggestions}
+            watched={watched}
+            muted={muted}
+            pastEmployers={draft.pastEmployers}
+            onPastEmployers={(pastEmployers) => update({ pastEmployers })}
+            onAddMany={addMany}
+            onRemoveMany={removeMany}
+            onMute={(key) => update({ muted: [...new Set([...draft.muted, key])], companies: draft.companies.filter((r) => keyOf(r) !== key) })}
+            onUnmute={(key) => update({ muted: draft.muted.filter((k) => k !== key) })}
+            onRetry={() => setRetrying(true)}
+            offHint="Suggestions aren't available in this version of the app. Search the directory or add a company by link instead."
+          />
+        </TabPanel>
+      )}
+
+      {tab === "browse" && (
+        <TabPanel id="browse" ids={ids}>
+          <CompanyFinder
+            watched={watched}
+            forYou={forYou}
+            directory={directory}
+            directoryError={directoryError}
+            onAddMany={addMany}
+            onRemove={(k) => removeMany([k])}
+            onDirectoryUpdated={() => setRev((r) => r + 1)}
+            fit={fit}
+            industries={draft.industries}
+            q={q}
+            onAddByLink={openLink}
+            companyCount={companyCount}
+          />
+        </TabPanel>
+      )}
     </div>
   );
 }

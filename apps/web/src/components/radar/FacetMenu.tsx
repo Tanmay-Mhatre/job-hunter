@@ -1,5 +1,5 @@
 import { Check, ChevronDown, Search } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { FacetOption } from "../../lib/filters";
 import { cx } from "../ui";
 
@@ -14,17 +14,29 @@ type Props = {
   searchable?: boolean;
   /** Extra controls under the options (e.g. toggles in "More"). */
   footer?: ReactNode;
+  /** A heading over the options when the button's label doesn't name them (e.g. "Hiring system" in "More"). */
+  optionsLabel?: string;
 };
 
-/** A filter button that opens a menu of options with counts. Counts reflect the other active filters. */
-export function FacetMenu({ label, options, selected, onChange, single, searchable, footer }: Props) {
+/**
+ * A filter button that opens a popover of options with counts. Counts reflect the other active filters.
+ * Plain popover (not an ARIA menu): Tab moves through it; Escape, a click outside or tabbing away closes it.
+ */
+export function FacetMenu({ label, options, selected, onChange, single, searchable, footer, optionsLabel }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelId = useId();
 
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      // Escape from inside the popover puts focus back on its button.
+      if (ref.current?.contains(document.activeElement)) buttonRef.current?.focus();
+      setOpen(false);
+    };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
     return () => {
@@ -37,12 +49,19 @@ export function FacetMenu({ label, options, selected, onChange, single, searchab
   const summary = active ? (single ? options.find((o) => o.value === selected[0])?.label : selected.length === 1 ? options.find((o) => o.value === selected[0])?.label ?? selected[0] : `${label} · ${selected.length}`) : label;
 
   return (
-    <div ref={ref} className="relative">
+    <div
+      ref={ref}
+      className="relative"
+      onBlur={(e) => {
+        if (open && e.relatedTarget && !e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false);
+      }}
+    >
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        aria-haspopup="true"
+        aria-controls={open ? panelId : undefined}
         className={cx(
           "inline-flex h-8 max-w-56 items-center gap-1 rounded-full border px-3 text-xs font-medium transition-colors",
           active ? "border-accent bg-accent-soft text-accent" : "border-line bg-surface text-fg hover:bg-surface-2",
@@ -52,7 +71,8 @@ export function FacetMenu({ label, options, selected, onChange, single, searchab
         <ChevronDown className={cx("size-3.5 shrink-0 transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-30 mt-1 w-72 rounded-xl border border-line bg-surface p-1.5 shadow-xl" role="menu">
+        <div id={panelId} role="group" aria-label={label} className="absolute left-0 top-full z-30 mt-1 w-72 rounded-xl border border-line bg-surface p-1.5 shadow-xl">
+          {optionsLabel && options.length > 0 && <p className="px-2 pb-0.5 pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted">{optionsLabel}</p>}
           <OptionList label={label} options={options} selected={selected} onChange={onChange} single={single} searchable={searchable} autoFocus />
           {footer}
           {active && (
@@ -91,6 +111,7 @@ export function OptionList({
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder={`Search ${label.toLowerCase()}…`}
+            aria-label={`Search ${label.toLowerCase()}`}
             className="h-8 w-full rounded-lg border border-line bg-surface pl-8 pr-2 text-xs outline-none focus:border-accent"
           />
         </div>
@@ -105,8 +126,7 @@ export function OptionList({
               {heading && <p className="px-2 pb-0.5 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted first:pt-0.5">{heading}</p>}
               <button
                 type="button"
-                role="menuitemcheckbox"
-                aria-checked={on}
+                aria-pressed={on}
                 onClick={() => toggle(o.value)}
                 disabled={!on && o.count === 0}
                 className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-surface-2 disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent"

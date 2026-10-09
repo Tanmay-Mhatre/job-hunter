@@ -26,6 +26,12 @@ export function usePrefs() {
   }, []);
   const renameView = useCallback((id: string, name: string) => setPrefs((p) => ({ ...p, views: p.views.map((v) => (v.id === id ? { ...v, name: name.trim() } : v)) })), []);
   const deleteView = useCallback((id: string) => setPrefs((p) => ({ ...p, views: p.views.filter((v) => v.id !== id) })), []);
+  /** Undo a delete: put the view back where it was. */
+  const restoreView = useCallback(
+    (view: SavedView, index: number) =>
+      setPrefs((p) => (p.views.some((v) => v.id === view.id) ? p : { ...p, views: [...p.views.slice(0, index), view, ...p.views.slice(index)] })),
+    [],
+  );
   const setCompanyHidden = useCallback(
     (company: string, hidden: boolean) =>
       setPrefs((p) => ({ ...p, hiddenCompanies: hidden ? [...new Set([...p.hiddenCompanies, company])] : p.hiddenCompanies.filter((c) => c !== company) })),
@@ -33,5 +39,5 @@ export function usePrefs() {
   );
   const replacePrefs = useCallback((next: Partial<Prefs>) => setPrefs({ ...EMPTY, ...next }), []);
 
-  return { prefs, saveView, renameView, deleteView, setCompanyHidden, replacePrefs };
+  return { prefs, saveView, renameView, deleteView, restoreView, setCompanyHidden, replacePrefs };
 }

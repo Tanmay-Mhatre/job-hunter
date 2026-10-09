@@ -19,6 +19,8 @@ type Props = {
 
 export function Pipeline({ user, jobsById, min, onOpen, onMove, onSetup, goRadar }: Props) {
   const [dragOver, setDragOver] = useState<PipelineStatus | null>(null);
+  /** Phones show one column at a time, picked from the status chips. */
+  const [mobileCol, setMobileCol] = useState<PipelineStatus | null>(null);
   const entries = Object.entries(user).filter(([, e]) => e.status && e.status !== "dismissed");
   const total = entries.length;
 
@@ -46,11 +48,35 @@ export function Pipeline({ user, jobsById, min, onOpen, onMove, onSetup, goRadar
     );
   }
 
+  const columns = PIPELINE.map((col) => ({
+    col,
+    items: entries.filter(([, e]) => e.status === col).sort((a, b) => b[1].updatedAt.localeCompare(a[1].updatedAt)),
+  }));
+  // Default to the first column with cards in it.
+  const shown = mobileCol ?? columns.find((c) => c.items.length)?.col ?? PIPELINE[0];
+
   return (
-    <div className="-mx-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
-      <div className="grid min-w-[900px] grid-cols-5 gap-3">
-        {PIPELINE.map((col) => {
-          const items = entries.filter(([, e]) => e.status === col).sort((a, b) => b[1].updatedAt.localeCompare(a[1].updatedAt));
+    <div className="pb-2 md:overflow-x-auto">
+      <div className="-mx-4 mb-3 overflow-x-auto px-4 md:hidden [mask-image:linear-gradient(to_right,transparent,black_1rem,black_calc(100%-1.5rem),transparent)]">
+        <div className="flex w-max gap-2 pr-4" role="group" aria-label="Pipeline column">
+          {columns.map(({ col, items }) => (
+            <button
+              key={col}
+              type="button"
+              aria-pressed={shown === col}
+              onClick={() => setMobileCol(col)}
+              className={cx(
+                "inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-sm font-medium",
+                shown === col ? "border-accent bg-accent-soft text-accent" : "border-line bg-surface text-muted",
+              )}
+            >
+              {STATUS_LABEL[col]} <span className="tabular text-xs">{items.length}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="grid gap-3 md:min-w-[900px] md:grid-cols-5">
+        {columns.map(({ col, items }) => {
           return (
             <section
               key={col}
@@ -67,7 +93,8 @@ export function Pipeline({ user, jobsById, min, onOpen, onMove, onSetup, goRadar
                 if (entry && entry.status !== col) onMove(id, entry, col);
               }}
               className={cx(
-                "flex min-h-64 flex-col rounded-2xl border bg-surface-2/50 p-2 transition-colors",
+                "min-h-64 flex-col rounded-2xl border bg-surface-2/50 p-2 transition-colors md:flex",
+                shown === col ? "flex" : "hidden",
                 dragOver === col ? "border-accent bg-accent-soft/30" : "border-line",
               )}
             >
@@ -83,6 +110,7 @@ export function Pipeline({ user, jobsById, min, onOpen, onMove, onSetup, goRadar
                       key={id}
                       draggable
                       onDragStart={(ev) => ev.dataTransfer.setData("text/plain", id)}
+                      // Mouse shortcut: the whole card opens the job; the title button is the keyboard / screen-reader way in.
                       onClick={() => job && onOpen(job)}
                       className={cx(
                         "rounded-xl border border-line bg-surface p-3 shadow-sm transition-shadow hover:shadow-md",
@@ -90,7 +118,20 @@ export function Pipeline({ user, jobsById, min, onOpen, onMove, onSetup, goRadar
                       )}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-semibold leading-5">{s.title}</p>
+                        {job ? (
+                          <button
+                            type="button"
+                            className="text-left text-sm font-semibold leading-5 hover:underline"
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              onOpen(job);
+                            }}
+                          >
+                            {s.title}
+                          </button>
+                        ) : (
+                          <p className="text-sm font-semibold leading-5">{s.title}</p>
+                        )}
                         <span className={cx("tabular text-xs font-semibold", (job?.score ?? s.score) >= min ? "text-accent" : "text-muted")}>
                           {job?.score ?? s.score}
                         </span>
@@ -109,11 +150,11 @@ export function Pipeline({ user, jobsById, min, onOpen, onMove, onSetup, goRadar
                         </span>
                         {/* Keyboard / touch alternative to dragging */}
                         <Select
-                          aria-label="Move to"
+                          aria-label={`Move ${s.title} to`}
                           value={e.status}
                           onClick={(ev) => ev.stopPropagation()}
                           onChange={(ev) => onMove(id, e, ev.target.value as Status)}
-                          className="h-6 px-1 text-[11px]"
+                          className="h-8 px-1.5 text-xs"
                         >
                           {PIPELINE.map((p) => (
                             <option key={p} value={p}>

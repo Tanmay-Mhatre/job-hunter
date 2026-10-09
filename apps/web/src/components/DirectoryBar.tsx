@@ -1,7 +1,7 @@
 import { CloudDownload, Database, LoaderCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { canRunLocally } from "../lib/data";
-import { timeAgo } from "../lib/format";
+import { roughCount, timeAgo } from "../lib/format";
 import { Button, cx } from "./ui";
 
 type Status = {
@@ -12,11 +12,26 @@ type Status = {
   age_days: number | null;
 };
 
+export type DirectoryUpdate = { ok: boolean; updated: boolean; text: string };
+
+/** Download the latest shared directory (local app only). Never throws. */
+export async function updateDirectory(): Promise<DirectoryUpdate> {
+  try {
+    const res = await fetch("/api/directory/update", { method: "POST" });
+    const body = (await res.json()) as { updated?: boolean; message?: string; errors?: string };
+    if (body.errors || !res.ok) return { ok: false, updated: false, text: "Couldn't update the directory. Check your internet connection and try again." };
+    return { ok: true, updated: !!body.updated, text: body.updated ? "Directory updated." : "Directory up to date." };
+  } catch {
+    return { ok: false, updated: false, text: "Couldn't update the directory. Check your internet connection and try again." };
+  }
+}
+
 /**
- * Where the company directory comes from and how fresh it is, with "Update now". The shared
+ * Where the company directory comes from and how fresh it is, with "Update directory". The shared
  * directory is rebuilt weekly online (public lists plus companies users add) and downloaded here.
+ * `companies` is the page's one company count (see countCompanies), so every number matches.
  */
-export function DirectoryBar({ onUpdated }: { onUpdated: () => void }) {
+export function DirectoryBar({ onUpdated, companies }: { onUpdated: () => void; companies?: number }) {
   const [status, setStatus] = useState<Status | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
@@ -39,27 +54,22 @@ export function DirectoryBar({ onUpdated }: { onUpdated: () => void }) {
   const update = async () => {
     setBusy(true);
     setMessage(null);
-    try {
-      const res = await fetch("/api/directory/update", { method: "POST" });
-      const body = (await res.json()) as { updated?: boolean; message?: string; errors?: string };
-      setMessage({ tone: body.errors ? "bad" : "ok", text: body.message ?? body.errors ?? "Done." });
-      if (body.updated) onUpdated();
-      await load();
-    } catch (err) {
-      setMessage({ tone: "bad", text: (err as Error).message });
-    } finally {
-      setBusy(false);
-    }
+    const r = await updateDirectory();
+    setMessage({ tone: r.ok ? "ok" : "bad", text: r.text });
+    if (r.updated) onUpdated();
+    await load();
+    setBusy(false);
   };
 
+  const count = companies ?? status.local?.companies;
   const text = status.local
-    ? `${status.local.companies.toLocaleString()} companies · shared directory, downloaded ${timeAgo(status.local.updated_at)}`
+    ? `${count ? `${roughCount(count)} companies · ` : ""}updated ${timeAgo(status.local.updated_at)}`
     : status.present
-      ? "Built on this computer · switch to the shared directory to get everyone's additions"
+      ? `${count ? `${roughCount(count)} companies · ` : ""}built on this computer. Update to get everyone's additions`
       : "Not downloaded yet";
 
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-surface-2/60 px-3 py-2 text-sm">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-surface-2/60 px-3 py-2 text-sm">
       <Database className="size-4 shrink-0 text-muted" />
       <p className="min-w-0 flex-1">
         <span className="font-medium">Company directory:</span> <span className="text-muted">{text}</span>
@@ -67,9 +77,11 @@ export function DirectoryBar({ onUpdated }: { onUpdated: () => void }) {
       </p>
       <Button size="sm" variant={status.present ? "ghost" : "primary"} onClick={() => void update()} disabled={busy}>
         {busy ? <LoaderCircle className="size-3.5 animate-spin" /> : <CloudDownload className="size-3.5" />}
-        {busy ? "Updating…" : status.present ? "Update now" : "Download directory"}
+        {busy ? "Updating…" : status.present ? "Update directory" : "Download directory"}
       </Button>
-      {message && <p className={cx("w-full text-xs", message.tone === "bad" ? "text-bad" : "text-muted")}>{message.text}</p>}
+      <p role="status" className={cx("w-full text-xs empty:hidden", message?.tone === "bad" ? "text-bad" : "text-muted")}>
+        {message?.text}
+      </p>
     </div>
   );
 }

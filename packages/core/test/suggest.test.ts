@@ -19,6 +19,27 @@ const pm = (location: string, age = 2, count = 1, workplace = "onsite"): IndexRo
 const eng = (location: string): IndexRow => ["Software Engineer", location, "onsite", 2, 1];
 
 describe("suggestCompanies", () => {
+  it("never suggests sandbox or training boards", () => {
+    const r = suggestCompanies(
+      profile(),
+      [
+        co("lever:leverdemo", [pm("Dubai")], { name: "Lever Implementation Training Environment" }),
+        co("greenhouse:rhaegal", [pm("Riyadh, Saudi Arabia")], { name: "Rhaegal - Arago Sandbox" }),
+        co("ashby:sandboxvr", [pm("Dubai")], { name: "Sandbox VR" }),
+      ],
+      { now, others: [{ key: "lever:sandbox2", name: "Acme Sandbox", ats: "lever", slug: "sandbox2", careers_url: "https://x", open_jobs: null, tier: "curated" }] },
+    );
+    const keys = [...r.hiringNow, ...r.worthWatching, ...r.notScannable].map((s) => s.key);
+    expect(keys).toEqual(["ashby:sandboxvr"]);
+  });
+
+  it("ignores postings older than about six months", () => {
+    const r = suggestCompanies(profile(), [co("lever:stale", [pm("Dubai", 2000), pm("Riyadh, Saudi Arabia", 400)]), co("lever:fresh", [pm("Dubai", 2000), pm("Dubai", 90)])], { now });
+    expect(r.hiringNow.map((s) => s.key)).toEqual(["lever:fresh"]);
+    expect(r.hiringNow[0]).toMatchObject({ matches: 1 });
+    expect(r.worthWatching.map((s) => s.key)).not.toContain("lever:stale");
+  });
+
   it("ranks companies by how many open jobs pass the user's own filters", () => {
     const r = suggestCompanies(
       profile(),

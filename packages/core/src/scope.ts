@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { companyKey, connectors } from "./connectors";
 import { companyWords } from "./employers";
+import { isPlaceholderBoard } from "./text";
 import type { CompanyHealth, CompanyRef, Config } from "./schema";
 import type { DirectoryCompany } from "./suggest";
 
@@ -46,7 +47,8 @@ export function refOfEntry(c: DirectoryEntry): CompanyRef {
 
 /**
  * The directory companies a scan fetches beyond yours: live boards on hiring systems we can read,
- * not muted, not one of yours (by board or by name), one board per company (the one with most jobs).
+ * not muted, not one of yours (by board or by name), not a sandbox/test board, one board per company
+ * (the one with most jobs). Your own companies are always scanned, placeholder or not.
  */
 export function scopeCompanies(config: Config, directory: readonly DirectoryEntry[], scope: ScanScope): CompanyRef[] {
   const yours = new Set(config.companies.map(companyKey));
@@ -57,6 +59,7 @@ export function scopeCompanies(config: Config, directory: readonly DirectoryEntr
   for (const c of directory) {
     if (c.status !== "live" || !readable(c) || muted.has(c.key) || yours.has(c.key)) continue;
     if (scope === "mine" && !c.tags?.some((t) => wanted.has(t))) continue;
+    if (c.origin !== "user" && isPlaceholderBoard(c.name)) continue;
     const name = nameKey(c.name) || c.key;
     if (yourNames.has(name)) continue;
     const prev = best.get(name);

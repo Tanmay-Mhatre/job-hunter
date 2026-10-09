@@ -130,3 +130,23 @@ export function useDescription(job: Job | undefined): string | null | undefined 
 }
 
 export const canRunLocally = import.meta.env.DEV;
+
+/**
+ * How many companies the shared directory lists (its manifest count), from the local API. The one directory
+ * size shown anywhere in the app (Companies, Settings), always via roughCount. `rev` refetches after an update.
+ */
+export function useDirectorySize(rev = 0): number | null {
+  const [n, setN] = useState<number | null>(null);
+  useEffect(() => {
+    if (!canRunLocally) return;
+    let live = true;
+    fetch("/api/directory", { cache: "no-store" })
+      .then((r) => (r.ok ? (r.json() as Promise<{ local?: { companies: number } }>) : null))
+      .then((s) => live && s?.local?.companies && setN(s.local.companies))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [rev]);
+  return n;
+}

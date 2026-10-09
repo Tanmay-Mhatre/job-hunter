@@ -1,10 +1,10 @@
-import { Clock, ExternalLink, TriangleAlert, X } from "lucide-react";
+import { Clock, ExternalLink, RefreshCw, TriangleAlert, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { ATS_LABEL, keyOf } from "../lib/companies";
 import type { CompanyHealth, DataMeta } from "../lib/data";
 import { formatDate, formatDateTime, timeAgo } from "../lib/format";
 import type { CompanyRow } from "../lib/setup";
-import { Button, Card, Chip, cx, Segmented } from "./ui";
+import { Button, Card, Chip, cx, IconButton, Segmented } from "./ui";
 
 /** A company with no jobs for you in at least this many scans in a row, over at least QUIET_DAYS, gets a "remove?" flag. */
 export const QUIET_SCANS = 10;
@@ -48,9 +48,49 @@ function quietOf(seen: { h: CompanyHealth; at: string }[]): Row["quiet"] {
 
 const failing = (row: Row) => !!row.last && !row.last.h.ok && !row.last.h.unsupported;
 
+const atsName = (ats: string) => ATS_LABEL[ats] ?? ats;
+
+/** "Last 14 scans: 12 OK, 2 failed" for screen readers (the bars are visual only). */
+function historySummary(history: Row["history"]): string {
+  const seen = history.filter(Boolean) as CompanyHealth[];
+  if (!seen.length) return "Not scanned yet";
+  const failed = seen.filter((h) => !h.ok && !h.unsupported).length;
+  const unsupported = seen.filter((h) => h.unsupported).length;
+  const found = seen.filter((h) => h.ok && h.matches > 0).length;
+  return [
+    `Last ${seen.length} scan${seen.length === 1 ? "" : "s"}: ${seen.length - failed - unsupported} OK`,
+    failed && `${failed} failed`,
+    unsupported && `${unsupported} not supported`,
+    found && `${found} with jobs for you`,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+/** Coloured bars, one per recent scan, plus the same as text for screen readers. */
+function ScanHistory({ history }: { history: Row["history"] }) {
+  return (
+    <div className="flex h-5 items-end gap-0.5">
+      <span className="sr-only">{historySummary(history)}</span>
+      {history.map((h, i) => (
+        <span
+          key={i}
+          aria-hidden
+          title={!h ? "Not in this scan" : h.ok ? `${h.jobsFound} jobs, ${h.matches} for you` : h.unsupported ? "Not supported yet" : "Scan failed"}
+          className={cx(
+            "w-1.5 rounded-sm",
+            !h ? "h-1 bg-line" : h.unsupported ? "h-1.5 bg-warn/50" : !h.ok ? "h-5 bg-bad" : h.matches > 0 ? "h-5 bg-accent/70" : "h-2.5 bg-line",
+          )}
+        />
+      ))}
+    </div>
+  );
+}
+
 /**
- * Your companies: what each has for you right now, whether its careers page still works, and which
+ * My companies: what each has for you right now, whether its careers page still works, and which
  * ones haven't had anything for you in a while (remove them, so scans stay quick and polite).
+ * A table from md up; stacked cards on phones so every action stays on screen.
  */
 export function MyCompanies({
   rows: list,
@@ -59,6 +99,8 @@ export function MyCompanies({
   forYou,
   onRemove,
   onRemoveMany,
+  onScan,
+  scanning,
 }: {
   rows: CompanyRow[];
   savedKeys: Set<string>;
@@ -66,6 +108,9 @@ export function MyCompanies({
   forYou: ReadonlyMap<string, number>;
   onRemove: (key: string) => void;
   onRemoveMany: (keys: string[]) => void;
+  /** Scan now (offered when a company's last scan failed). */
+  onScan?: () => void;
+  scanning?: boolean;
 }) {
   const [sort, setSort] = useState<"jobs" | "name" | "attention">("jobs");
   const rows = useMemo<Row[]>(
@@ -92,16 +137,16 @@ export function MyCompanies({
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
         <div>
           <h2 className="text-base font-semibold">
-            Your companies <span className="tabular font-normal text-muted">({rows.length})</span>
+            My companies <span className="tabular font-normal text-muted">({rows.length})</span>
           </h2>
           <p className="text-xs text-muted">
             {rows.filter((x) => x.forYou > 0).length} with jobs for you now
-            {broken > 0 && <span className="text-bad"> · {broken} couldn't be checked</span>}
+            {broken > 0 && <span className="text-bad"> · last scan failed for {broken}</span>}
           </p>
         </div>
         {rows.length > 1 && (
           <Segmented
-            label="Sort your companies"
+            label="Sort My companies"
             value={sort}
             onChange={setSort}
             options={[
@@ -125,7 +170,7 @@ export function MyCompanies({
               reach your Radar from the directory.
             </span>
           </p>
-          <Button size="sm" onClick={() => onRemoveMany(quiet.map((x) => x.key))}>
+          <Button size="sm" onClick={() => onRemoveMany(quiet.map((x) => x.key))} aria-label={`Remove ${quiet.length} quiet compan${quiet.length === 1 ? "y" : "ies"}`}>
             Remove {quiet.length}
           </Button>
         </div>
@@ -136,92 +181,128 @@ export function MyCompanies({
           None yet, and that's fine: your Radar already finds jobs across the directory. Add companies you'd love to work at and their jobs will always come first.
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-sm">
+        <>
+        {/* Phones: one card per company. */}
+        <ul className="divide-y divide-line md:hidden">
+          {sorted.map((x) => (
+            <li key={x.r.id} className={cx("flex items-start gap-3 px-4 py-3 text-sm", x.isNew && "bg-accent-soft/20")}>
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <NameCell x={x} />
+                <p className="text-xs text-muted">
+                  <span className={cx("tabular", x.forYou > 0 && "font-semibold text-accent")}>{x.forYou || "No"} for you</span>
+                  {x.last?.h.ok && <span className="tabular"> · {x.last.h.jobsFound} open jobs</span>}
+                </p>
+                <ScanHistory history={x.history} />
+                <Status row={x} onScan={onScan} scanning={scanning} />
+              </div>
+              <IconButton label={`Remove ${x.r.name || x.r.slug}`} onClick={() => onRemove(x.key)} className="-mr-1 shrink-0 hover:text-bad">
+                <X className="size-4" />
+              </IconButton>
+            </li>
+          ))}
+        </ul>
+        <div className="hidden md:block">
+          <table className="w-full text-sm">
             <thead className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
               <tr>
                 <th className="px-4 py-2.5 font-semibold">Company</th>
                 <th className="px-3 py-2.5 text-right font-semibold">For you</th>
                 <th className="px-3 py-2.5 text-right font-semibold">Open jobs</th>
-                <th className="px-3 py-2.5 font-semibold">Last {Math.min(14, meta?.runs.length ?? 0)} scans</th>
+                <th className="px-3 py-2.5 font-semibold">Recent scans</th>
                 <th className="px-3 py-2.5 font-semibold">Status</th>
-                <th className="w-10 px-2 py-2.5" />
+                <th className="w-10 px-2 py-2.5">
+                  <span className="sr-only">Remove</span>
+                </th>
               </tr>
             </thead>
             <tbody>
               {sorted.map((x) => (
                 <tr key={x.r.id} className={cx("border-b border-line last:border-b-0", x.isNew && "bg-accent-soft/20")}>
                   <td className="px-4 py-2.5">
-                    <div className="flex items-center gap-1.5 font-medium">
-                      {x.r.name || x.r.slug}
-                      {/^https?:/.test(x.r.input) && (
-                        <a href={x.r.input} target="_blank" rel="noreferrer" className="text-muted hover:text-accent" aria-label={`${x.r.name} careers page`}>
-                          <ExternalLink className="size-3.5" />
-                        </a>
-                      )}
-                      {x.isNew && <span className="text-xs font-normal text-accent">new</span>}
-                    </div>
-                    <div className="text-[11px] text-muted">{x.r.ats ? (ATS_LABEL[x.r.ats] ?? x.r.ats) : ""}</div>
+                    <NameCell x={x} />
                   </td>
                   <td className={cx("tabular px-3 py-2.5 text-right", x.forYou > 0 ? "font-semibold text-accent" : "text-muted")}>{x.forYou || "—"}</td>
                   <td className="tabular px-3 py-2.5 text-right text-muted">{x.last?.h.ok ? x.last.h.jobsFound : "—"}</td>
                   <td className="px-3 py-2.5">
-                    <div className="flex h-5 items-end gap-0.5" aria-label="Scan history">
-                      {x.history.map((h, i) => (
-                        <span
-                          key={i}
-                          title={!h ? "not in this scan" : h.ok ? `${h.jobsFound} jobs, ${h.matches} for you` : h.error}
-                          className={cx(
-                            "w-1.5 rounded-sm",
-                            !h ? "h-1 bg-line" : h.unsupported ? "h-1.5 bg-warn/50" : !h.ok ? "h-5 bg-bad" : h.matches > 0 ? "h-5 bg-accent/70" : "h-2.5 bg-line",
-                          )}
-                        />
-                      ))}
-                    </div>
+                    <ScanHistory history={x.history} />
                   </td>
                   <td className="px-3 py-2.5">
-                    <Status row={x} />
+                    <Status row={x} onScan={onScan} scanning={scanning} />
                   </td>
                   <td className="px-2 py-2.5 text-right">
-                    <button type="button" onClick={() => onRemove(x.key)} aria-label={`Remove ${x.r.name}`} title="Remove from your companies" className="rounded p-1 text-muted hover:text-bad">
+                    <IconButton label={`Remove ${x.r.name || x.r.slug}`} onClick={() => onRemove(x.key)} className="hover:text-bad">
                       <X className="size-4" />
-                    </button>
+                    </IconButton>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        </>
       )}
     </Card>
   );
 }
 
-function Status({ row }: { row: Row }) {
-  const { last, r, isNew, quiet } = row;
-  if (isNew) return <Chip>{r.state === "soon" ? "support coming soon" : "not saved yet"}</Chip>;
-  if (!last) return r.state === "soon" ? <Chip tone="warn">support coming soon</Chip> : <Chip>not scanned yet</Chip>;
-  if (last.h.unsupported) return <Chip tone="warn">{ATS_LABEL[last.h.ats] ?? last.h.ats} support coming soon</Chip>;
-  if (!last.h.ok)
-    return (
-      <div>
-        <Chip tone="bad">
-          <TriangleAlert className="size-3" /> failed
-        </Chip>
-        <p className="mt-1 max-w-80 text-xs text-muted">{last.h.error}</p>
+/** Name, careers page link and hiring system. */
+function NameCell({ x }: { x: Row }) {
+  return (
+    <>
+      <div className="flex items-center gap-1.5 font-medium">
+        {x.r.name || x.r.slug}
+        {/^https?:/.test(x.r.input) && (
+          <a href={x.r.input} target="_blank" rel="noreferrer" className="inline-flex size-6 items-center justify-center rounded text-muted hover:text-accent" aria-label={`${x.r.name || x.r.slug} careers page`}>
+            <ExternalLink className="size-3.5" />
+          </a>
+        )}
+        {x.isNew && <span className="text-xs font-normal text-accent">new</span>}
       </div>
-    );
-  if (isQuiet(quiet) && !row.forYou) return <Chip tone="warn">nothing for you since {formatDate(quiet.since)}</Chip>;
-  return <Chip tone="accent">ok · {timeAgo(last.at)}</Chip>;
+      {x.r.ats && <div className="text-[11px] text-muted">Hiring system: {atsName(x.r.ats)}</div>}
+    </>
+  );
 }
 
-/** The latest scans: how many jobs, matches, and companies checked beyond yours. */
+function Status({ row, onScan, scanning }: { row: Row; onScan?: () => void; scanning?: boolean }) {
+  const { last, r, isNew, quiet } = row;
+  if (isNew) return <Chip>{r.state === "soon" ? "Not supported yet" : "Not saved yet"}</Chip>;
+  if (!last) return r.state === "soon" ? <Chip tone="warn">Not supported yet</Chip> : <Chip>Not scanned yet</Chip>;
+  if (last.h.unsupported) return <Chip tone="warn">Not supported yet ({atsName(last.h.ats)})</Chip>;
+  if (!last.h.ok)
+    return (
+      <div className="space-y-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <Chip tone="bad">
+            <TriangleAlert className="size-3" /> Last scan failed
+          </Chip>
+          {onScan && (
+            <button type="button" className="inline-flex min-h-6 items-center gap-1 text-xs font-medium text-accent disabled:opacity-50" onClick={onScan} disabled={scanning}>
+              <RefreshCw className="size-3" /> Retry
+            </button>
+          )}
+        </div>
+        {last.h.error && (
+          <details className="max-w-80 text-xs text-muted">
+            <summary className="cursor-pointer">Technical details</summary>
+            {last.h.error}
+          </details>
+        )}
+      </div>
+    );
+  if (isQuiet(quiet) && !row.forYou) return <Chip tone="warn">Nothing for you since {formatDate(quiet.since)}</Chip>;
+  return <Chip tone="accent">Scanned {timeAgo(last.at)}</Chip>;
+}
+
+/** The latest scans: how many jobs, matches, and companies scanned beyond yours. Collapsed by default. */
 export function RecentRuns({ meta }: { meta: DataMeta }) {
   if (!meta.runs.length) return null;
   return (
-    <Card className="overflow-hidden">
-      <header className="border-b border-line px-4 py-2.5 text-sm font-semibold">Recent scans</header>
-      <ul className="divide-y divide-line text-sm">
+    <details className="group overflow-hidden rounded-2xl border border-line bg-surface">
+      <summary className="flex min-h-11 cursor-pointer items-center gap-2 px-4 py-2.5 text-sm font-semibold">
+        Recent scans <span className="tabular font-normal text-muted">({Math.min(10, meta.runs.length)})</span>
+        {meta.runs[0] && <span className="ml-auto text-xs font-normal text-muted">Last scan {timeAgo(meta.runs[0].startedAt)}</span>}
+      </summary>
+      <ul className="divide-y divide-line border-t border-line text-sm">
         {meta.runs.slice(0, 10).map((r) => {
           const failed = r.health.filter((h) => !h.ok && !h.unsupported).length;
           const secs = (Date.parse(r.finishedAt) - Date.parse(r.startedAt)) / 1000;
@@ -232,14 +313,14 @@ export function RecentRuns({ meta }: { meta: DataMeta }) {
               <span className="tabular text-muted">{r.matches} matches</span>
               <span className={cx("tabular", r.newMatches > 0 ? "text-accent" : "text-muted")}>{r.newMatches} new</span>
               <span className="tabular text-muted">{r.closed} closed</span>
-              {!!r.checked && <span className="tabular text-muted">+{r.checked} companies checked</span>}
+              {!!r.checked && <span className="tabular text-muted">+{r.checked.toLocaleString()} more companies scanned</span>}
               <span className="tabular text-muted">{secs.toFixed(0)}s</span>
               {failed > 0 && <Chip tone="bad">{failed} failed</Chip>}
-              {r.partial && <Chip>partial</Chip>}
+              {r.partial && <Chip>Stopped before the end</Chip>}
             </li>
           );
         })}
       </ul>
-    </Card>
+    </details>
   );
 }

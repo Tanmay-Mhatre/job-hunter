@@ -2,22 +2,43 @@ import { ChevronDown, ExternalLink, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { ATS_LABEL, SUPPORTED } from "../../lib/companies";
 import type { CompanySuggestion } from "../../lib/companySuggest";
+import { displayPlace } from "../../lib/format";
 import { AddButton } from "../CompanyButtons";
 import { Button, Chip, cx } from "../ui";
 
 /** "Strong fit" and friends instead of a bare number: the score is relative, the label is what people act on. */
 export function fitOf(score: number): { label: string; tone: string } {
   if (score >= 70) return { label: "Strong fit", tone: "border-accent/40 bg-accent-soft text-accent" };
-  if (score >= 45) return { label: "Good fit", tone: "border-warn/40 bg-warn-soft text-warn" };
+  // A positive state: accent/green, never the warning amber.
+  if (score >= 45) return { label: "Good fit", tone: "border-good/40 bg-surface text-good" };
   return { label: "Worth a look", tone: "border-line bg-surface-2 text-muted" };
 }
 
-/** "Product Manager (United Kingdom; Brazil; …20 more)" -> "Product Manager · United Kingdom +21". */
+/**
+ * "Product Manager (United Kingdom; Brazil; …20 more)" -> "Product Manager · United Kingdom +21". Handles places that
+ * carry their own brackets ("Designer (Germany (remote); Portugal (remote); Italy)" -> "Designer · Germany (remote) +2").
+ */
 export function shortExample(example: string): string {
-  const m = example.match(/^(.*?)\s*\(([^()]*)\)$/);
-  if (!m) return example;
-  const places = m[2]!.split(/\s*;\s*/).filter(Boolean);
-  return places.length ? `${m[1]} · ${places[0]}${places.length > 1 ? ` +${places.length - 1}` : ""}` : m[1]!;
+  const text = example.trim();
+  if (!text.endsWith(")")) return text;
+  // Find the "(" that opens the last bracket group.
+  let depth = 0;
+  let open = -1;
+  for (let i = text.length - 1; i >= 0; i--) {
+    if (text[i] === ")") depth++;
+    else if (text[i] === "(" && --depth === 0) {
+      open = i;
+      break;
+    }
+  }
+  if (open <= 0) return text;
+  const title = text.slice(0, open).trim();
+  const parts = text.slice(open + 1, -1).split(/\s*;\s*/).filter(Boolean);
+  const more = parts.reduce((n, p) => n + (Number(p.match(/(\d+) more/)?.[1]) || 0), 0);
+  const places = parts.filter((p) => !/^…?\s*\d+ more$/.test(p));
+  if (!places.length) return title;
+  const extra = places.length - 1 + more;
+  return `${title} · ${displayPlace(places[0]!)}${extra > 0 ? ` +${extra}` : ""}`;
 }
 
 /** Initials on a tinted square: no logo fetches (they'd tell a third party which companies you look at). */
@@ -51,7 +72,7 @@ type Props = {
   onHide?: () => void;
 };
 
-/** One suggested company: why it fits, an example role, and Add / Not interested. */
+/** One suggested company: why it fits, an example role, and Add / Don't suggest. */
 export function SuggestionCard({ s, added, onAdd, onRemove, onHide }: Props) {
   const [open, setOpen] = useState(false);
   const fit = fitOf(s.score);
@@ -75,10 +96,10 @@ export function SuggestionCard({ s, added, onAdd, onRemove, onHide }: Props) {
             </a>
           </p>
           <p className="truncate text-xs text-muted">
-            {[ATS_LABEL[s.ats] ?? s.ats, s.open_jobs ? `${s.open_jobs.toLocaleString()} open jobs` : null, soon && "support coming soon"].filter(Boolean).join(" · ")}
+            {[`Hiring system: ${ATS_LABEL[s.ats] ?? s.ats}`, s.open_jobs ? `${s.open_jobs.toLocaleString()} open jobs` : null, soon && "not supported yet"].filter(Boolean).join(" · ")}
           </p>
         </div>
-        <span className={cx("shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold", fit.tone)} title={`Fit score ${s.score} / 100`}>
+        <span className={cx("shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold", fit.tone)} title={`Score ${s.score} / 100`}>
           {fit.label}
         </span>
       </header>
@@ -102,7 +123,7 @@ export function SuggestionCard({ s, added, onAdd, onRemove, onHide }: Props) {
       {open && (
         <div className="space-y-1 rounded-lg border border-line p-2.5 text-xs text-muted">
           <p>
-            Fit score <b className="tabular text-fg">{s.score}</b> / 100 from your roles, places, industries and topics.
+            Score <b className="tabular text-fg">{s.score}</b> / 100 from your roles, places, industries and topics.
           </p>
           {s.examples.length > 0 && (
             <ul className="list-inside list-disc">
@@ -117,17 +138,18 @@ export function SuggestionCard({ s, added, onAdd, onRemove, onHide }: Props) {
       )}
 
       <footer className="mt-auto flex items-center gap-1.5 pt-1">
-        <AddButton added={added} onAdd={onAdd} onRemove={onRemove} soon={soon} />
+        <AddButton added={added} onAdd={onAdd} onRemove={onRemove} soon={soon} name={s.name} />
         {onHide && !added && (
-          <Button size="sm" variant="ghost" onClick={onHide} className="text-muted">
-            <EyeOff className="size-3.5" /> Not interested
+          <Button size="sm" variant="ghost" onClick={onHide} className="text-muted" aria-label={`Don't suggest ${s.name}`} title="Hides this company: no more suggestions, and its jobs leave your Radar">
+            <EyeOff className="size-3.5" /> Don't suggest
           </Button>
         )}
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
-          className="ml-auto inline-flex items-center gap-0.5 text-xs font-medium text-muted hover:text-fg"
+          aria-label={`Why ${s.name}?`}
+          className="ml-auto inline-flex min-h-8 items-center gap-0.5 text-xs font-medium text-muted hover:text-fg"
         >
           Why? <ChevronDown className={cx("size-3.5 transition-transform", open && "rotate-180")} />
         </button>
