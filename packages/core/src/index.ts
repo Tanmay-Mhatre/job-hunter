@@ -3,6 +3,7 @@ export * from "./config";
 export * from "./http";
 export * from "./http-cache";
 export * from "./job-feed";
+export * from "./job-feed-diff";
 export * from "./score";
 export * from "./run";
 export * from "./diff";
