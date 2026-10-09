@@ -67,15 +67,18 @@ jobs:
           gh release view jobs -R "$DATA_REPO" > /dev/null 2>&1 ||
             gh release create jobs -R "$DATA_REPO" --latest=false --title "Job feed" \
               --notes "The shared job feed, rebuilt daily. Read jobs-manifest.json first; shards are checked against its SHA-256."
+          # First format: one shard per hiring system. Second: today's full copy and change file.
           shards=$(jq -r '.shards[].file' jobs-manifest.json)
-          gh release upload jobs $shards -R "$DATA_REPO" --clobber
+          v2new=$(ls jobs-v2-snapshot-*.json.br jobs-v2-diff-*.json.br 2> /dev/null || true)
+          gh release upload jobs $shards $v2new -R "$DATA_REPO" --clobber
           gh release upload jobs jobs-manifest.json -R "$DATA_REPO" --clobber
-          # Drop shards no manifest points to any more.
+          gh release upload jobs jobs-v2-manifest.json -R "$DATA_REPO" --clobber
+          # Drop files no manifest points to any more (the second keeps 14 days of change files).
+          keep=$(printf '%s\n' $shards jobs-manifest.json jobs-v2-manifest.json $(jq -r '.snapshot.file, .diffs[].file' jobs-v2-manifest.json))
           for a in $(gh release view jobs -R "$DATA_REPO" --json assets -q '.assets[].name'); do
-            [ "$a" = jobs-manifest.json ] && continue
-            grep -qx "$a" <<< "$shards" || gh release delete-asset jobs "$a" -R "$DATA_REPO" -y
+            grep -qx "$a" <<< "$keep" || gh release delete-asset jobs "$a" -R "$DATA_REPO" -y
           done
-          jq '{generated_at, alerts, http, ats}' stats.json
+          jq '{generated_at, alerts, http, ats, v2}' stats.json
 
       - name: Save the feed and ETags for tomorrow
         if: always() && steps.state.outcome == 'success'

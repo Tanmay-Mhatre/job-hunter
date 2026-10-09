@@ -10,7 +10,8 @@
  * A board that fails, or that the time limit leaves out, keeps yesterday's rows and date: clients
  * ignore entries older than 3 days and fetch those companies live.
  * Writes <out>/jobs-<ats>-<stamp>.json.gz (new names each run, so a client reading yesterday's manifest
- * never gets half of today's files), <out>/jobs-manifest.json (upload it last) and <out>/stats.json.
+ * never gets half of today's files), <out>/jobs-manifest.json (upload it last) and <out>/stats.json;
+ * and the second format, a full copy plus a daily change file (lib/feed-v2.ts).
  */
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -30,6 +31,7 @@ import {
   type JobFeedShard,
 } from "../../packages/core/src/index";
 import { readDenylist } from "./lib/denylist";
+import { stateOf, writeFeedV2 } from "./lib/feed-v2";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const arg = (name: string) => {
@@ -94,6 +96,8 @@ async function main() {
   const stamp = generated.replace(/[-:]/g, "").slice(0, 13);
   const manifest: JobFeedManifest = { schema: JOB_FEED_SCHEMA, generated_at: generated, shards: {} };
   const stats: Record<string, { companies: number; jobs: number; fetched: number; notModified: number; failed: number; kept: number; skipped: number }> = {};
+  /** Every hiring system's companies, for the second format. */
+  const everyone: JobFeedShard["companies"] = {};
 
   await Promise.all(
     ATS.map(async (ats) => {
@@ -149,6 +153,7 @@ async function main() {
       };
       await Promise.all(Array.from({ length: Math.min(WORKERS[ats] ?? 4, todo.length || 1) }, worker));
 
+      Object.assign(everyone, companies);
       const shard: JobFeedShard = { schema: JOB_FEED_SCHEMA, ats, generated_at: generated, companies };
       const gz = gzipSync(JSON.stringify(shard), { level: 9 });
       const file = `jobs-${ats}-${stamp}.json.gz`;
@@ -174,7 +179,11 @@ async function main() {
   const current = new Set(Object.values(manifest.shards).map((x) => x.file));
   for (const f of readdirSync(OUT)) if (/^jobs-.+\.json\.gz$/.test(f) && !current.has(f)) rmSync(join(OUT, f));
   writeFileSync(join(OUT, "jobs-manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-  writeFileSync(join(OUT, "stats.json"), `${JSON.stringify({ generated_at: generated, http: http.stats, ats: stats, alerts }, null, 2)}\n`);
+  // The second format: a full copy plus today's change file (see lib/feed-v2.ts).
+  const v2 = writeFeedV2(OUT, stateOf(everyone), generated);
+  const mb = (n: number) => (n / 1e6).toFixed(2);
+  console.error(`v2: #${v2.seq}, full copy ${mb(v2.snapshotBytes)} MB${v2.diffBytes !== undefined ? `, change file ${mb(v2.diffBytes)} MB (${v2.changedCompanies} companies)` : ""}${v2.note ? ` (${v2.note})` : ""}`);
+  writeFileSync(join(OUT, "stats.json"), `${JSON.stringify({ generated_at: generated, http: http.stats, ats: stats, alerts, v2 }, null, 2)}\n`);
   console.error(`Feed: ${total(manifest, "companies")} companies, ${total(manifest, "jobs")} jobs; ${http.stats.requests} requests, ${http.stats.notModified} unchanged.`);
   if (alerts.length) console.error(`Large change since yesterday: ${alerts.join("; ")}`);
 }

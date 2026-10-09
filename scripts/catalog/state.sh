@@ -33,8 +33,9 @@ case "$SET" in
     )
     ;;
   jobs)
-    FILES=(out/jobs/etags.json out/jobs/jobs-manifest.json out/jobs/stats.json)
-    for f in out/jobs/jobs-*.json.gz; do FILES+=("$f"); done
+    FILES=(out/jobs/etags.json out/jobs/jobs-manifest.json out/jobs/jobs-v2-manifest.json out/jobs/stats.json)
+    # Yesterday's shards and full copy: today's change file is made against them.
+    for f in out/jobs/jobs-*.json.gz out/jobs/jobs-v2-snapshot-*.json.br; do FILES+=("$f"); done
     ;;
   *)
     echo "unknown state set: $SET" >&2
