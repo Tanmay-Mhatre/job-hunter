@@ -148,7 +148,19 @@ Terms match whole words, case-insensitively: `ai` matches "AI-native" but not "m
 
 ## Privacy
 
+Your profile, resume, config, Telegram token and run history stay on your computer. The app has no telemetry. It talks to the companies' job boards (to scan), GitHub (to download the shared directory) and, if you set up alerts, Telegram.
+
+**Sharing is on by default:** when you add a company by link that the directory doesn't have, its careers board (hiring system, board name, company name) is sent to the project's contribution inbox so everyone can find it. Nothing about you is sent. Turn it off in **Settings → Sharing** or with `directory.share_additions: false`. Full details: [PRIVACY.md](PRIVACY.md).
+
 Your config lists the companies you're targeting. If you run Job Hunter from GitHub, **create your copy as a private repository** (use "Use this template" → Private, not Fork; forks of public repos must stay public).
+
+## Data & licenses
+
+- **Code:** MIT ([LICENSE](LICENSE)).
+- **Shared directory and job index:** CC BY 4.0. Sources and credits (Common Crawl, the Wayback Machine, Wikidata, permissively licensed board lists, user contributions) are in the directory repo's `NOTICE.md` ([template](services/directory-repo-template/NOTICE.md)).
+- **Third-party job APIs** (Remotive, The Muse, Jobicy, RemoteOK, Hacker News; planned) will be fetched on your own computer only, with credit, and never redistributed.
+- **Remove a company:** open a [takedown request](.github/ISSUE_TEMPLATE/takedown.yml). We reply within 7 days, and removed companies go into `denylist.json`.
+- **Running a fork with your own data:** [docs/self-hosting.md](docs/self-hosting.md).
 
 ## Fair use
 
@@ -162,7 +174,7 @@ pnpm test:watch
 pnpm hooks:install  # once per clone: no direct pushes to main, and pnpm check before every push
 ```
 
-Changes go through pull requests. Label a PR `automerge` and the Automerge workflow merges it once CI's `check` passes on its latest commit (a free stand-in for branch protection, which private repos on GitHub Free don't get). It never merges a red or running PR, but doesn't stop a manual merge.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Changes go through pull requests. Label a PR `automerge` and the Automerge workflow merges it once CI's `check` passes on its latest commit (a free stand-in for branch protection, which private repos on GitHub Free don't get). It never merges a red or running PR, but doesn't stop a manual merge.
 
 ```
 packages/core   connectors, normalise, score, run, history (shared Job types)

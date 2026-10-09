@@ -9,6 +9,15 @@
  *   POST /v1/contributions   { client?, boards: [{ ats, slug, region?, shard?, site?, name? }] }  (public)
  *   GET  /v1/pending         list waiting contributions                                     (Bearer INBOX_TOKEN)
  *   POST /v1/ack             { ids: [...] } remove processed contributions                   (Bearer INBOX_TOKEN)
+ *
+ * Abuse limits: 20 requests a minute per IP (Cloudflare rate limiter; the IP is not stored), at
+ * most 25 boards a request, at most DAILY_CAP boards accepted a day for everyone together, and a
+ * board already received in the last 7 days is skipped. Only boards on the hiring systems below
+ * are accepted, and they are stored as a system and a slug, never as a free-form link.
+ *
+ * KV keys: "c:…" contributions (the only keys /v1/pending lists) and "day:YYYY-MM-DD", the boards
+ * accepted that day (for the cap and the dedupe). One accepted request costs two KV writes, which
+ * matters on the free plan (1,000 writes a day).
  */
 
 export interface Env {
@@ -16,15 +25,21 @@ export interface Env {
   /** Workers rate limiting binding; optional so local dev works without it. */
   LIMITER?: { limit(opts: { key: string }): Promise<{ success: boolean }> };
   INBOX_TOKEN: string;
+  /** Most boards accepted per UTC day, for everyone together (wrangler.toml [vars]). Default 2000. */
+  DAILY_CAP?: string;
 }
 
 type Board = { ats: string; slug: string; region?: string; shard?: string; site?: string; name?: string };
 
 const SCANNABLE = new Set(["greenhouse", "lever", "ashby", "smartrecruiters", "workday"]);
 const SLUG = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
+/** The app's name and, optionally, its version ("job-hunter", "job-hunter/0.1.0"). Anything else is dropped. */
+const CLIENT = /^job-hunter(\/\d{1,3}\.\d{1,3}\.\d{1,4})?$/;
 const MAX_BODY = 20_000;
 const MAX_BOARDS = 25;
 const KEEP_DAYS = 30;
+const DEFAULT_DAILY_CAP = 2000;
+const DEDUPE_DAYS = 7;
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
@@ -60,26 +75,63 @@ async function contribute(req: Request, env: Env): Promise<Response> {
   if (env.LIMITER && !(await env.LIMITER.limit({ key: ip })).success) return json({ error: "Too many requests, try again in a minute." }, 429);
   const text = await req.text();
   if (text.length > MAX_BODY) return json({ error: "Request too large." }, 413);
-  let body: { boards?: unknown[] };
+  let body: { client?: unknown; boards?: unknown[] };
   try {
     body = JSON.parse(text);
   } catch {
     return json({ error: "Body must be JSON." }, 400);
   }
+  if (!body || typeof body !== "object") return json({ error: "Body must be a JSON object." }, 400);
   const seen = new Set<string>();
-  const boards: Board[] = [];
+  const boards: { board: Board; key: string }[] = [];
   for (const raw of (Array.isArray(body.boards) ? body.boards : []).slice(0, MAX_BOARDS)) {
     const b = clean(raw);
-    const key = b && `${b.ats}:${b.slug}|${b.shard ?? ""}|${b.site ?? ""}`.toLowerCase();
+    const key = b && boardKey(b);
     if (!b || !key || seen.has(key)) continue;
     seen.add(key);
-    boards.push(b);
+    boards.push({ board: b, key });
   }
   if (!boards.length) return json({ error: "No boards we can use." }, 400);
-  // No IP or user data is stored: only the boards and when they arrived.
-  const id = `c:${Date.now()}:${crypto.randomUUID()}`;
-  await env.INBOX.put(id, JSON.stringify({ boards, received_at: new Date().toISOString() }), { expirationTtl: KEEP_DAYS * 86_400 });
-  return json({ received: boards.length }, 202);
+
+  // Skip boards someone already sent in the last week: the workflow has them (or rejected them).
+  const now = Date.now();
+  const days = Array.from({ length: DEDUPE_DAYS }, (_, i) => `day:${new Date(now - i * 86_400_000).toISOString().slice(0, 10)}`);
+  const logs = await Promise.all(days.map(async (k) => parseDay(await env.INBOX.get(k))));
+  const recent = new Set(logs.flat());
+  const fresh = boards.filter((b) => !recent.has(b.key));
+  const duplicates = boards.length - fresh.length;
+  if (!fresh.length) return json({ received: 0, duplicates }, 202);
+
+  // A cap for everyone together, so a flood can't fill the inbox. KV isn't atomic, so two requests
+  // at the same moment can go slightly over (or miss a dedupe entry); that's fine for a cap.
+  // All or nothing: the app keeps a rejected batch in its outbox and sends it again later.
+  const today = logs[0]!;
+  if (today.length + fresh.length > dailyCap(env)) return json({ error: "The inbox is full for today. Your app will try again later." }, 429);
+
+  // No IP or user data is stored: only the boards, when they arrived, and the app name/version if valid.
+  const client = typeof body.client === "string" && CLIENT.test(body.client) ? body.client : undefined;
+  const id = `c:${now}:${crypto.randomUUID()}`;
+  const record = { boards: fresh.map((b) => b.board), received_at: new Date(now).toISOString(), ...(client ? { client } : {}) };
+  await env.INBOX.put(id, JSON.stringify(record), { expirationTtl: KEEP_DAYS * 86_400 });
+  await env.INBOX.put(days[0]!, JSON.stringify([...today, ...fresh.map((b) => b.key)]), { expirationTtl: (DEDUPE_DAYS + 1) * 86_400 });
+  return json({ received: fresh.length, duplicates }, 202);
+}
+
+/** A day's accepted board keys (the dedupe log); unreadable values count as empty. */
+function parseDay(value: string | null): string[] {
+  try {
+    const list = value ? (JSON.parse(value) as unknown) : [];
+    return Array.isArray(list) ? list.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+const boardKey = (b: Board) => `${b.ats}:${b.slug}|${b.shard ?? ""}|${b.site ?? ""}`.toLowerCase();
+
+function dailyCap(env: Env): number {
+  const n = Number(env.DAILY_CAP);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : DEFAULT_DAILY_CAP;
 }
 
 async function pending(env: Env): Promise<Response> {

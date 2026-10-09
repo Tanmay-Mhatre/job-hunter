@@ -1,0 +1,46 @@
+name: Bug report
+description: Something doesn't work as it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. This issue is public: leave out your resume, config, Telegram token and anything else personal.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open Companies
+        2. Paste https://jobs.lever.co/acme into Add by link
+        3. ...
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options:
+        - Web dashboard
+        - Command line
+        - A hiring system connector (Greenhouse, Workday, ...)
+        - Shared directory or job index
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Operating system, Node version (`node -v`) and the commit you're on (`git rev-parse --short HEAD`).
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error output
+      description: Paste any error text. Remove anything personal first.
+      render: text

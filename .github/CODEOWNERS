@@ -1,0 +1,12 @@
+# Who reviews what. GitHub asks these people to review every pull request that touches the paths.
+# A second maintainer is wanted (see docs/self-hosting.md, "Maintainers and tokens"). When one joins,
+# add them to each line, for example:
+#   *  @Tanmay-Mhatre @second-maintainer
+
+*                         @Tanmay-Mhatre
+
+# The parts that publish data or hold tokens: always two pairs of eyes once there is a second maintainer.
+/.github/                 @Tanmay-Mhatre
+/services/                @Tanmay-Mhatre
+/scripts/catalog/         @Tanmay-Mhatre
+/PRIVACY.md               @Tanmay-Mhatre

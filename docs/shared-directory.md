@@ -32,13 +32,13 @@ user is ever uploaded.
 |---|---|---|
 | Outbox and sharing | `packages/core/src/directory.ts`, CLI `setup check` | Boards found by Add by link (and not in the directory) are queued in `data/catalog/outbox.json` and sent to the inbox. Kept until sent. Off with `directory.share_additions: false`. |
 | Directory download | `packages/core/src/directory.ts`, `jobhunter directory update` | Reads `manifest.json`, downloads newer files, checks SHA-256, swaps them in. The dev server runs it weekly in the background (`directory.auto_update`). |
-| Contribution inbox | `services/contribute` | Cloudflare Worker. `POST /v1/contributions` (public, rate-limited, shape-checked); `GET /v1/pending` and `POST /v1/ack` for the workflow (token). |
+| Contribution inbox | `services/contribute` | Cloudflare Worker. `POST /v1/contributions` (public, rate-limited, shape-checked, capped at `DAILY_CAP` boards a day for everyone, repeats within 7 days skipped); `GET /v1/pending` and `POST /v1/ack` for the workflow (token). |
 | Contributions workflow | `.github/workflows/directory-contributions.yml` | Every 3 hours: accept, publish incrementally, commit `contributions.json`, acknowledge. |
 | Weekly rebuild | `.github/workflows/directory-rebuild.yml` | Full rebuild and a dated release; saves its working state as the `state` release so the next run skips recently checked boards. |
 | Finding more companies | `scripts/catalog/` | See [Coverage](#coverage) below. |
 | Public directory repo | `Tanmay-Mhatre/job-hunter-directory` | Releases (the files apps download), `contributions.json`, `coverage.md`, attribution. |
 
-Overrides: `JOBHUNTER_DIRECTORY_URL` (download base) and `JOBHUNTER_CONTRIBUTE_URL` (inbox) point an install at your own copies.
+Overrides: `JOBHUNTER_DIRECTORY_URL` (download base) and `JOBHUNTER_CONTRIBUTE_URL` (inbox) point an install at your own copies. See [self-hosting.md](self-hosting.md).
 
 ## Coverage
 
@@ -62,8 +62,45 @@ Restricted lists (share-alike or no licence) are only counted, never published. 
 
 ## What is shared, and what isn't
 
-Shared: hiring system, board slug (plus Workday shard/site, EU region), company name.
-Never shared: profile, resume, searches, statuses, which jobs you open, IP addresses (the inbox stores none).
+Shared (on by default, off with `directory.share_additions: false` or Settings → Sharing): hiring
+system, board slug (plus Workday shard/site, EU region), company name, and the app name
+(`job-hunter`, optionally `/version`; any other value is dropped).
+Never shared: profile, resume, searches, statuses, which jobs you open. The inbox uses the IP
+address only for rate limiting and stores none. Full details for users: [PRIVACY.md](../PRIVACY.md).
+
+The published data is CC BY 4.0 (`LICENSE-DATA` in the directory repo); sources and credits are
+in its `NOTICE.md`. Third-party job APIs (Remotive, The Muse, Jobicy, RemoteOK, Hacker News) are
+never published.
+
+## Denylist
+
+Companies removed on request (takedowns, see `NOTICE.md` in the directory repo; we reply within 7
+days) are listed in `denylist.json` at the root of the directory repo:
+
+```json
+{
+  "companies": [
+    { "key": "lever:acme", "reason": "Asked by the company (issue #123)", "added": "2026-10-09" },
+    { "domain": "example.com", "reason": "Not a real employer", "added": "2026-10-09" },
+    { "name": "Example Holdings", "reason": "Asked by the company", "added": "2026-10-09" }
+  ]
+}
+```
+
+Each entry has `reason` and `added` (`YYYY-MM-DD`) and at least one of:
+- `key`: a directory key, `{ats}:{slug}` as in `directory.json` (case-insensitive);
+- `domain`: matches a company whose careers page, or the website it was resolved from, is on this
+  domain or a subdomain of it;
+- `name`: matches the company name exactly, ignoring case and extra spaces.
+
+**Not wired up yet.** The catalog scripts should do this (`scripts/catalog`):
+- `build.ts`, `index.ts` and `release.ts` drop every matching company from `directory.json`,
+  `index.json` and the release, and log how many were dropped;
+- `contributions.ts` rejects matching boards, so a user can't add one back by link;
+- both workflows read `denylist.json` from the directory repo they already check out; a missing or
+  empty file means nothing is removed, and an unreadable file fails the run (never publish
+  without it);
+- apps need no change: a removed company disappears with the next download.
 
 ## One-time setup
 
@@ -78,7 +115,8 @@ Never shared: profile, resume, searches, statuses, which jobs you open, IP addre
 5. **Secrets in the private code repo** (`gh secret set NAME`):
    - `INBOX_URL`: the Worker URL from step 4
    - `INBOX_TOKEN`: the same string as step 4
-   - `DATA_REPO_TOKEN`: a fine-grained token with *Contents: read and write* on the directory repo only
+   - `DATA_REPO_TOKEN`: a fine-grained token with *Contents: read and write* on the directory repo only, expiring in 90 days
+     (rotation steps: [self-hosting.md](self-hosting.md#tokens))
 6. **Point apps at the inbox**: set `DEFAULT_CONTRIBUTE_URL` in `packages/core/src/directory.ts` to the Worker URL.
 
 ## Cost
