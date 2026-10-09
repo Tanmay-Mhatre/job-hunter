@@ -123,6 +123,30 @@ as one gzipped shard per hiring system on the `jobs` release of the directory re
 - **Format changes:** bump `JOB_FEED_SCHEMA`; older apps ignore a feed they don't understand and
   scan live.
 
+### Second format: a full copy, then a change file a day
+
+About 31% of companies change on a given day but only about 5% of jobs, so re-downloading the whole
+feed daily (25 MB) wastes almost all of it. The second format (`packages/core/src/job-feed-diff.ts`,
+`scripts/catalog/lib/feed-v2.ts`) works like OpenStreetMap's update files:
+
+- `jobs-v2-snapshot-<seq>.json.br`: the full copy, brotli (about 18.5 MB), for new installs.
+- `jobs-v2-diff-<seq>.json.br`: that day's changes. Per company, the job ids that closed or changed
+  and the jobs that are new or changed. Also the companies that were added, dropped, or not read that
+  day. On real data, a day's file is about 0.85 MB.
+- `jobs-v2-manifest.json` (uploaded last): version `seq`, the fingerprint of the full state
+  (`feedStateHash`), the snapshot, and the last 14 change files.
+
+The build checks every change file before publishing it: yesterday's copy plus the change file must
+reproduce today's copy exactly, or only the full copy is published. Apps apply the change files since
+their version and check the result against the manifest's fingerprint. When they're more than 14 days
+behind, a file is missing, or the fingerprint doesn't match, they take the full copy. They keep the
+copy in `catalog/jobs/v2-state.json.br`, and remember which companies matched so that after an update
+only companies whose jobs changed are checked again.
+
+On real data (1.28M jobs), a day's update takes about 3 s and filtering about 2.5 s; with nothing new,
+filtering is instant. The first format is still published next to it while installs update; drop it
+(and the shard code in `jobs.ts` and `syncJobFeed`) once every supported app reads the second.
+
 ## One-time setup
 
 1. **GitHub permission for workflow files** (once): `gh auth refresh -s workflow`
