@@ -69,16 +69,17 @@ const BAND_STYLE: Record<Band, string> = {
 export function ScoreBadge({ score, min, size = "md" }: { score: number; min: number; size?: "md" | "lg" }) {
   const band = scoreBand(score, min);
   return (
-    <div
+    <span
       className={cx(
         "tabular flex shrink-0 items-center justify-center rounded-xl border font-semibold",
         size === "lg" ? "size-14 text-xl" : "size-11 text-base",
         BAND_STYLE[band],
       )}
-      title={band === "top" ? `At or above your alert score (${min})` : `Score ${score} / 100`}
+      title={band === "top" ? `Match score ${score}/100 · strong match (${min}+)` : `Match score ${score}/100`}
     >
+      <span className="sr-only">Match score </span>
       {score}
-    </div>
+    </span>
   );
 }
 

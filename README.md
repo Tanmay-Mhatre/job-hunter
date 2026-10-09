@@ -137,8 +137,12 @@ No AI, fully explainable. Every job is scored 0–100:
 1. **Gates.** The title must contain a `titles.include` term and no `titles.exclude` term. The location must match `locations.include`, or `locations.remote_ok` without also matching `locations.remote_exclude`. Fail either and the job scores 0 and is hidden by default.
 2. **Title, up to 30.** 20 for a title match, +10 if it also has a `seniority_boost` term.
 3. **Location, up to 20.** 20 for an included place, 15 for an accepted remote region.
-4. **Keywords, up to 40.** Sum of the weights of matched `keywords` in title + description.
+4. **Keywords, up to 40.** The share of your keyword weight found in title + description: 40 × matched weight ÷ min(total weight, 12). Matching about three core topics fills the bar, so a short keyword list isn't penalised.
 5. **Freshness, up to 10.** 10 if posted in the last 3 days, 6 within 7 days, 2 after that.
+
+With no `keywords` at all, title + location + freshness (out of 60) are scaled to 0–100, so a strong match means the right title, in one of your places, posted recently.
+
+Sandbox, training and test boards (e.g. "Lever Implementation Training Environment") are left out of the directory, never suggested, and skipped when scanning your industries or all companies. Suggestions also ignore postings older than about six months.
 
 Terms match whole words, case-insensitively: `ai` matches "AI-native" but not "maintain"; `product manager` matches "Product-Manager".
 

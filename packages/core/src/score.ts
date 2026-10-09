@@ -8,6 +8,8 @@ export const POINTS = {
   locationCity: 20,
   locationRemote: 15,
   keywordCap: 40,
+  /** Matched topic weight that fills the topic bar (about three core topics at weight 4). */
+  keywordTarget: 12,
   fresh3d: 10,
   fresh7d: 6,
   older: 2,
@@ -17,8 +19,19 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 type Scorable = Pick<NormalizedJob, "title" | "location" | "workplace" | "description" | "postedAt">;
 
+/** Most points title + location + freshness can give (30 + 20 + 10). */
+const NON_KEYWORD_MAX = POINTS.titleMatch + POINTS.seniority + POINTS.locationCity + POINTS.fresh3d;
+
 /**
  * Transparent keyword scoring, 0..100. No AI.
+ *
+ *   title      20, +10 with a seniority term
+ *   location   20 one of your places, 15 remote in your regions
+ *   topics     up to 40: the share of your topic weight a job mentions, where min(total weight, 12)
+ *              fills the bar (so three core topics are enough; a short list isn't penalised)
+ *   freshness  10 within 3 days, 6 within 7, else 2
+ * With no topics at all, title + location + freshness (max 60) is scaled to 0..100 (`why.scale`),
+ * so a strong match means the right title, in your place, posted recently.
  *
  * Gates: the title must match an include term and no exclude term, and the location must be one
  * the user picked (see locationFit). Failing a gate scores 0.
@@ -37,10 +50,9 @@ export function scoreJob(job: Scorable, profile: Profile, now: Date, seenAt: Dat
   const matched = Object.entries(profile.keywords)
     .filter(([k]) => matchesTerm(haystack, k))
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-  const keywordPoints = Math.min(
-    POINTS.keywordCap,
-    matched.reduce((sum, [, w]) => sum + w, 0),
-  );
+  const totalWeight = Object.values(profile.keywords).reduce((sum, w) => sum + w, 0);
+  const matchedWeight = matched.reduce((sum, [, w]) => sum + w, 0);
+  const keywordPoints = totalWeight > 0 ? Math.round(POINTS.keywordCap * Math.min(1, matchedWeight / Math.min(totalWeight, POINTS.keywordTarget))) : 0;
 
   const posted = job.postedAt ? new Date(job.postedAt) : seenAt;
   const ageDays = Number.isNaN(posted.getTime()) ? Infinity : (now.getTime() - posted.getTime()) / DAY_MS;
@@ -52,10 +64,12 @@ export function scoreJob(job: Scorable, profile: Profile, now: Date, seenAt: Dat
     keywords: matched.map(([k]) => k),
     keywordPoints,
     freshness,
+    ...(totalWeight > 0 ? {} : { scale: 100 / NON_KEYWORD_MAX }),
   };
   if (!titleOk) return { score: 0, why: { ...why, gate: "title" } };
   if (locationPts === 0) return { score: 0, why: { ...why, gate: "location", ...(fit.note ? { locationNote: fit.note } : {}) } };
-  return { score: titlePts + locationPts + keywordPoints + freshness, why };
+  const raw = titlePts + locationPts + keywordPoints + freshness;
+  return { score: Math.min(100, Math.round(raw * (why.scale ?? 1))), why };
 }
 
 /** A remote job counts as "remote" even when its location text doesn't say so. */

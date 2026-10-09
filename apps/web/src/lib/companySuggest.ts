@@ -1,4 +1,5 @@
 import type { CompanySuggestion } from "@jobhunter/core/suggest";
+import { isPlaceholderBoard } from "@jobhunter/core/text";
 import { useEffect, useMemo, useState } from "react";
 import { keyOf, type CompanyRef } from "./companies";
 import { canRunLocally } from "./data";
@@ -69,7 +70,10 @@ export function useCompanySuggestions(draft: Draft, enabled = true): SuggestStat
   return state;
 }
 
-/** Suggestions without the companies you watch or hid since they were computed. */
+/**
+ * Suggestions without the companies you watch or hid since they were computed, and never a
+ * sandbox/test board (the server leaves those out too; this covers older answers).
+ */
 export function visible<T extends CompanySuggestion>(list: readonly T[], skip: ReadonlySet<string>): T[] {
-  return list.filter((s) => !skip.has(s.key) && !skip.has(keyOf(s)));
+  return list.filter((s) => !skip.has(s.key) && !skip.has(keyOf(s)) && !isPlaceholderBoard(s.name));
 }

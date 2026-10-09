@@ -1,16 +1,17 @@
 import { INDUSTRY_BY_ID } from "@jobhunter/core/catalog/industries";
 import { configToYaml } from "@jobhunter/core/yaml-writer";
 import { ArrowLeft, ArrowRight, Building2, CircleAlert, Download, FileText, Radar as RadarIcon, ScanSearch, Sparkles, Target } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { ScanProgress } from "../components/ScanProgress";
 import { Button, Card, cx } from "../components/ui";
 import { canRunLocally } from "../lib/data";
+import { displayPlace } from "../lib/format";
 import type { ScanState } from "../lib/scan";
 import { draftToConfig, saveBlockers, saveConfig, STEP, STEP_COUNT, stepBlocker, STEPS, usableCompanies, type Draft, type SetupProgress } from "../lib/setup";
 import { buildSuggestions } from "../lib/suggest";
 import { CompaniesStep } from "./CompaniesStep";
 import { ResumeStep } from "./ResumeStep";
-import { IndustriesStep, KeywordsStep, LocationsStep, RolesStep, ThresholdPicker } from "./steps";
+import { HeadingLevel, IndustriesStep, KeywordsStep, LocationsStep, placeLabel, RolesStep, ThresholdPicker } from "./steps";
 
 type Props = {
   step: number;
@@ -43,30 +44,40 @@ const COPY: Record<number, { title: string; intro: string }> = {
   [STEP.locations]: { title: "Where do you want to work?", intro: "Jobs outside these places are hidden. Remote roles can count too." },
   [STEP.industries]: {
     title: "Which industries are you in?",
-    intro: "Pick the industries you've worked in or want to move into. You can narrow your Radar to them. This never hides a job on its own.",
+    intro: "Industries pick which companies we scan and suggest. Topics (next step) rank jobs higher when they mention them. Neither hides a job on its own.",
   },
-  [STEP.keywords]: { title: "What topics matter to you?", intro: "These don't hide jobs. They rank the ones that mention your topics higher." },
+  [STEP.keywords]: {
+    title: "What topics matter to you?",
+    intro: "Topics rank jobs higher when they mention them. They never hide a job. Industries (previous step) pick which companies we scan and suggest.",
+  },
   [STEP.companies]: {
     title: "Pick companies you'd love to work at",
-    intro: "Picked from your roles, places, industries and past employers. We check the ones you add on every scan and put their jobs first. Optional.",
+    intro: "Picked from your roles, places, industries and past employers. We scan the ones you add every time and put their jobs first. Optional.",
   },
-  [STEP.review]: { title: "Review and save", intro: "Check everything reads right, then save. We'll find matching jobs across thousands of companies right away." },
+  [STEP.review]: { title: "Review and save", intro: "Check everything reads right, then save and run your first scan." },
 };
 
 export function Wizard(props: Props) {
   const { step, goStep, draft, update, existing, configErrors, scan, startScan, onSaved, onFinish, onExit, onStart, onStartOver, progress, resumeText, saveResume } =
     props;
   const suggest = useMemo(() => buildSuggestions(resumeText, draft.aiProfile), [resumeText, draft.aiProfile]);
+  const heading = useRef<HTMLHeadingElement>(null);
+
+  // Each step is a new "page": name it in the tab title and move focus to its heading.
+  useEffect(() => {
+    const label = STEPS.find((s) => s.id === step)?.label;
+    document.title = label ? `Setup · ${label} · Job Hunter` : "Setup · Job Hunter";
+    heading.current?.focus();
+  }, [step]);
 
   if (step <= 0) {
     return (
-      <Welcome existing={existing} configErrors={configErrors} progress={progress} onStart={onStart} onStartOver={onStartOver} onExit={onExit} />
+      <Welcome headingRef={heading} existing={existing} configErrors={configErrors} progress={progress} onStart={onStart} onStartOver={onStartOver} onExit={onExit} />
     );
   }
 
   const blocker = stepBlocker(step, draft);
   const optionalEmpty =
-    (step === STEP.resume && !resumeText) ||
     (step === STEP.industries && draft.industries.length === 0) ||
     (step === STEP.keywords && Object.keys(draft.keywords).length === 0) ||
     (step === STEP.companies && draft.companies.length === 0);
@@ -74,52 +85,75 @@ export function Wizard(props: Props) {
     <div className="mx-auto max-w-2xl">
       <Progress step={step} goStep={goStep} draft={draft} />
       <Card className="mt-4 p-5 sm:p-7">
-        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{COPY[step]?.title}</h1>
+        <h1 ref={heading} tabIndex={-1} className="text-xl font-semibold tracking-tight outline-none sm:text-2xl">
+          {COPY[step]?.title}
+        </h1>
         <p className="mt-1 text-sm text-muted">{COPY[step]?.intro}</p>
-        <div className="mt-6">
-          {step === STEP.resume && (
-            <ResumeStep
-              draft={draft}
-              update={update}
-              resumeText={resumeText}
-              saveResume={saveResume}
-              onSkip={() => goStep(STEP.roles)}
-              onNext={() => goStep(STEP.roles)}
-            />
-          )}
-          {step === STEP.roles && <RolesStep draft={draft} update={update} suggest={suggest} />}
-          {step === STEP.locations && <LocationsStep draft={draft} update={update} suggest={suggest} />}
-          {step === STEP.industries && <IndustriesStep draft={draft} update={update} suggest={suggest} />}
-          {step === STEP.keywords && <KeywordsStep draft={draft} update={update} suggest={suggest} resumeText={resumeText} />}
-          {step === STEP.companies && <CompaniesStep draft={draft} update={update} />}
-          {step === STEP.review && (
-            <Review
-              draft={draft}
-              update={update}
-              goStep={goStep}
-              scan={scan}
-              startScan={startScan}
-              onSaved={onSaved}
-              onFinish={onFinish}
-              hasResume={!!resumeText}
-            />
-          )}
-        </div>
-        {step < STEP.review && (
-          <footer className="mt-8 flex flex-col-reverse gap-3 border-t border-line pt-5 sm:flex-row sm:items-center sm:justify-between">
-            <Button variant="ghost" className="h-11 sm:h-9" onClick={() => goStep(step - 1)}>
-              <ArrowLeft className="size-4" /> Back
+        <HeadingLevel.Provider value={2}>
+          <div className="mt-6">
+            {step === STEP.resume && (
+              <ResumeStep
+                draft={draft}
+                update={update}
+                resumeText={resumeText}
+                saveResume={saveResume}
+                onSkip={() => goStep(STEP.roles)}
+                onNext={() => goStep(STEP.roles)}
+                footer={(primary) => <StepFooter onBack={() => goStep(step - 1)}>{primary}</StepFooter>}
+              />
+            )}
+            {step === STEP.roles && <RolesStep draft={draft} update={update} suggest={suggest} />}
+            {step === STEP.locations && <LocationsStep draft={draft} update={update} suggest={suggest} />}
+            {step === STEP.industries && <IndustriesStep draft={draft} update={update} suggest={suggest} />}
+            {step === STEP.keywords && <KeywordsStep draft={draft} update={update} suggest={suggest} resumeText={resumeText} />}
+            {step === STEP.companies && <CompaniesStep draft={draft} update={update} />}
+            {step === STEP.review && (
+              <Review
+                draft={draft}
+                update={update}
+                goStep={goStep}
+                scan={scan}
+                startScan={startScan}
+                onSaved={onSaved}
+                onFinish={onFinish}
+                hasResume={!!resumeText}
+              />
+            )}
+          </div>
+        </HeadingLevel.Provider>
+        {step > STEP.resume && step < STEP.review && (
+          <StepFooter onBack={() => goStep(step - 1)} blocker={blocker}>
+            <Button
+              variant="primary"
+              className="h-11 px-5 sm:h-10"
+              onClick={() => goStep(step + 1)}
+              disabled={!!blocker}
+              aria-describedby={blocker ? "step-blocker" : undefined}
+            >
+              {optionalEmpty ? "Skip for now" : "Continue"} <ArrowRight className="size-4" />
             </Button>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-              {blocker && <span className="text-center text-xs text-muted sm:text-right">{blocker}</span>}
-              <Button variant="primary" className="h-11 px-5 sm:h-10" onClick={() => goStep(step + 1)} disabled={!!blocker}>
-                {optionalEmpty ? "Skip for now" : "Continue"} <ArrowRight className="size-4" />
-              </Button>
-            </div>
-          </footer>
+          </StepFooter>
         )}
       </Card>
     </div>
+  );
+}
+
+function StepFooter({ onBack, blocker, children }: { onBack: () => void; blocker?: string | null; children: ReactNode }) {
+  return (
+    <footer className="mt-8 flex flex-col-reverse gap-3 border-t border-line pt-5 sm:flex-row sm:items-center sm:justify-between">
+      <Button variant="ghost" className="h-11 sm:h-9" onClick={onBack}>
+        <ArrowLeft className="size-4" /> Back
+      </Button>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+        {blocker && (
+          <span id="step-blocker" className="text-center text-xs text-muted sm:text-right">
+            {blocker}
+          </span>
+        )}
+        {children}
+      </div>
+    </footer>
   );
 }
 
@@ -162,6 +196,7 @@ function Progress({ step, goStep, draft }: { step: number; goStep: (n: number) =
 }
 
 function Welcome({
+  headingRef,
   existing,
   configErrors,
   progress,
@@ -169,6 +204,7 @@ function Welcome({
   onStartOver,
   onExit,
 }: {
+  headingRef: RefObject<HTMLHeadingElement | null>;
   existing: boolean;
   configErrors?: string;
   progress: SetupProgress;
@@ -179,7 +215,7 @@ function Welcome({
   const steps: [ReactNode, string, string][] = [
     [<Target className="size-5" />, "Tell us what you want", "Roles, places and the topics you care about."],
     [<ScanSearch className="size-5" />, "We find and score every matching job", "Across thousands of companies' hiring systems, often before LinkedIn."],
-    [<Building2 className="size-5" />, "Pick companies you'd love to join", "Optional: their jobs always go to the top, checked every scan."],
+    [<Building2 className="size-5" />, "Pick companies you'd love to join", "Optional: we scan them every time and put their jobs at the top."],
   ];
   const resuming = !existing && progress.started;
   return (
@@ -188,7 +224,7 @@ function Welcome({
         <span className="flex size-12 items-center justify-center rounded-2xl bg-accent text-accent-fg">
           <RadarIcon className="size-6" />
         </span>
-        <h1 className="mt-5 text-2xl font-semibold tracking-tight sm:text-3xl">
+        <h1 ref={headingRef} tabIndex={-1} className="mt-5 text-2xl font-semibold tracking-tight outline-none sm:text-3xl">
           {existing ? "Review your setup" : resuming ? "Welcome back" : "Let's set up your job radar"}
         </h1>
         <p className="mt-2 text-muted">
@@ -200,8 +236,11 @@ function Welcome({
         </p>
         {configErrors && (
           <div className="mt-5 rounded-xl border border-warn/40 bg-warn-soft/50 p-3 text-sm">
-            <p className="font-medium text-warn">Your config file has problems, so we've loaded what we could.</p>
-            <pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap font-mono text-xs text-muted">{configErrors}</pre>
+            <p className="font-medium text-warn">Some of your saved settings couldn't be read, so we've loaded what we could. Walk through setup and save to fix them.</p>
+            <details className="mt-1">
+              <summary className="cursor-pointer text-xs font-medium text-muted">Technical details</summary>
+              <pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap font-mono text-xs text-muted">{configErrors}</pre>
+            </details>
           </div>
         )}
         <ol className="mt-7 space-y-4">
@@ -233,6 +272,26 @@ function Welcome({
       </Card>
     </div>
   );
+}
+
+const EDIT_LABEL: Record<number, string> = {
+  [STEP.resume]: "resume",
+  [STEP.roles]: "roles",
+  [STEP.locations]: "places",
+  [STEP.industries]: "industries",
+  [STEP.keywords]: "topics",
+  [STEP.companies]: "companies",
+};
+
+/** What "Save & find my jobs" actually scans: My companies, plus companies in your industries. */
+function firstScanText(companies: number, industries: boolean): string {
+  const what =
+    companies > 0
+      ? `your ${companies} ${companies === 1 ? "company" : "companies"}${industries ? " and companies in your industries" : ""}`
+      : industries
+        ? "companies in your industries"
+        : null;
+  return `${what ? `We'll scan ${what} now` : "We'll run your first scan now"} (about a minute). You can scan every company in the directory anytime with Scan now.`;
 }
 
 function Review({
@@ -311,7 +370,7 @@ function Review({
             </Button>
           </div>
         ) : (
-          <p className="text-sm text-muted">This takes a few minutes. We wait a moment between requests to be polite to each company's site.</p>
+          <p className="text-sm text-muted">This usually takes a minute or two. We pause between requests to be polite to each company's site.</p>
         )}
       </div>
     );
@@ -343,7 +402,7 @@ function Review({
       <>
         {draft.places.length > 0 ? (
           <>
-            In <b>{draft.places.slice(0, 4).join(", ")}</b>
+            In <b>{draft.places.slice(0, 4).map(displayPlace).join(", ")}</b>
             {draft.places.length > 4 && ` +${draft.places.length - 4} more`}
           </>
         ) : (
@@ -352,7 +411,7 @@ function Review({
         {draft.remote && draft.remoteOk.length > 0 && (
           <>
             {draft.places.length > 0 ? " or " : ", "}
-            <b>remote ({draft.remoteOk.slice(0, 3).join(", ")})</b>
+            <b>remote ({draft.remoteOk.slice(0, 3).map(placeLabel).join(", ")})</b>
           </>
         )}
         .
@@ -383,8 +442,8 @@ function Review({
       STEP.companies,
       companies.length ? (
         <>
-          Watch <b>{companies.slice(0, 4).map((c) => c.name).join(", ")}</b>
-          {companies.length > 4 && ` +${companies.length - 4} more`}: checked every scan, their jobs listed first.
+          My companies: <b>{companies.slice(0, 4).map((c) => c.name).join(", ")}</b>
+          {companies.length > 4 && ` +${companies.length - 4} more`}. We scan them every time and list their jobs first.
         </>
       ) : (
         <span className="text-muted">No companies picked (optional). You can add them later in the Companies tab.</span>
@@ -398,7 +457,7 @@ function Review({
         {lines.map(([n, text]) => (
           <li key={n} className="flex items-start gap-3 p-3 text-sm">
             <span className="min-w-0 flex-1 leading-6">{text}</span>
-            <Button size="sm" variant="ghost" onClick={() => goStep(n)}>
+            <Button size="sm" variant="ghost" onClick={() => goStep(n)} aria-label={`Edit ${EDIT_LABEL[n] ?? "this step"}`}>
               Edit
             </Button>
           </li>
@@ -406,8 +465,8 @@ function Review({
       </ul>
 
       <div>
-        <h3 className="text-sm font-semibold">Which jobs count as strong matches?</h3>
-        <p className="mb-2 mt-0.5 text-sm text-muted">They get a star on your radar, and alerts once those arrive.</p>
+        <h2 className="text-sm font-semibold">Which jobs count as strong matches?</h2>
+        <p className="mb-2 mt-0.5 text-sm text-muted">Strong matches get a highlighted score and are sent in Telegram alerts.</p>
         <ThresholdPicker draft={draft} update={update} />
       </div>
 
@@ -428,10 +487,20 @@ function Review({
         </div>
       )}
 
-      {error && <pre className="whitespace-pre-wrap rounded-xl bg-bad-soft/50 p-3 font-mono text-xs text-bad">{error}</pre>}
+      {error && (
+        <div role="alert" className="rounded-xl bg-bad-soft/50 p-3 text-sm text-bad">
+          <p className="font-medium">We couldn't save your setup. Check the steps above, then try again.</p>
+          <details className="mt-1">
+            <summary className="cursor-pointer text-xs font-medium">Technical details</summary>
+            <pre className="mt-1 whitespace-pre-wrap font-mono text-xs">{error}</pre>
+          </details>
+        </div>
+      )}
+
+      {canRunLocally && <p className="text-sm text-muted">{firstScanText(companies.length, draft.industries.length > 0)}</p>}
 
       <div className="flex flex-wrap items-center gap-2 border-t border-line pt-5">
-        <Button variant="ghost" onClick={() => goStep(STEP.keywords)}>
+        <Button variant="ghost" onClick={() => goStep(STEP.review - 1)}>
           <ArrowLeft className="size-4" /> Back
         </Button>
         <div className="ml-auto flex flex-wrap gap-2">

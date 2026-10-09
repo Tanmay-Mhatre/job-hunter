@@ -161,18 +161,31 @@ describe("your companies and directory jobs", () => {
     expect(applyFilters([directory], f({ status: "new" }), ctx)).toEqual([]);
   });
 
-  it("New = found by a scan in the last 24 hours; the New tag stays for 2 days", () => {
+  it("New = first found since the previous scan (2 days without one), posted within a month; never on the first scan", () => {
     const hoursAgo = (h: number) => new Date(NOW - h * 3_600_000).toISOString();
-    const found = (h: number) => job({ id: `h${h}`, firstSeen: hoursAgo(h) });
-    expect([2, 23, 30, 47, 50].map((h) => [h, isNewJob(found(h), ctx), hasNewTag(found(h), ctx)])).toEqual([
+    const found = (h: number) => job({ id: `h${h}`, firstSeen: hoursAgo(h), postedAt: hoursAgo(h) });
+    // No previous scan time: the last 48 hours count. The tag uses the same rule as the New view.
+    expect([2, 30, 47, 50].map((h) => [h, isNewJob(found(h), ctx), hasNewTag(found(h), ctx)])).toEqual([
       [2, true, true],
-      [23, true, true],
-      [30, false, true],
-      [47, false, true],
+      [30, true, true],
+      [47, true, true],
       [50, false, false],
     ]);
+    // Since the previous scan finished 10 hours ago.
+    const since = { ...ctx, newSince: NOW - 10 * 3_600_000 };
+    expect([2, 12].map((h) => isNewJob(found(h), since))).toEqual([true, false]);
+    // First scan: nothing is new.
+    expect(isNewJob(found(2), { ...ctx, firstScan: true })).toBe(false);
+    // An old posting a scan only just found isn't new.
+    expect(isNewJob(job({ firstSeen: hoursAgo(1), postedAt: daysAgo(120) }), ctx)).toBe(false);
     // Closed jobs aren't new, however recent.
     expect(isNewJob(job({ firstSeen: hoursAgo(1), status: "closed" }), ctx)).toBe(false);
+  });
+
+  it("hides postings older than about 6 months unless asked", () => {
+    const old = job({ id: "old", postedAt: daysAgo(200), firstSeen: daysAgo(200) });
+    expect(applyFilters([old], f(), ctx)).toEqual([]);
+    expect(applyFilters([old], f({ showOld: true }), ctx)).toHaveLength(1);
   });
 
   it("round-trips the new filters through the URL", () => {

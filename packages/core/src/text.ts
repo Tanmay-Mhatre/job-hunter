@@ -100,3 +100,24 @@ export function inferWorkplace(location: string): "remote" | "hybrid" | "unknown
   if (matchesTerm(location, "remote")) return "remote";
   return "unknown";
 }
+
+/**
+ * Boards that aren't a real employer: ATS vendors' sandboxes, training and demo tenants, test accounts
+ * ("Lever Implementation Training Environment", "Rhaegal - Arago Sandbox", "Acme Test Company").
+ * They post fake or years-old jobs, so they're never suggested, listed or scanned.
+ */
+const PLACEHOLDER_BOARD = /\b(training environment|implementation (?:training|environment)|test (?:company|account|tenant|environment|site|board)|demo (?:company|account|tenant|site|board)|staging|do not use|dummy|sample company)\b/i;
+/**
+ * "Sandbox" alone is a real brand ("Sandbox VR", "The Sandbox"), so it only counts as a tenant label:
+ * after a separator ("Rhaegal - Arago Sandbox", "Acme (Sandbox)"), next to a tenant word
+ * ("Test Sandbox", "Sandbox Account"), or as the trailing word of a longer name ("Acme Sandbox", "Acme Sandbox 2").
+ */
+const SANDBOX_BOARD = [
+  /[-–—(|:]\s*(?:[\p{L}\p{N}.&']+\s+){0,3}sandbox\b/iu,
+  /\b(?:test|demo|dev|uat|qa|training|partner|customer|implementation)\s+sandbox\b/i,
+  /\bsandbox\s+(?:environment|account|tenant|company|site|board|instance|org|organization)\b/i,
+  /(?<!\bthe)\s+sandbox\s*\d*\)?\s*$/i,
+];
+export function isPlaceholderBoard(name: string | undefined | null): boolean {
+  return !!name && (PLACEHOLDER_BOARD.test(name) || SANDBOX_BOARD.some((re) => re.test(name)));
+}

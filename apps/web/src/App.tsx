@@ -1,6 +1,7 @@
 import { ArrowRight, Building2, Keyboard, KanbanSquare, LoaderCircle, Moon, Radar as RadarIcon, RefreshCw, Settings as SettingsIcon, Sun, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CompaniesTab } from "./components/CompaniesTab";
+import { Dialog } from "./components/Dialog";
 import { SetupBanner } from "./components/EmptyState";
 import { checklistItems, ConfigProblemCard, FailingBanner, FirstScanCard, NoMatches, ScanningBar, SetupChecklist, SetupHero } from "./components/Guidance";
 import { ApplyPrompt } from "./components/ApplyPrompt";
@@ -10,6 +11,7 @@ import { RadarPage } from "./components/radar/RadarPage";
 import { NotifyWhenDone } from "./components/NotifyWhenDone";
 import { ScanButton, ScanChooser } from "./components/ScanButton";
 import { Settings } from "./components/Settings";
+import { Toaster } from "./components/Toast";
 import { Button, Card, cx, IconButton, Kbd } from "./components/ui";
 import { jobCompanyKey, keyOf, refOfJob, toRow } from "./lib/companies";
 import { canRunLocally, useData, useOtherJobs, type Job } from "./lib/data";
@@ -229,7 +231,18 @@ export function App() {
   const inSetup = "setup" in route;
   const tab = "tab" in route ? route.tab : null;
 
-  // Global keys: Esc closes, 1-4 switch tabs, ? shows shortcuts.
+  // ----- per-view title and heading; focus moves to the heading when you switch views (not on first load) -----
+  const viewLabel = tab ? TABS.find((t) => t.id === tab)!.label : null;
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const lastTab = useRef<Tab | null>(tab);
+  useEffect(() => {
+    // Setup routes set their own title.
+    if (viewLabel) document.title = `${viewLabel} · Job Hunter`;
+    if (tab && lastTab.current !== tab) headingRef.current?.focus({ preventScroll: true });
+    lastTab.current = tab;
+  }, [tab, viewLabel]);
+
+  // Global keys: Esc closes, 1-4 switch tabs, ? shows shortcuts. Dialogs close themselves on Escape too.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement | null)?.closest?.("input, textarea, select") || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -237,11 +250,11 @@ export function App() {
         setOpenId(null);
         setShowKeys(false);
       } else if (e.key === "?") setShowKeys((v) => !v);
-      else if (!openId && !inSetup && /^[1-4]$/.test(e.key)) go({ tab: TABS[Number(e.key) - 1]!.id });
+      else if (!openId && !showKeys && !inSetup && /^[1-4]$/.test(e.key)) go({ tab: TABS[Number(e.key) - 1]!.id });
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [openId, inSetup, go]);
+  }, [openId, showKeys, inSetup, go]);
 
   const lastRun = meta?.runs[0];
   // Only your companies: the extra ones a scan checks aren't yours to fix.
@@ -253,6 +266,9 @@ export function App() {
 
   return (
     <div className="min-h-dvh">
+      <a href="#main" onClick={(e) => (e.preventDefault(), document.getElementById("main")?.focus())} className="sr-only-focusable fixed left-3 top-3 z-[70] rounded-lg bg-surface px-3 py-2 text-sm font-medium shadow-xl">
+        Skip to content
+      </a>
       <header className="sticky top-0 z-30 border-b border-line bg-surface/85 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4">
           <a href="#radar" onClick={() => go({ tab: "radar" })} className="flex items-center gap-2 font-semibold tracking-tight">
@@ -302,7 +318,7 @@ export function App() {
         </div>
       </header>
 
-      <main className={cx("mx-auto max-w-6xl px-4 pt-5", inSetup ? "pb-10" : "pb-24 md:pb-10")}>
+      <main id="main" tabIndex={-1} className={cx("mx-auto max-w-6xl px-4 pt-5 outline-none", inSetup ? "pb-10" : "pb-24 md:pb-10")}>
         {status === undefined || state.kind === "loading" ? (
           <p className="py-20 text-center text-sm text-muted">Loading…</p>
         ) : inSetup ? (
@@ -337,7 +353,12 @@ export function App() {
           />
         ) : (
           <div className="space-y-4">
-            {state.kind === "error" && <ErrorState message={state.message} />}
+            {viewLabel && (
+              <h1 ref={headingRef} tabIndex={-1} className="sr-only">
+                {viewLabel}
+              </h1>
+            )}
+            {state.kind === "error" && <ErrorState message={state.message} onRetry={() => void reload()} />}
             {/* A scan in progress, on every tab: progress, Stop, and (long scans) a Telegram message when it's done. */}
             {state.kind !== "empty" && <ScanningBar scan={scan} onStop={() => void stopScan()} />}
             <NotifyWhenDone scan={scan} onNotify={notifyScan} onSaved={() => setup.refresh()} />
@@ -366,6 +387,7 @@ export function App() {
                     onSaveView={prefs.saveView}
                     onRenameView={prefs.renameView}
                     onDeleteView={prefs.deleteView}
+                    onRestoreView={prefs.restoreView}
                     onHideCompany={hideCompany}
                     isYours={isYours}
                     companyCount={yourKeys.size}
@@ -462,7 +484,7 @@ export function App() {
               key={t.id}
               type="button"
               onClick={() => go({ tab: t.id })}
-              className={cx("flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium", tab === t.id ? "text-accent" : "text-muted")}
+              className={cx("flex flex-col items-center gap-0.5 py-2 text-xs font-medium", tab === t.id ? "text-accent" : "text-muted")}
               aria-current={tab === t.id ? "page" : undefined}
             >
               <t.icon className="size-5" />
@@ -498,8 +520,9 @@ export function App() {
         }}
       />
 
-      {showKeys && <ShortcutHelp onClose={() => setShowKeys(false)} />}
+      <ShortcutHelp open={showKeys} onClose={() => setShowKeys(false)} />
       <ScanChooser open={choosing} onClose={closeChooser} onStart={(scope) => void startScan(scope)} />
+      <Toaster />
     </div>
   );
 }
@@ -523,31 +546,47 @@ function TabLink({ tab, active, onClick }: { tab: (typeof TABS)[number]; active:
   );
 }
 
-function ErrorState({ message }: { message: string }) {
+/** Loading the jobs failed: what happened, what to do (Retry), and the raw error tucked away for debugging. */
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <Card className="mx-auto max-w-lg p-8 text-center">
-      <h1 className="text-lg font-semibold">Couldn't load the radar data</h1>
-      <p className="mt-1 font-mono text-xs text-muted">{message}</p>
+      <div role="alert">
+        <h2 className="text-lg font-semibold">Couldn't load your jobs</h2>
+        <p className="mt-1 text-sm text-muted">The job data didn't load. This is usually a brief hiccup: try again. If it keeps happening, run a new scan.</p>
+      </div>
+      <Button variant="primary" className="mt-4" onClick={onRetry}>
+        <RefreshCw className="size-4" /> Retry
+      </Button>
+      <details className="mt-4 text-left text-xs text-muted">
+        <summary className="cursor-pointer">Technical details</summary>
+        <p className="mt-1 break-words font-mono">{message}</p>
+      </details>
     </Card>
   );
 }
 
-function ShortcutHelp({ onClose }: { onClose: () => void }) {
+function ShortcutHelp({ open, onClose }: { open: boolean; onClose: () => void }) {
   const rows: [string[], string][] = [
     [["j", "k"], "Next / previous job"],
     [["Enter"], "Open job"],
     [["s"], "Save"],
     [["a"], "Mark applied"],
-    [["x"], "Not interested"],
+    [["x"], "Hide job"],
     [["/"], "Search"],
     [["1", "4"], "Switch section"],
     [["Esc"], "Close"],
   ];
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <Card className="relative w-full max-w-sm p-5 shadow-2xl">
-        <h2 className="text-base font-semibold">Keyboard shortcuts</h2>
+    <Dialog open={open} onClose={onClose} labelledBy="shortcut-help-title" className="max-w-sm">
+      <Card className="w-full p-5 shadow-2xl">
+        <div className="flex items-center justify-between gap-2">
+          <h2 id="shortcut-help-title" className="text-base font-semibold">
+            Keyboard shortcuts
+          </h2>
+          <IconButton label="Close" onClick={onClose} className="-mr-2">
+            <X className="size-4" />
+          </IconButton>
+        </div>
         <ul className="mt-3 space-y-2 text-sm">
           {rows.map(([keys, label]) => (
             <li key={label} className="flex items-center justify-between">
@@ -564,6 +603,6 @@ function ShortcutHelp({ onClose }: { onClose: () => void }) {
           ))}
         </ul>
       </Card>
-    </div>
+    </Dialog>
   );
 }

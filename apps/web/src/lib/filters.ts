@@ -1,6 +1,7 @@
 import { INDUSTRY_BY_ID } from "@jobhunter/core/catalog/industries";
 import { citiesIn, placeOwner } from "@jobhunter/core/catalog/places";
 import { SENIORITY_LEVELS, type Seniority } from "@jobhunter/core/catalog/seniority";
+import { ATS_LABEL } from "./companies";
 import type { Job, Profile } from "./data";
 import { ageDays, postedOrSeen } from "./format";
 import type { Status, UserState } from "./userState";
@@ -34,10 +35,14 @@ export type Filters = {
   mine: boolean;
   /** Include directory jobs posted more than INDEX_MAX_AGE_DAYS ago (often filled already). */
   olderIndex: boolean;
+  /** Include postings older than OLD_POSTING_DAYS (hidden by default: usually filled long ago). */
+  showOld: boolean;
 };
 
 /** Directory jobs older than this are hidden unless asked for: the index is a week old at most, and old postings are often filled. */
 export const INDEX_MAX_AGE_DAYS = 30;
+/** Postings older than this (about 6 months) are hidden unless asked for. */
+export const OLD_POSTING_DAYS = 180;
 
 export const DEFAULT_FILTERS: Filters = {
   q: "",
@@ -58,6 +63,7 @@ export const DEFAULT_FILTERS: Filters = {
   showHidden: false,
   mine: false,
   olderIndex: false,
+  showOld: false,
 };
 
 /** Facets with option counts. */
@@ -74,21 +80,31 @@ export type Ctx = {
   isYours?: (j: Job) => boolean;
   /** The user's own countries, cities and industries (from their profile): listed first in the menus. */
   mine?: { countries: ReadonlySet<string>; locations: ReadonlySet<string>; industries: ReadonlySet<string> };
+  /** Only one scan so far: everything is "new", so nothing is tagged New. */
+  firstScan?: boolean;
+  /** When the previous scan finished (ms): jobs first found after it are "new to you". */
+  newSince?: number;
   now?: number;
 };
 
 export const REMOTE = "Remote";
 const APPLIED_STAGES: Status[] = ["applied", "interviewing", "offer", "rejected"];
 
-/** The New view: open jobs a scan found for the first time in the last 24 hours. */
-export const NEW_VIEW_HOURS = 24;
-/** The "New" tag on a job stays this long after a scan first found it. */
+/** Without a previous scan's time, "new" falls back to: first found in the last this-many hours. */
 export const NEW_TAG_HOURS = 48;
-const foundWithin = (j: Job, hours: number, now = Date.now()) => !j.estimated && j.status === "open" && now - Date.parse(j.firstSeen) <= hours * 3_600_000;
-/** Found by a scan in the last 24 hours (the New view). Directory jobs never are: nobody has checked them yet. */
-export const isNewJob = (j: Job, ctx: Pick<Ctx, "now">) => foundWithin(j, NEW_VIEW_HOURS, ctx.now);
-/** Shows the "New" tag: found by a scan in the last 2 days. */
-export const hasNewTag = (j: Job, ctx: Pick<Ctx, "now">) => foundWithin(j, NEW_TAG_HOURS, ctx.now);
+/** A posting older than this is never "new", even when a scan only just found it. */
+export const NEW_MAX_POSTED_DAYS = 30;
+/**
+ * New to you since your last scan: an open job first found after the previous scan (ctx.newSince), posted within the
+ * last month. Directory jobs never are (nobody has scanned them yet), and nothing is on your first scan (everything would be).
+ */
+export const isNewJob = (j: Job, ctx: Pick<Ctx, "now" | "firstScan" | "newSince">) => {
+  const now = ctx.now ?? Date.now();
+  const since = ctx.newSince ?? now - NEW_TAG_HOURS * 3_600_000;
+  return !ctx.firstScan && !j.estimated && j.status === "open" && Date.parse(j.firstSeen) > since && ageDays(postedOrSeen(j), now) <= NEW_MAX_POSTED_DAYS;
+};
+/** Shows the "New" tag: the same rule as the New view, so its count matches the tags. */
+export const hasNewTag = isNewJob;
 /** Remote jobs, and jobs that matched one of your remote regions ("EMEA"), count as "Remote". */
 const isRemoteLike = (j: Job) => j.workplace === "remote" || j.why.location === 15 || /\bremote\b/i.test(j.location);
 const countriesOf = (j: Job) => (isRemoteLike(j) ? [...j.countries, REMOTE] : j.countries);
@@ -101,6 +117,7 @@ function passes(j: Job, f: Filters, ctx: Ctx, terms: string[], skip?: FacetKey):
   if (!f.showHidden && (entry?.status === "dismissed" || ctx.hiddenCompanies.has(j.company))) return false;
   if (f.mine && !ctx.isYours?.(j)) return false;
   if (!f.olderIndex && j.estimated && ageDays(postedOrSeen(j), ctx.now) > INDEX_MAX_AGE_DAYS) return false;
+  if (!f.showOld && ageDays(postedOrSeen(j), ctx.now) > OLD_POSTING_DAYS) return false;
   if (f.status === "new" && !isNewJob(j, ctx)) return false;
   if (f.status === "saved" && entry?.status !== "saved") return false;
   if (f.status === "applied" && !(entry?.status && APPLIED_STAGES.includes(entry.status))) return false;
@@ -180,13 +197,16 @@ export function facetCounts(jobs: Job[], f: Filters, ctx: Ctx): Record<FacetKey,
     industries: sorted(tally("industries", (j) => ctx.industriesOf(j.company)), (id) => INDUSTRY_BY_ID.get(id)?.label ?? id, f.industries, ctx.mine?.industries),
     companies: sorted(tally("companies", (j) => [j.company]), undefined, f.companies),
     topics: sorted(tally("topics", (j) => j.why.keywords), undefined, f.topics),
-    ats: sorted(tally("ats", (j) => [j.ats]), undefined, f.ats),
+    ats: sorted(tally("ats", (j) => [j.ats]), atsLabel, f.ats),
     match: [
       { value: "strong", label: `Strong (${ctx.min}+)`, count: matchPool.filter((j) => j.score >= ctx.min).length },
       { value: "good", label: `Good (${Math.max(0, ctx.min - 20)}+)`, count: matchPool.filter((j) => j.score >= Math.max(0, ctx.min - 20)).length },
     ],
   };
 }
+
+/** "greenhouse" -> "Greenhouse". */
+export const atsLabel = (ats: string) => ATS_LABEL[ats] ?? ats.charAt(0).toUpperCase() + ats.slice(1);
 
 const salaryOf = (j: Job) => j.salary?.max ?? j.salary?.min ?? -1;
 
@@ -233,7 +253,7 @@ function chipsOf(f: Filters, ctx: Pick<Ctx, "min">): { key: string; label: strin
     for (const v of f[k] as string[]) chips.push({ key: `${k}:${v}`, label: label(v), remove: { [k]: (f[k] as string[]).filter((x) => x !== v) } as Partial<Filters> });
   };
   if (f.q.trim()) chips.push({ key: "q", label: `“${f.q.trim()}”`, remove: { q: "" } });
-  if (f.status) chips.push({ key: "status", label: { new: "New since last visit", saved: "Saved", applied: "Applied" }[f.status], remove: { status: "" } });
+  if (f.status) chips.push({ key: "status", label: { new: "New to you", saved: "Saved", applied: "Applied" }[f.status], remove: { status: "" } });
   if (f.posted) chips.push({ key: "posted", label: POSTED_OPTIONS.find((o) => o.value === f.posted)!.label, remove: { posted: 0 } });
   list("countries", (v) => (v === REMOTE ? "Remote & your regions" : v));
   list("locations", (v) => v.replace(/, [^,]+$/, ""));
@@ -242,14 +262,15 @@ function chipsOf(f: Filters, ctx: Pick<Ctx, "min">): { key: string; label: strin
   list("industries", (v) => INDUSTRY_BY_ID.get(v)?.label ?? v);
   list("companies", (v) => v);
   list("topics", (v) => `Topic: ${v}`);
-  list("ats", (v) => `Source: ${v}`);
+  list("ats", (v) => `Hiring system: ${atsLabel(v)}`);
   if (f.match !== "all") chips.push({ key: "match", label: f.match === "strong" ? `Strong matches (${ctx.min}+)` : `Good matches (${Math.max(0, ctx.min - 20)}+)`, remove: { match: "all" } });
   if (f.salaryOnly) chips.push({ key: "salary", label: "Salary listed", remove: { salaryOnly: false } });
   if (f.showFailed) chips.push({ key: "failed", label: "Including jobs that failed your filters", remove: { showFailed: false } });
   if (f.showClosed) chips.push({ key: "closed", label: "Including closed", remove: { showClosed: false } });
   if (f.showHidden) chips.push({ key: "hidden", label: "Including hidden", remove: { showHidden: false } });
   if (f.mine) chips.push({ key: "mine", label: "My companies", remove: { mine: false } });
-  if (f.olderIndex) chips.push({ key: "olderIndex", label: `Including directory jobs older than ${INDEX_MAX_AGE_DAYS} days`, remove: { olderIndex: false } });
+  if (f.olderIndex) chips.push({ key: "olderIndex", label: `Including unscanned jobs older than ${INDEX_MAX_AGE_DAYS} days`, remove: { olderIndex: false } });
+  if (f.showOld) chips.push({ key: "old", label: "Including older jobs", remove: { showOld: false } });
   return chips;
 }
 
@@ -283,7 +304,7 @@ export function profileFilters(profile: Profile): Filters {
 /** When nothing matches: which single filter, removed, brings back the most jobs. */
 export function suggestRelax(jobs: Job[], f: Filters, ctx: Ctx, limit = 3): { label: string; remove: Partial<Filters>; count: number }[] {
   return chipsOf(f, ctx)
-    .filter((c) => !["failed", "closed", "hidden"].includes(c.key))
+    .filter((c) => !["failed", "closed", "hidden", "old"].includes(c.key))
     .map((c) => ({ label: c.label, remove: c.remove, count: applyFilters(jobs, { ...f, ...c.remove }, ctx).length }))
     .filter((s) => s.count > 0)
     .sort((a, b) => b.count - a.count)

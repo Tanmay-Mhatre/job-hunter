@@ -1,34 +1,133 @@
-import { parseAiAnswer, type ParsedAnswer } from "@jobhunter/core/resume-parse";
-import { Check, ClipboardCopy, ExternalLink, FileText, Files, LoaderCircle, SkipForward, Sparkles, Upload, Wand2 } from "lucide-react";
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { parseAiAnswer, type AiProfile, type ParsedAnswer } from "@jobhunter/core/resume-parse";
+import { ArrowRight, Check, ClipboardCopy, ExternalLink, FileText, Files, LoaderCircle, SkipForward, Sparkles, Upload, Wand2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button, Chip, cx } from "../components/ui";
 import { copyText } from "../lib/clipboard";
 import { canRunLocally } from "../lib/data";
 import { extractResumeText } from "../lib/extract";
-import type { Draft } from "../lib/setup";
+import { displayPlace } from "../lib/format";
+import { STEP, type Draft } from "../lib/setup";
 import { buildSuggestions, prefillDraft } from "../lib/suggest";
 import { MASTER_RESUME_PROMPT } from "./prompt";
 
 type Mode = "single" | "ai" | null;
+type SaveResult = { ok: true } | { ok: false; error: string };
 
 type Props = {
   draft: Draft;
   update: (patch: Partial<Draft>) => void;
   resumeText: string;
-  saveResume: (text: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+  saveResume: (text: string) => Promise<SaveResult>;
   /** Skip ahead to the manual steps (wizard only). */
   onSkip?: () => void;
   onNext?: () => void;
   /** In Settings there's nowhere to skip to. */
   hideSkip?: boolean;
+  /**
+   * Wizard only: renders the step footer around our primary button ("Save & continue", "Continue" or
+   * "Skip for now"), and resume suggestions fill still-empty steps automatically. Without it (Settings)
+   * saving stays in the panel and prefilling is a button.
+   */
+  footer?: (primary: ReactNode) => ReactNode;
 };
 
+const MIN_WORDS = 30;
+const MIN_WORDS_HINT_ID = "resume-min-words";
 const words = (s: string) => (s.trim() ? s.trim().split(/\s+/).length : 0);
 
-export function ResumeStep({ draft, update, resumeText, saveResume, onSkip, onNext, hideSkip }: Props) {
+const FILL_LABELS: [keyof Draft, string][] = [
+  ["include", "roles"],
+  ["places", "places"],
+  ["remoteOk", "remote regions"],
+  ["industries", "industries"],
+  ["keywords", "topics"],
+  ["pastEmployers", "past employers"],
+];
+/** "roles, places and topics" for the steps a prefill patch fills. */
+function filledText(patch: Partial<Draft>): string {
+  const names = FILL_LABELS.filter(([k]) => k in patch).map(([, l]) => l);
+  return names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : (names[0] ?? "");
+}
+
+export function ResumeStep({ draft, update, resumeText, saveResume, onSkip, onNext, hideSkip, footer }: Props) {
+  const wizard = !!footer;
   const [mode, setMode] = useState<Mode>(null);
   const [replacing, setReplacing] = useState(false);
+  const [text, setText] = useState("");
+  const [answer, setAnswer] = useState("");
+  const { saving, error, run } = useSaving();
+  /** What the automatic prefill filled ("roles, places and topics"), once it ran. */
+  const [filled, setFilled] = useState<string | null>(null);
+  const prefilled = useRef(false);
   const hasResume = !!resumeText && !replacing;
+  const parsed = useMemo(() => (answer.trim().length > 50 ? parseAiAnswer(answer) : null), [answer]);
+
+  /** Wizard: fill the steps that are still empty from this resume. Never overwrites a choice. */
+  const prefill = (resume: string, aiProfile: AiProfile | undefined, base: Draft) => {
+    prefilled.current = true;
+    const patch = prefillDraft({ ...base, aiProfile }, buildSuggestions(resume, aiProfile));
+    update(patch);
+    setFilled(filledText(patch));
+  };
+
+  const saveSingle = async (): Promise<SaveResult> => {
+    const res = await saveResume(text);
+    if (res.ok) {
+      update({ aiProfile: undefined });
+      if (wizard) prefill(text, undefined, draft);
+      setReplacing(false);
+    }
+    return res;
+  };
+  const saveAi = async (p: ParsedAnswer): Promise<SaveResult> => {
+    const res = await saveResume(p.resume);
+    if (res.ok) {
+      update({ aiProfile: p.profile });
+      if (wizard) prefill(p.resume, p.profile, draft);
+      setReplacing(false);
+    }
+    return res;
+  };
+
+  // What's typed or pasted but not saved yet.
+  const pending =
+    mode === "single" && text.trim()
+      ? { ok: words(text) >= MIN_WORDS, save: saveSingle }
+      : mode === "ai" && answer.trim()
+        ? { ok: !!parsed && words(parsed.resume) >= MIN_WORDS, save: () => saveAi(parsed!) }
+        : null;
+  const tooShort = mode === "single" && !!text.trim() && words(text) < MIN_WORDS;
+
+  let primary: ReactNode = null;
+  if (wizard) {
+    if (pending) {
+      primary = (
+        <Button
+          variant="primary"
+          className="h-11 px-5 sm:h-10"
+          disabled={!pending.ok || saving}
+          aria-describedby={tooShort ? MIN_WORDS_HINT_ID : undefined}
+          onClick={() =>
+            void run(async () => {
+              const res = await pending.save();
+              if (res.ok) onNext?.();
+              return res;
+            })
+          }
+        >
+          {saving ? <LoaderCircle className="size-4 animate-spin" /> : null}
+          {saving ? "Saving…" : "Save & continue"} <ArrowRight className="size-4" />
+        </Button>
+      );
+    } else {
+      const skip = !resumeText;
+      primary = (
+        <Button variant="primary" className="h-11 px-5 sm:h-10" onClick={skip ? onSkip : onNext}>
+          {skip ? "Skip for now" : "Continue"} <ArrowRight className="size-4" />
+        </Button>
+      );
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -40,8 +139,15 @@ export function ResumeStep({ draft, update, resumeText, saveResume, onSkip, onNe
           onReplace={() => {
             setReplacing(true);
             setMode(null);
+            setFilled(null);
+            prefilled.current = false;
           }}
-          onNext={onNext}
+          auto={wizard}
+          filled={filled}
+          // First time through the wizard with a resume saved earlier: prefill once on arrival.
+          onArrive={() => {
+            if (wizard && !prefilled.current && (draft.furthestStep ?? 0) <= STEP.resume) prefill(resumeText, draft.aiProfile, draft);
+          }}
         />
       ) : (
         <>
@@ -50,7 +156,7 @@ export function ResumeStep({ draft, update, resumeText, saveResume, onSkip, onNe
               active={mode === "single"}
               icon={<FileText className="size-5" />}
               title="I have one resume"
-              body="Upload a PDF or Word file, or paste the text."
+              body="Choose a PDF or Word file, or paste the text."
               onClick={() => setMode("single")}
             />
             <ModeCard
@@ -72,41 +178,46 @@ export function ResumeStep({ draft, update, resumeText, saveResume, onSkip, onNe
           </div>
           {mode === "single" && (
             <SinglePath
-              initial={resumeText}
-              onSaved={async (text) => {
-                const res = await saveResume(text);
-                if (res.ok) {
-                  update({ aiProfile: undefined });
-                  setReplacing(false);
-                }
-                return res;
-              }}
+              text={text}
+              setText={setText}
+              tooShort={tooShort}
+              // Settings saves in the panel; the wizard saves from its footer.
+              save={wizard ? undefined : { saving, error, onSave: () => void run(saveSingle) }}
             />
           )}
           {mode === "ai" && (
             <AiPath
-              onSaved={async (parsed) => {
-                const res = await saveResume(parsed.resume);
-                if (res.ok) {
-                  update({ aiProfile: parsed.profile });
-                  setReplacing(false);
-                }
-                return res;
-              }}
+              answer={answer}
+              setAnswer={setAnswer}
+              parsed={parsed}
+              save={wizard ? undefined : { saving, error, onSave: () => parsed && void run(() => saveAi(parsed)) }}
             />
           )}
+          {wizard && error && (
+            <p role="alert" className="text-sm text-bad">
+              We couldn't save your resume. {error}
+            </p>
+          )}
           {resumeText && replacing && (
-            <button type="button" className="text-sm font-medium text-accent" onClick={() => setReplacing(false)}>
+            <button
+              type="button"
+              className="text-sm font-medium text-accent"
+              onClick={() => {
+                setReplacing(false);
+                setMode(null);
+                setText("");
+                setAnswer("");
+              }}
+            >
               Keep my saved resume instead
             </button>
           )}
         </>
       )}
       <p className="text-xs text-muted">
-        {canRunLocally
-          ? "Your resume is saved on this computer only (profile/resume.md). It's never committed to git or sent anywhere."
-          : "This dashboard is hosted, so your resume is kept in this browser only."}
+        {canRunLocally ? "Your resume stays on this computer. It's never uploaded." : "Your resume is kept in this browser only. It's never uploaded."}
       </p>
+      {footer?.(primary)}
     </div>
   );
 }
@@ -129,12 +240,10 @@ function ModeCard({ active, icon, title, body, onClick }: { active: boolean; ico
   );
 }
 
-type SaveFn<T> = (value: T) => Promise<{ ok: true } | { ok: false; error: string }>;
-
 function useSaving() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const run = async (fn: () => Promise<{ ok: true } | { ok: false; error: string }>) => {
+  const run = async (fn: () => Promise<SaveResult>) => {
     setSaving(true);
     setError(null);
     try {
@@ -149,10 +258,11 @@ function useSaving() {
   return { saving, error, run };
 }
 
-function SinglePath({ initial, onSaved }: { initial: string; onSaved: SaveFn<string> }) {
-  const [text, setText] = useState(initial);
+/** In-panel save button (Settings only; the wizard saves from its footer). */
+type PanelSave = { saving: boolean; error: string | null; onSave: () => void };
+
+function SinglePath({ text, setText, tooShort, save }: { text: string; setText: (t: string) => void; tooShort: boolean; save?: PanelSave }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const { saving, error, run } = useSaving();
   const [file, setFile] = useState<{ state: "idle" | "reading" | "done" | "error"; name?: string; message?: string }>({ state: "idle" });
 
   const onFile = async (f: File | undefined) => {
@@ -174,23 +284,23 @@ function SinglePath({ initial, onSaved }: { initial: string; onSaved: SaveFn<str
         <p className="text-sm font-semibold">Paste your resume</p>
         <Button size="sm" onClick={() => fileRef.current?.click()} disabled={file.state === "reading"}>
           {file.state === "reading" ? <LoaderCircle className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
-          {file.state === "reading" ? "Reading…" : "Upload PDF, Word or text"}
+          {file.state === "reading" ? "Reading…" : "Choose a file (PDF, Word or text)"}
         </Button>
         <input
           ref={fileRef}
           type="file"
           accept=".pdf,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.doc,.md,.markdown,.txt,text/plain,text/markdown"
           className="hidden"
-          aria-label="Upload resume file"
+          aria-label="Choose a resume file"
           onChange={(e) => void onFile(e.target.files?.[0])}
         />
       </div>
-      <p className="text-xs text-muted">PDF, Word (.docx), Markdown or text. The file is read on this computer; nothing is uploaded anywhere.</p>
+      <p className="text-xs text-muted">PDF, Word (.docx), Markdown or text. The file is read on this computer and never uploaded.</p>
       {file.state === "error" && <p className="rounded-lg bg-warn-soft/50 p-2.5 text-sm text-warn">{file.message}</p>}
       {file.state === "done" && (
         <p className="rounded-lg bg-accent-soft/40 p-2.5 text-sm">
           <Check className="mr-1 inline size-4 text-accent" />
-          Read <b>{file.name}</b>.{file.message ? ` ${file.message}` : " Check the text below, then save."}
+          Read <b>{file.name}</b>.{file.message ? ` ${file.message}` : ` Check the text below, then save.`}
         </p>
       )}
       <textarea
@@ -198,27 +308,37 @@ function SinglePath({ initial, onSaved }: { initial: string; onSaved: SaveFn<str
         onChange={(e) => setText(e.target.value)}
         rows={10}
         aria-label="Your resume"
-        placeholder={"Paste your full resume here, or upload a file above.\n\nPlain text or Markdown both work."}
+        aria-describedby={tooShort ? MIN_WORDS_HINT_ID : undefined}
+        placeholder={"Paste your full resume here, or choose a file above.\n\nPlain text or Markdown both work."}
         className="w-full resize-y rounded-lg border border-line bg-surface p-3 font-mono text-xs leading-5 outline-none placeholder:font-sans placeholder:text-sm placeholder:text-muted focus:border-accent"
       />
       <div className="flex flex-wrap items-center gap-3">
-        <Button variant="primary" onClick={() => void run(() => onSaved(text))} disabled={saving || words(text) < 30}>
-          {saving ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />} Save resume
-        </Button>
+        {save && (
+          <Button
+            variant="primary"
+            onClick={save.onSave}
+            disabled={save.saving || words(text) < MIN_WORDS}
+            aria-describedby={tooShort ? MIN_WORDS_HINT_ID : undefined}
+          >
+            {save.saving ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />} Save resume
+          </Button>
+        )}
         <span className="text-xs text-muted">{words(text) ? `${words(text)} words` : ""}</span>
-        {error && <span className="text-sm text-bad">{error}</span>}
+        {tooShort && (
+          <span id={MIN_WORDS_HINT_ID} className="text-xs text-muted">
+            Add a bit more — we need at least {MIN_WORDS} words to suggest roles.
+          </span>
+        )}
+        {save?.error && <span className="text-sm text-bad">{save.error}</span>}
       </div>
     </div>
   );
 }
 
-function AiPath({ onSaved }: { onSaved: SaveFn<ParsedAnswer> }) {
+function AiPath({ answer, setAnswer, parsed, save }: { answer: string; setAnswer: (a: string) => void; parsed: ParsedAnswer | null; save?: PanelSave }) {
   const [copied, setCopied] = useState<"no" | "yes" | "manual">("no");
   const [showPrompt, setShowPrompt] = useState(false);
   const promptRef = useRef<HTMLTextAreaElement>(null);
-  const [answer, setAnswer] = useState("");
-  const { saving, error, run } = useSaving();
-  const parsed = useMemo(() => (answer.trim().length > 50 ? parseAiAnswer(answer) : null), [answer]);
 
   const copy = async () => {
     if (await copyText(MASTER_RESUME_PROMPT)) {
@@ -302,12 +422,14 @@ function AiPath({ onSaved }: { onSaved: SaveFn<ParsedAnswer> }) {
             ))}
           </div>
         )}
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <Button variant="primary" onClick={() => parsed && void run(() => onSaved(parsed))} disabled={!parsed || saving || words(parsed.resume) < 30}>
-            {saving ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />} Save master resume
-          </Button>
-          {error && <span className="text-sm text-bad">{error}</span>}
-        </div>
+        {save && (
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Button variant="primary" onClick={save.onSave} disabled={!parsed || save.saving || words(parsed.resume) < MIN_WORDS}>
+              {save.saving ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />} Save master resume
+            </Button>
+            {save.error && <span className="text-sm text-bad">{save.error}</span>}
+          </div>
+        )}
       </Step>
     </ol>
   );
@@ -325,12 +447,31 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
   );
 }
 
-function SavedResume({ text, draft, update, onReplace, onNext }: { text: string; draft: Draft; update: (p: Partial<Draft>) => void; onReplace: () => void; onNext?: () => void }) {
+function SavedResume({
+  text,
+  draft,
+  update,
+  onReplace,
+  auto,
+  filled,
+  onArrive,
+}: {
+  text: string;
+  draft: Draft;
+  update: (p: Partial<Draft>) => void;
+  onReplace: () => void;
+  /** Wizard: suggestions were (or are about to be) applied automatically. */
+  auto: boolean;
+  filled: string | null;
+  onArrive: () => void;
+}) {
   const [applied, setApplied] = useState(false);
   const suggest = useMemo(() => buildSuggestions(text, draft.aiProfile), [text, draft.aiProfile]);
   const patch = useMemo(() => prefillDraft(draft, suggest), [draft, suggest]);
   const fills = Object.keys(patch).filter((k) => k !== "remoteExclude");
   const firstLine = text.split("\n").find((l) => l.trim())?.replace(/^#+\s*/, "") ?? "Resume";
+
+  useEffect(() => onArrive(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-4">
@@ -359,13 +500,20 @@ function SavedResume({ text, draft, update, onReplace, onNext }: { text: string;
         </p>
         <dl className="mt-2 grid gap-x-4 gap-y-1.5 text-sm sm:grid-cols-[110px_1fr]">
           <Row label="Titles" items={suggest.titles} />
-          <Row label="Places" items={suggest.places} />
-          {suggest.remote && <Row label="Remote" items={suggest.remoteRegions} />}
+          <Row label="Places" items={suggest.places.map(displayPlace)} />
+          {suggest.remote && <Row label="Remote" items={suggest.remoteRegions.map(displayPlace)} />}
           <Row label="Topics" items={suggest.keywords.map(([k]) => k)} />
         </dl>
-        {applied ? (
+        {auto ? (
+          <p role="status" className="mt-3 flex items-start gap-1.5 text-sm font-medium text-accent">
+            <Check className="mt-0.5 size-4 shrink-0" />
+            {filled
+              ? `We've pre-filled ${filled} from your resume. You can change anything.`
+              : "These suggestions fill any step that's still empty and appear next to each step. Nothing you chose is overwritten."}
+          </p>
+        ) : applied ? (
           <p className="mt-3 flex items-center gap-1.5 text-sm font-medium text-accent">
-            <Check className="size-4" /> Added. You can review and change everything in the next steps.
+            <Check className="size-4" /> Added. You can review and change everything below.
           </p>
         ) : fills.length ? (
           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -376,21 +524,16 @@ function SavedResume({ text, draft, update, onReplace, onNext }: { text: string;
                 setApplied(true);
               }}
             >
-              <Wand2 className="size-4" /> Use these to prefill the next steps
+              <Wand2 className="size-4" /> Fill empty sections from my resume
             </Button>
             <span className="text-xs text-muted">Only fills what's still empty. Nothing you chose is overwritten.</span>
           </div>
         ) : (
           <p className="mt-3 text-sm text-muted">
-            Your steps already have answers, so nothing is overwritten. The suggestions appear next to each step for you to add.
+            Your sections already have answers, so nothing is overwritten. The suggestions appear next to each section for you to add.
           </p>
         )}
       </div>
-      {applied && onNext && (
-        <Button variant="primary" onClick={onNext}>
-          Review the roles
-        </Button>
-      )}
     </div>
   );
 }

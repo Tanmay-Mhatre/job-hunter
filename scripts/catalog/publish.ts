@@ -23,6 +23,7 @@ import {
   INDUSTRIES,
   industriesForLabel,
   industriesFromTitles,
+  isPlaceholderBoard,
   type IndexedCompany,
   type IndexRow,
 } from "../../packages/core/src/index";
@@ -52,7 +53,8 @@ type Addition = Pick<Dir, "key" | "name" | "ats" | "slug" | "region" | "shard" |
 
 const readJson = <T>(path: string, fallback: T): T => (existsSync(path) ? (JSON.parse(readFileSync(path, "utf8")) as T) : fallback);
 
-const dir = readJson<{ companies: Dir[] }>(join(here, "out", "directory.json"), { companies: [] }).companies;
+// Sandbox/training/test boards stay out (build.ts drops them too; this covers older builds).
+const dir = readJson<{ companies: Dir[] }>(join(here, "out", "directory.json"), { companies: [] }).companies.filter((d) => !isPlaceholderBoard(d.name));
 const byKey = new Map(dir.map((d) => [d.key, d]));
 
 // ---- job rows ----

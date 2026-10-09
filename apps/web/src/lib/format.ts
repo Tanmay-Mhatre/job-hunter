@@ -50,3 +50,32 @@ export function scoreBand(score: number, min: number): Band {
 
 /** The date a job counts from: ATS posting date, else when we first saw it. */
 export const postedOrSeen = (j: Job) => j.postedAt ?? j.firstSeen;
+
+const SMALL_WORDS = new Set(["and", "of", "the", "de", "da", "do", "del", "la", "le", "am", "im", "an", "der", "upon", "on"]);
+/**
+ * Display form of a place or name the user typed or we matched in lowercase ("berlin" → "Berlin",
+ * "united arab emirates" → "United Arab Emirates", "frankfurt am main" → "Frankfurt am Main").
+ * Strings that already contain capitals are returned as is, so "UAE" or "NYC" stay intact.
+ */
+export function displayPlace(s: string): string {
+  if (/[A-Z]/.test(s)) return s;
+  return s
+    .split(/(\s+|-)/)
+    .map((w, i) => (i > 0 && SMALL_WORDS.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1)))
+    .join("");
+}
+
+/** Directory-sized totals shown to people: "~21,000". Exact below 1,000. One rounding everywhere (see H9 in docs/design-review.md). */
+export function roughCount(n: number): string {
+  if (n < 1000) return n.toLocaleString();
+  return `~${(Math.round(n / 1000) * 1000).toLocaleString()}`;
+}
+
+/** One format for several places everywhere: "Berlin", or "Berlin +3" (L5). Cities lose their ", Country" suffix. */
+export function placeSummary(places: string[], fallback = "Location not listed"): string {
+  // ATS strings often pack several places: "Germany (remote); Portugal (remote); Berlin Office".
+  const parts = places.flatMap((p) => p.split(/\s*[;|]\s*/)).map((p) => p.replace(/\s*\([^)]*\)$/, "").replace(/, [^,]+$/, "").trim());
+  const names = [...new Set(parts.filter(Boolean).map(displayPlace))];
+  if (!names.length) return fallback;
+  return names.length > 1 ? `${names[0]} +${names.length - 1}` : names[0]!;
+}

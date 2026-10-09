@@ -1,11 +1,26 @@
-import { Check, ExternalLink, LoaderCircle, Send } from "lucide-react";
+import { Check, ExternalLink, LoaderCircle, RefreshCw, Send, X } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { telegramAction, telegramStatus, type TelegramAction, type TelegramStatus } from "../lib/automation";
-import { Button, cx, Toggle } from "./ui";
+import { Dialog } from "./Dialog";
+import { Button, Card, cx, IconButton, Toggle } from "./ui";
+
+/** What failed, and how to fix it. The raw reason goes under "Technical details" unless it's already plain advice. */
+const FAILED: Record<TelegramAction, string> = {
+  token: "Couldn't check that token. Copy it again from @BotFather (it looks like 123456789:AAF…) and paste it here.",
+  connect: "Couldn't connect to your bot yet. Open it in Telegram, press Start, then try again.",
+  test: "Couldn't send the test message. Check your internet connection and try again.",
+  on: "Couldn't turn alerts on. Try again.",
+  off: "Couldn't turn alerts off. Try again.",
+  forget: "Couldn't disconnect the bot. Try again.",
+};
+/** Server messages that already say what to do: shown as they are. */
+const PLAIN = /^(That doesn't look like|No message from you yet|Add your bot token first)/;
+
+type Note = { tone: "ok" | "bad"; text: string; detail?: string; retry?: () => void };
 
 /**
  * Telegram alerts in three steps: make a bot, send it a message, done. Your bot token stays on this
- * computer (profile/secrets.json), never in your config.
+ * computer, never in your settings file.
  */
 export function TelegramAlerts({
   onChanged,
@@ -21,7 +36,9 @@ export function TelegramAlerts({
   const [status, setStatus] = useState<TelegramStatus | null>(null);
   const [token, setToken] = useState("");
   const [busy, setBusy] = useState<TelegramAction | null>(null);
-  const [note, setNote] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
+  const [note, setNote] = useState<Note | null>(null);
+  /** "Disconnect" / "use another bot" can't be undone (the token is gone), so they ask first. */
+  const [confirmForget, setConfirmForget] = useState(false);
 
   const refresh = useCallback(async () => setStatus(await telegramStatus()), []);
   useEffect(() => {
@@ -33,8 +50,16 @@ export function TelegramAlerts({
     setNote(null);
     try {
       const r = await telegramAction(action, body);
-      if (!r.ok) setNote({ tone: "bad", text: r.error ?? "Something went wrong." });
-      else if (ok) setNote({ tone: "ok", text: ok(r) });
+      if (!r.ok) {
+        const plain = !!r.error && PLAIN.test(r.error);
+        setNote({
+          tone: "bad",
+          text: plain ? r.error! : FAILED[action],
+          detail: plain ? undefined : r.error,
+          // Retrying a token needs the token again, which the user re-submits from the form.
+          retry: action === "token" ? undefined : () => void act(action, body, ok),
+        });
+      } else if (ok) setNote({ tone: "ok", text: ok(r) });
       await refresh();
       if (r.ok && (action === "connect" || action === "on" || action === "off" || action === "forget")) await onChanged();
       if (r.ok && action === "token") setToken("");
@@ -45,11 +70,24 @@ export function TelegramAlerts({
   };
 
   if (!status) return <p className="flex items-center gap-2 text-sm text-muted"><LoaderCircle className="size-4 animate-spin" /> Checking…</p>;
-  if (status.error) return <p className="text-sm text-bad">{status.error}</p>;
+  if (status.error)
+    return (
+      <div className="text-sm" role="alert">
+        <p className="text-bad">Couldn't check your Telegram alerts. Make sure Job Hunter is running on this computer, then try again.</p>
+        <Button size="sm" variant="ghost" className="mt-1" onClick={() => void refresh()}>
+          <RefreshCw className="size-3.5" /> Try again
+        </Button>
+        <details className="mt-1 text-xs text-muted">
+          <summary className="cursor-pointer">Technical details</summary>
+          <p className="mt-1 whitespace-pre-wrap font-mono">{status.error}</p>
+        </details>
+      </div>
+    );
 
   const spin = (a: TelegramAction) => busy === a && <LoaderCircle className="size-3.5 animate-spin" />;
   const botLink = status.bot ? `https://t.me/${status.bot.replace(/^@/, "")}` : undefined;
   const step = !status.token ? 1 : !status.connected ? 2 : 3;
+  const botName = status.bot ?? "your bot";
 
   return (
     <div className="space-y-4">
@@ -90,7 +128,7 @@ export function TelegramAlerts({
             ) : (
               <p className="text-sm text-muted">
                 Bot {status.bot ?? status.token} ·{" "}
-                <button type="button" className="font-medium text-accent" onClick={() => void act("forget")}>
+                <button type="button" className="min-h-6 font-medium text-accent hover:underline" onClick={() => setConfirmForget(true)} disabled={!!busy}>
                   use another bot
                 </button>
               </p>
@@ -111,7 +149,7 @@ export function TelegramAlerts({
                   in Telegram and press <b>Start</b> (or send it any message). That tells us where to send your alerts.
                 </p>
                 <Button className="mt-2" variant="primary" onClick={() => void act("connect", undefined, (r) => `Connected. Check Telegram, ${r.name}: we sent a welcome message.`)} disabled={!!busy}>
-                  {spin("connect")} I've sent it
+                  {spin("connect")} I've messaged the bot
                 </Button>
               </>
             )}
@@ -123,7 +161,7 @@ export function TelegramAlerts({
             <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent">
               <Check className="size-3.5" /> Connected
             </span>
-            New jobs go to {status.bot ?? "your bot"} on Telegram.
+            New jobs go to {botName} on Telegram.
           </p>
           <Toggle checked={status.enabled} onChange={(on) => void act(on ? "on" : "off")}>
             Send alerts after scheduled scans
@@ -132,16 +170,62 @@ export function TelegramAlerts({
             <Button size="sm" onClick={() => void act("test", undefined, () => "Sent. Check Telegram.")} disabled={!!busy}>
               {busy === "test" ? <LoaderCircle className="size-3.5 animate-spin" /> : <Send className="size-3.5" />} Send a test message
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => void act("forget")} disabled={!!busy || status.fromEnv}>
+            <Button size="sm" variant="ghost" onClick={() => setConfirmForget(true)} disabled={!!busy || status.fromEnv}>
               Disconnect
             </Button>
           </div>
         </div>
       )}
-      {note && <p className={cx("text-sm", note.tone === "bad" ? "text-bad" : "text-good")}>{note.text}</p>}
+      {note && (
+        <div role={note.tone === "bad" ? "alert" : "status"} className="text-sm">
+          <p className={note.tone === "bad" ? "text-bad" : "text-good"}>{note.text}</p>
+          {note.retry && (
+            <Button size="sm" variant="ghost" className="mt-1" onClick={note.retry} disabled={!!busy}>
+              <RefreshCw className="size-3.5" /> Try again
+            </Button>
+          )}
+          {note.detail && (
+            <details className="mt-1 text-xs text-muted">
+              <summary className="cursor-pointer">Technical details</summary>
+              <p className="mt-1 whitespace-pre-wrap font-mono">{note.detail}</p>
+            </details>
+          )}
+        </div>
+      )}
       <p className="text-xs text-muted">
         {footnote ?? "One message per scheduled scan, only when there are new jobs for you (best first, up to 10). Scans you start yourself don't send one."} Your bot token is kept on this computer only.
       </p>
+
+      <Dialog open={confirmForget} onClose={() => setConfirmForget(false)} labelledBy="tg-forget-title" initialFocus="[data-autofocus]">
+        <Card className="p-5 shadow-2xl sm:p-6">
+          <div className="flex items-start gap-3">
+            <h2 id="tg-forget-title" className="min-w-0 flex-1 text-lg font-semibold">
+              {step === 3 ? "Disconnect Telegram?" : "Use another bot?"}
+            </h2>
+            <IconButton label="Close" className="-mr-2 -mt-1" onClick={() => setConfirmForget(false)}>
+              <X className="size-4" />
+            </IconButton>
+          </div>
+          <p className="mt-1 text-sm text-muted">
+            {step === 3 ? "Alerts stop, and " : ""}
+            {botName}'s token is removed from this computer. To use it again, you'll paste its token from @BotFather again.
+          </p>
+          <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="ghost" onClick={() => setConfirmForget(false)} data-autofocus>
+              {step === 3 ? "Keep connected" : "Keep this bot"}
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                setConfirmForget(false);
+                void act("forget", undefined, () => (step === 3 ? "Disconnected. Telegram alerts are off." : "Removed. Paste the token of the bot you want to use."));
+              }}
+            >
+              {step === 3 ? "Disconnect" : "Remove this bot"}
+            </Button>
+          </div>
+        </Card>
+      </Dialog>
     </div>
   );
 }

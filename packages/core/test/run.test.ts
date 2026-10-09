@@ -47,8 +47,8 @@ describe("runRadar", () => {
     const top = result.jobs[0]!;
     expect(top.title).toBe("Head of Product, Exchange");
     expect(top).toMatchObject({ status: "open", firstSeen: now.toISOString(), lastSeen: now.toISOString() });
-    expect(top.why).toEqual({ title: 30, location: 20, keywords: ["crypto", "tokenization", "exchange"], keywordPoints: 14, freshness: 10 });
-    expect(top.score).toBe(74);
+    expect(top.why).toEqual({ title: 30, location: 20, keywords: ["crypto", "tokenization", "exchange"], keywordPoints: 40, freshness: 10 });
+    expect(top.score).toBe(100);
     // Sorted by score, gated jobs last with score 0.
     expect(result.jobs.map((j) => j.score)).toEqual([...result.jobs.map((j) => j.score)].sort((a, b) => b - a));
     expect(result.jobs.at(-1)!.score).toBe(0);

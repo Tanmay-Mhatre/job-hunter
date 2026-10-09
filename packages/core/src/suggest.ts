@@ -3,12 +3,14 @@ import { COUNTRIES, countryTerms, groupPlaces } from "./catalog/places";
 import { connectors } from "./connectors";
 import type { Profile } from "./schema";
 import { gateOf, scoreJob } from "./score";
-import { matchesAny, matchesTerm, termRegex } from "./text";
+import { isPlaceholderBoard, matchesAny, matchesTerm, termRegex } from "./text";
 
 /** [title, location, workplace, ageDays, count] — one merged row per (title, location). ageDays is as of the company's fetched_at. */
 export type IndexRow = [string, string, string, number | null, number];
 
 const DAY_MS = 86_400_000;
+/** Postings older than this (about six months) are stale: they don't count as evidence a company hires for you. */
+export const STALE_ROW_DAYS = 180;
 
 /**
  * When an index row was posted. Ages are counted when the company was fetched, so they are anchored
@@ -117,6 +119,9 @@ function top(counts: Map<string, number>, n: number): string[] {
  * topics in their job titles or source tags, the right role in other places, other roles in the
  * user's places, or similar roles nearby. Includes companies with no job rows at all (`others`),
  * since the point is to be watching before the next opening appears.
+ *
+ * Never suggested: sandbox/training/test boards (isPlaceholderBoard). Job rows older than
+ * STALE_ROW_DAYS are ignored.
  */
 export function suggestCompanies(
   profile: Profile,
@@ -167,7 +172,7 @@ export function suggestCompanies(
   const hiring: CompanySuggestion[] = [];
   const watching: CompanySuggestion[] = [];
   for (const c of companies) {
-    if (opts.exclude?.has(c.key)) continue;
+    if (opts.exclude?.has(c.key) || isPlaceholderBoard(c.name)) continue;
     let matches = 0;
     let fresh = 0;
     let nearMisses = 0;
@@ -180,7 +185,8 @@ export function suggestCompanies(
     const elsewherePlaces = new Map<string, number>();
     const ownPlaces = new Map<string, number>();
     const fetchedAt = c.fetched_at ? new Date(c.fetched_at) : generatedAt;
-    for (const [title, location, workplace, age, count] of c.rows) {
+    const rows = c.rows.filter((r) => !isStale(r[3], fetchedAt, now));
+    for (const [title, location, workplace, age, count] of rows) {
       // Cheap gate check first; full scoring only for the few jobs that pass.
       const gate = gateOf({ title, location, workplace: workplace as never }, profile);
       const example = location ? `${title} (${location})` : title;
@@ -212,8 +218,8 @@ export function suggestCompanies(
 
     // Topics: description terms when indexed, the user's keywords in job titles (in at least 5% of
     // them, so one stray title doesn't count), and source tags.
-    const titles = c.rows.map((r) => r[0]).join(" | ");
-    const minHits = Math.max(1, Math.ceil(c.rows.length * 0.05));
+    const titles = rows.map((r) => r[0]).join(" | ");
+    const minHits = Math.max(1, Math.ceil(rows.length * 0.05));
     const titleTopics = keywordRes.filter(([, re]) => (titles.match(re)?.length ?? 0) >= minHits).map(([k]) => k);
     const topics = [...new Set([...keywords.filter((k) => (c.terms?.[k] ?? 0) > 0), ...titleTopics, ...tagTopics(allTags(c))])].sort(
       (a, b) => (profile.keywords[b] ?? 0) - (profile.keywords[a] ?? 0),
@@ -255,7 +261,7 @@ export function suggestCompanies(
   // relevant. Ones on hiring systems we can't scan yet get their own list.
   const notScannable: CompanySuggestion[] = [];
   for (const c of opts.others ?? []) {
-    if (opts.exclude?.has(c.key)) continue;
+    if (opts.exclude?.has(c.key) || isPlaceholderBoard(c.name)) continue;
     const topics = tagTopics(allTags(c));
     const { industries, hires_for } = fitOf(c);
     const s = watchSuggestion(
@@ -297,6 +303,12 @@ const industryReason = (ids: string[]) => `Your industry: ${industryLabels(ids)}
 const hiresReason = (ids: string[]) => `Hires for ${industryLabels(ids)} roles`;
 /** Points (of 30) for an industry only the job titles point to. */
 const INDUSTRY_FROM_TITLES_POINTS = 10;
+
+/** A row posted more than STALE_ROW_DAYS ago (rows without an age are kept). */
+function isStale(ageDays: number | null, fetchedAt: Date, now: Date): boolean {
+  const posted = rowPostedAt(ageDays, fetchedAt);
+  return !!posted && now.getTime() - posted.getTime() > STALE_ROW_DAYS * DAY_MS;
+}
 
 /** Identity fields a suggestion carries over (enough to add the company to a watchlist). */
 function boardOf(c: DirectoryCompany | IndexedCompany) {

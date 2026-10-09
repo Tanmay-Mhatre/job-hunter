@@ -5,7 +5,7 @@ import { load, save } from "./storage";
 
 export type ScanState = {
   phase: "idle" | "running" | "done" | "error";
-  /** Syncing with the shared directory, before any company is fetched. */
+  /** Updating the shared directory, before any company is fetched. */
   syncing?: boolean;
   /** What the directory sync said ("Already up to date.", "Updated to …", offline). */
   sync?: string;
@@ -122,14 +122,18 @@ export const SCOPE_LABEL: Record<ScanScope, string> = {
   all: "All companies",
 };
 
-/** "Syncing the company directory…", then "Scanning 120 of 265 companies · My companies + my industries · about 2 min left". */
+/** SCOPE_LABEL, but "My companies" alone when the "mine" scan adds no industry companies. */
+export const scopeLabel = (scope: ScanScope, hasIndustries = true): string => (scope === "mine" && !hasIndustries ? "My companies" : SCOPE_LABEL[scope]);
+
+/** "Updating the company directory…", then "Scanning 120 of 265 companies · My companies + my industries · about 2 min left". */
 export function scanLine(scan: ScanState): string {
-  if (scan.syncing) return "Syncing the company directory…";
+  if (scan.syncing) return "Updating the company directory…";
   if (!scan.total) return "Starting scan…";
   const left = scan.seconds && scan.total > scan.resumed ? scan.seconds * (1 - (scan.done - scan.resumed) / (scan.total - scan.resumed)) : 0;
   return [
     `Scanning ${Math.min(scan.done + 1, scan.total).toLocaleString()} of ${scan.total.toLocaleString()} companies`,
-    scan.scope && SCOPE_LABEL[scan.scope],
+    // No directory companies on top of yours: say "My companies", not "+ my industries".
+    scan.scope && scopeLabel(scan.scope, scan.total > scan.companies.length),
     left > 60 ? `${aboutTime(left)} left` : null,
   ]
     .filter(Boolean)

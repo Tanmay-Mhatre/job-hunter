@@ -1,5 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { htmlToText, inferWorkplace, matchesAny, matchesTerm } from "../src/text";
+import { htmlToText, inferWorkplace, isPlaceholderBoard, matchesAny, matchesTerm } from "../src/text";
+
+describe("isPlaceholderBoard", () => {
+  it("catches vendor sandboxes, training and test tenants", () => {
+    for (const name of [
+      "Lever Implementation Training Environment",
+      "Rhaegal - Arago Sandbox",
+      "Acme (Sandbox)",
+      "Acme Sandbox",
+      "Acme Sandbox 2",
+      "Greenhouse Test Sandbox",
+      "Sandbox Account - Acme",
+      "Acme Test Company",
+      "Demo Company",
+      "Acme Staging",
+      "DO NOT USE - Acme",
+    ])
+      expect(isPlaceholderBoard(name), name).toBe(true);
+  });
+
+  it("keeps real companies whose name merely contains one of those words", () => {
+    for (const name of ["Sandbox VR", "The Sandbox", "Sandbox AQ", "SandboxAQ", "Testlio", "Demoflow", "Training Peaks", "Stripe", "", undefined, null])
+      expect(isPlaceholderBoard(name), String(name)).toBe(false);
+  });
+});
 
 describe("matchesTerm", () => {
   it("matches whole words only", () => {
