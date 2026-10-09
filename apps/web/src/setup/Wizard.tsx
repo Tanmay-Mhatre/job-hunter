@@ -70,10 +70,10 @@ export function Wizard(props: Props) {
     <div className="mx-auto max-w-2xl">
       <Progress step={step} goStep={goStep} draft={draft} />
       <Card className="mt-4 p-5 sm:p-7">
-        <h1 ref={heading} tabIndex={-1} className="text-xl font-semibold tracking-tight outline-none sm:text-2xl">
+        <h1 ref={heading} tabIndex={-1} className="type-heading font-semibold tracking-tight outline-none sm:type-title">
           {COPY[step]?.title}
         </h1>
-        <p className="mt-1 text-sm text-muted">{COPY[step]?.intro}</p>
+        <p className="mt-1 type-small text-muted">{COPY[step]?.intro}</p>
         <HeadingLevel.Provider value={2}>
           <div className="mt-6">
             {step === STEP.resume && (
@@ -125,13 +125,13 @@ export function Wizard(props: Props) {
 function StepFooter({ onBack, blocker, children }: { onBack: () => void; blocker?: string | null; children: ReactNode }) {
   return (
     // Sticky, so Continue is always on screen however long the step is.
-    <footer className="sticky bottom-0 z-10 -mx-5 -mb-5 mt-8 flex items-center justify-between gap-3 rounded-b-2xl border-t border-line bg-surface/95 px-5 py-3 backdrop-blur sm:-mx-7 sm:-mb-7 sm:px-7 sm:py-4">
+    <footer className="sticky bottom-0 z-10 -mx-5 -mb-5 mt-8 flex items-center justify-between gap-3 rounded-b-md border-t border-line bg-raised/95 px-5 py-3 backdrop-blur sm:-mx-7 sm:-mb-7 sm:px-7 sm:py-4">
       <Button variant="ghost" className="h-11 sm:h-9" onClick={onBack}>
         <ArrowLeft className="size-4" /> Back
       </Button>
       <div className="flex min-w-0 flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-3">
         {blocker && (
-          <span id="step-blocker" className="text-right text-xs text-muted">
+          <span id="step-blocker" className="text-right type-meta text-muted">
             {blocker}
           </span>
         )}
@@ -146,7 +146,7 @@ function Progress({ step, goStep, draft }: { step: number; goStep: (n: number) =
   const reachable = (n: number) => STEPS.filter((s) => s.id < n).every((s) => !stepBlocker(s.id, draft));
   return (
     <nav aria-label="Setup progress">
-      <p className="text-right text-xs font-medium text-muted">
+      <p className="text-right type-meta font-medium text-muted">
         Step {step} of {STEP_COUNT}
       </p>
       <ol className="mt-2 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${STEPS.length}, minmax(0, 1fr))` }}>
@@ -160,8 +160,8 @@ function Progress({ step, goStep, draft }: { step: number; goStep: (n: number) =
               aria-label={`Step ${s.id}: ${s.label}`}
               className="group w-full text-left disabled:cursor-not-allowed"
             >
-              <span className={cx("block h-1.5 rounded-full transition-colors", s.id <= step ? "bg-accent" : "bg-line group-enabled:group-hover:bg-muted/40")} />
-              <span className={cx("mt-1.5 block truncate text-xs", s.id === step ? "font-semibold text-fg" : "text-muted")}>{s.label}</span>
+              <span className={cx("block h-1.5 rounded-0 transition-colors", s.id <= step ? "bg-accent" : "bg-line group-enabled:group-hover:bg-muted/40")} />
+              <span className={cx("mt-1.5 block truncate type-meta", s.id === step ? "font-semibold text-ink" : "text-muted")}>{s.label}</span>
             </button>
           </li>
         ))}
@@ -191,10 +191,10 @@ function Welcome({
   return (
     <div className="mx-auto max-w-xl">
       <Card className="p-6 sm:p-9">
-        <span className="flex size-12 items-center justify-center rounded-2xl bg-accent text-accent-fg">
+        <span className="flex size-12 items-center justify-center rounded-md bg-accent text-on-accent">
           <RadarIcon className="size-6" />
         </span>
-        <h1 ref={headingRef} tabIndex={-1} className="mt-5 text-2xl font-semibold tracking-tight outline-none sm:text-3xl">
+        <h1 ref={headingRef} tabIndex={-1} className="mt-5 type-title font-semibold tracking-tight outline-none sm:type-title">
           {existing ? "Fix your setup" : resuming ? "Welcome back" : "Let's set up your job radar"}
         </h1>
         <p className="mt-2 text-muted">
@@ -205,16 +205,16 @@ function Welcome({
               : "Tell us the roles and places you want. We'll find matching jobs across thousands of companies. About a minute."}
         </p>
         {configErrors && (
-          <div className="mt-5 rounded-xl border border-warn/40 bg-warn-soft/50 p-3 text-sm">
-            <p className="font-medium text-warn">Some saved settings couldn't be read. We've loaded what we could.</p>
+          <div className="mt-5 rounded-md border border-warning/40 bg-warning-subtle/50 p-3 type-small">
+            <p className="font-medium text-warning-text">Some saved settings couldn't be read. We've loaded what we could.</p>
             <details className="mt-1">
-              <summary className="cursor-pointer text-xs font-medium text-muted">Technical details</summary>
-              <pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap font-mono text-xs text-muted">{configErrors}</pre>
+              <summary className="cursor-pointer type-meta font-medium text-muted">Technical details</summary>
+              <pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap font-mono type-meta text-muted">{configErrors}</pre>
             </details>
           </div>
         )}
         <div className="mt-8 flex flex-wrap items-center gap-2">
-          <Button variant="primary" className="h-11 px-5 text-base" onClick={onStart}>
+          <Button variant="primary" className="h-11 px-5 type-body" onClick={onStart}>
             {existing ? "Review my setup" : resuming ? `Continue · step ${progress.nextStep} of ${STEP_COUNT}` : "Start setup"} <ArrowRight className="size-4" />
           </Button>
           {resuming && (
@@ -314,7 +314,7 @@ function Review({
       STEP.resume,
       hasResume ? (
         <>
-          <FileText className="mr-1 inline size-4 text-accent" />
+          <FileText className="mr-1 inline size-4 text-accent-text" />
           Using your <b>master resume</b> for suggestions.
         </>
       ) : (
@@ -358,9 +358,9 @@ function Review({
 
   return (
     <div className="space-y-6">
-      <ul className="divide-y divide-line rounded-xl border border-line">
+      <ul className="divide-y divide-line rounded-md border border-line">
         {lines.map(([n, text]) => (
-          <li key={n} className="flex items-start gap-3 p-3 text-sm">
+          <li key={n} className="flex items-start gap-3 p-3 type-small">
             <span className="min-w-0 flex-1 leading-6 first-letter:uppercase">{text}</span>
             <Button size="sm" variant="ghost" onClick={() => goStep(n)} aria-label={`Edit ${EDIT_LABEL[n] ?? "this step"}`}>
               Edit
@@ -369,25 +369,25 @@ function Review({
         ))}
       </ul>
 
-      <details className="group rounded-xl border border-line">
-        <summary className="flex cursor-pointer list-none items-center gap-2 p-3 text-sm font-medium">
+      <details className="group rounded-md border border-line">
+        <summary className="flex cursor-pointer list-none items-center gap-2 p-3 type-label">
           <ChevronDown className="size-4 text-muted transition-transform group-open:rotate-180" />
           Match strictness
           <span className="ml-auto font-normal text-muted">{THRESHOLDS.find((t) => t.value === draft.minScore)?.label ?? `${draft.minScore}+`}</span>
         </summary>
         <div className="space-y-2 border-t border-line p-3">
-          <p className="text-sm text-muted">Strong matches are highlighted and sent in alerts.</p>
+          <p className="type-small text-muted">Strong matches are highlighted and sent in alerts.</p>
           <ThresholdPicker draft={draft} update={update} />
         </div>
       </details>
 
       {blockers.length > 0 && (
-        <div className="rounded-xl border border-warn/40 bg-warn-soft/40 p-3 text-sm">
+        <div className="rounded-md border border-warning/40 bg-warning-subtle/40 p-3 type-small">
           <p className="font-medium">Needed before you can save:</p>
           <ul className="mt-2 space-y-1.5">
             {blockers.map((b) => (
               <li key={b.step} className="flex items-center gap-2">
-                <CircleAlert className="size-4 shrink-0 text-warn" />
+                <CircleAlert className="size-4 shrink-0 text-warning-text" />
                 <span className="flex-1">{b.message}</span>
                 <Button size="sm" variant="ghost" onClick={() => goStep(b.step)}>
                   Fix
@@ -399,24 +399,24 @@ function Review({
       )}
 
       {error && (
-        <div role="alert" className="rounded-xl bg-bad-soft/50 p-3 text-sm text-bad">
+        <div role="alert" className="rounded-md bg-danger-subtle/50 p-3 type-small text-danger-text">
           <p className="font-medium">We couldn't save your setup. Check the steps above, then try again.</p>
           <details className="mt-1">
-            <summary className="cursor-pointer text-xs font-medium">Technical details</summary>
-            <pre className="mt-1 whitespace-pre-wrap font-mono text-xs">{error}</pre>
+            <summary className="cursor-pointer type-meta font-medium">Technical details</summary>
+            <pre className="mt-1 whitespace-pre-wrap font-mono type-meta">{error}</pre>
           </details>
         </div>
       )}
 
       {!canRunLocally && (
-        <p className="text-sm text-muted">
-          This dashboard is hosted, so it can't save files. Download the config and save it in the app's folder as <code className="font-mono text-xs">rawjobs.config.local.yaml</code>. It stays on your computer; don't commit it.
+        <p className="type-small text-muted">
+          This dashboard is hosted, so it can't save files. Download the config and save it in the app's folder as <code className="font-mono type-meta">rawjobs.config.local.yaml</code>. It stays on your computer; don't commit it.
         </p>
       )}
 
       {footer(
         canRunLocally ? (
-          <Button variant="primary" className="h-11 px-5 text-base sm:h-10" onClick={() => void saveAndScan()} disabled={saving || blockers.length > 0}>
+          <Button variant="primary" className="h-11 px-5 type-body sm:h-10" onClick={() => void saveAndScan()} disabled={saving || blockers.length > 0}>
             {saving ? "Saving…" : "Save & find my jobs"} <ArrowRight className="size-4" />
           </Button>
         ) : (

@@ -18,7 +18,7 @@ export type StepProps = { draft: Draft; update: (patch: Partial<Draft>) => void;
 export const HeadingLevel = createContext<2 | 3>(3);
 function SectionHeading({ children }: { children: ReactNode }) {
   const H = useContext(HeadingLevel) === 2 ? "h2" : "h3";
-  return <H className="text-sm font-semibold">{children}</H>;
+  return <H className="type-small font-semibold">{children}</H>;
 }
 
 export function Field({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
@@ -26,7 +26,7 @@ export function Field({ label, hint, children }: { label: string; hint?: ReactNo
     <div className="space-y-2">
       <div>
         <SectionHeading>{label}</SectionHeading>
-        {hint && <p className="mt-0.5 text-sm text-muted">{hint}</p>}
+        {hint && <p className="mt-0.5 type-small text-muted">{hint}</p>}
       </div>
       {children}
     </div>
@@ -40,8 +40,8 @@ function PickButton({ active, onClick, children }: { active: boolean; onClick: (
       aria-pressed={active}
       onClick={onClick}
       className={cx(
-        "inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-sm font-medium transition-colors",
-        active ? "border-accent bg-accent-soft text-accent" : "border-line bg-surface hover:bg-surface-2",
+        "inline-flex h-9 items-center gap-1.5 rounded-md border px-3 type-label transition-colors",
+        active ? "border-accent bg-accent-subtle text-accent-text" : "border-line bg-raised hover:bg-inset",
       )}
     >
       {active && <Check className="size-4" />}
@@ -72,8 +72,8 @@ function familyDefaults(f: RoleFamily, suggest?: Suggestions) {
 /** Secondary settings, collapsed until wanted. The summary says what's inside without opening it. */
 export function MoreOptions({ summary, children }: { summary?: string; children: ReactNode }) {
   return (
-    <details className="group rounded-xl border border-line">
-      <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm font-medium">
+    <details className="group rounded-md border border-line">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 type-label">
         <ChevronDown className="size-4 text-muted transition-transform group-open:rotate-180" />
         More options
         {summary && <span className="ml-auto truncate pl-2 font-normal text-muted">{summary}</span>}
@@ -87,10 +87,10 @@ function Section({ n, title, hint, action, children }: { n: number; title: strin
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-start gap-x-2.5 gap-y-2">
-        <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent">{n}</span>
+        <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-sm bg-accent-subtle type-meta font-semibold text-accent-text">{n}</span>
         <div className="min-w-[14rem] flex-1">
           <SectionHeading>{title}</SectionHeading>
-          {hint && <p className="mt-0.5 text-sm text-muted">{hint}</p>}
+          {hint && <p className="mt-0.5 type-small text-muted">{hint}</p>}
         </div>
         {action}
       </div>
@@ -154,10 +154,10 @@ export function RolesStep({ draft, update, suggest }: StepProps) {
         }
       >
         {fam && !choosing ? (
-          <div className="flex items-center gap-2 rounded-xl border border-accent bg-accent-soft/40 px-3 py-2.5">
-            <Check className="size-4 text-accent" />
+          <div className="flex items-center gap-2 rounded-md border border-accent bg-accent-subtle/40 px-3 py-2.5">
+            <Check className="size-4 text-accent-text" />
             <span className="font-semibold">{fam.label}</span>
-            <span className="text-sm text-muted">· {fam.titles.length} titles</span>
+            <span className="type-small text-muted">· {fam.titles.length} titles</span>
           </div>
         ) : (
           <div className="space-y-3">
@@ -166,7 +166,7 @@ export function RolesStep({ draft, update, suggest }: StepProps) {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Filter families, e.g. product, risk, sales…"
               aria-label="Filter job families"
-              className="h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm outline-none placeholder:text-muted focus:border-accent"
+              className="h-10 w-full rounded-md border border-line bg-raised px-3 type-small outline-none placeholder:text-muted focus:border-accent"
             />
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {families.map((f) => {
@@ -178,31 +178,31 @@ export function RolesStep({ draft, update, suggest }: StepProps) {
                     aria-pressed={active}
                     onClick={() => pickFamily(f.id)}
                     className={cx(
-                      "flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition-colors",
-                      active ? "border-accent bg-accent-soft/50" : "border-line hover:bg-surface-2",
+                      "flex items-center gap-2 rounded-md border px-3 py-2.5 text-left transition-colors",
+                      active ? "border-accent bg-accent-subtle/50" : "border-line hover:bg-inset",
                     )}
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="line-clamp-2 block text-sm font-semibold">{f.label}</span>
-                      <span className="block text-xs text-muted">
+                      <span className="line-clamp-2 block type-small font-semibold">{f.label}</span>
+                      <span className="block type-meta text-muted">
                         {f.titles.length} titles{f.id === suggestedFamily ? " · matches your resume" : ""}
                       </span>
                     </span>
-                    {active && <Check className="size-4 shrink-0 text-accent" />}
+                    {active && <Check className="size-4 shrink-0 text-accent-text" />}
                   </button>
                 );
               })}
-              {families.length === 0 && <p className="text-sm text-muted">No family matches “{query}”. Use the title search in the next section instead.</p>}
+              {families.length === 0 && <p className="type-small text-muted">No family matches “{query}”. Use the title search in the next section instead.</p>}
             </div>
             {fam && (
-              <button type="button" className="text-sm font-medium text-muted hover:text-fg" onClick={() => setChoosing(false)}>
+              <button type="button" className="type-label text-muted hover:text-ink" onClick={() => setChoosing(false)}>
                 Keep {fam.label}
               </button>
             )}
           </div>
         )}
         {undo && (
-          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-surface-2 px-3 py-2 text-sm">
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md bg-inset px-3 py-2 type-small">
             <span className="flex-1 text-muted">Switched to {undo.to}: titles and exclusions were reset to its defaults.</span>
             <Button
               size="sm"
@@ -244,11 +244,11 @@ export function RolesStep({ draft, update, suggest }: StepProps) {
               onChange={(next) => update({ include: [...next, ...extras] })}
             />
           ) : (
-            !draft.include.length && <p className="text-sm text-muted">Pick a job family above, or search for titles below.</p>
+            !draft.include.length && <p className="type-small text-muted">Pick a job family above, or search for titles below.</p>
           )}
           {otherOptions.length > 0 && (
             <div>
-              <p className="mb-1.5 text-xs font-medium text-muted">{fam ? "Other titles" : "Your titles"}{suggest?.titles.length ? ` (incl. ${RESUME_LABEL(suggest).toLowerCase()})` : ""}</p>
+              <p className="mb-1.5 type-meta font-medium text-muted">{fam ? "Other titles" : "Your titles"}{suggest?.titles.length ? ` (incl. ${RESUME_LABEL(suggest).toLowerCase()})` : ""}</p>
               <ToggleChips
                 label="Other titles"
                 options={otherOptions}
@@ -258,7 +258,7 @@ export function RolesStep({ draft, update, suggest }: StepProps) {
             </div>
           )}
           <div>
-            <p className="mb-1.5 text-xs font-medium text-muted">Add a title from any family</p>
+            <p className="mb-1.5 type-meta font-medium text-muted">Add a title from any family</p>
             <Combobox
               label="Search job titles"
               placeholder={`Search ${TITLE_INDEX.length}+ titles, or type your own…`}
@@ -364,7 +364,7 @@ function allTermsFor(key: string): string[] {
 function GroupedPlaces({ terms, onChange, label, remote }: { terms: string[]; onChange: (t: string[]) => void; label: string; remote?: boolean }) {
   const [open, setOpen] = useState<string | null>(null);
   const groups = groupPlaces(terms);
-  if (!groups.length) return <p className="text-sm text-muted">Nothing selected yet.</p>;
+  if (!groups.length) return <p className="type-small text-muted">Nothing selected yet.</p>;
   const openGroup = groups.find((g) => g.key === open);
   return (
     <div className="space-y-2">
@@ -390,8 +390,8 @@ function GroupedPlaces({ terms, onChange, label, remote }: { terms: string[]; on
               key={g.key}
               role="listitem"
               className={cx(
-                "inline-flex h-8 items-center rounded-lg border text-sm font-medium",
-                open === g.key ? "border-accent bg-accent-soft text-accent" : "border-accent/50 bg-accent-soft/60 text-accent",
+                "inline-flex h-8 items-center rounded-md border type-label",
+                open === g.key ? "border-accent bg-accent-subtle text-accent-text" : "border-accent/50 bg-accent-subtle/60 text-accent-text",
               )}
             >
               <button
@@ -403,7 +403,7 @@ function GroupedPlaces({ terms, onChange, label, remote }: { terms: string[]; on
                 title={g.terms.join(", ")}
               >
                 {name}
-                {expandable && !citiesOnly && <span className="text-xs font-normal opacity-75">· {g.terms.length}/{g.options.length}</span>}
+                {expandable && !citiesOnly && <span className="type-meta">· {g.terms.length}/{g.options.length}</span>}
                 {expandable && <ChevronDown className={cx("size-3.5 transition-transform", open === g.key && "rotate-180")} />}
               </button>
               <button
@@ -413,7 +413,7 @@ function GroupedPlaces({ terms, onChange, label, remote }: { terms: string[]; on
                   onChange(terms.filter((t) => !g.terms.includes(t)));
                   if (open === g.key) setOpen(null);
                 }}
-                className="flex h-full items-center rounded-r-lg px-1.5 opacity-70 hover:opacity-100"
+                className="flex h-full items-center rounded-r-md px-1.5 opacity-70 hover:opacity-100"
               >
                 <X className="size-3.5" />
               </button>
@@ -422,9 +422,9 @@ function GroupedPlaces({ terms, onChange, label, remote }: { terms: string[]; on
         })}
       </div>
       {openGroup && (
-        <div className="rounded-xl border border-line bg-surface-2/40 p-3">
-          <p className="mb-2 text-xs text-muted">
-            Words matched for <b className="text-fg">{titleCase(openGroup.name)}</b>. Deselect any you don't want.
+        <div className="rounded-md border border-line bg-inset/40 p-3">
+          <p className="mb-2 type-meta text-muted">
+            Words matched for <b className="text-ink">{titleCase(openGroup.name)}</b>. Deselect any you don't want.
           </p>
           <ToggleChips
             size="sm"
@@ -515,8 +515,8 @@ export function LocationsStep({ draft, update, suggest }: StepProps) {
                   aria-pressed={active}
                   onClick={() => toggleGroup("places", key, countryTerms(countryByName.get(name)!, withCities))}
                   className={cx(
-                    "inline-flex h-7 items-center gap-1 rounded-lg border px-2 text-xs font-medium",
-                    active ? "border-accent bg-accent-soft text-accent" : "border-dashed border-line text-muted hover:border-accent hover:text-fg",
+                    "inline-flex h-7 items-center gap-1 rounded-md border px-2 type-meta font-medium",
+                    active ? "border-accent bg-accent-subtle text-accent-text" : "border-dashed border-line text-muted hover:border-accent hover:text-ink",
                   )}
                 >
                   {active ? <Check className="size-3" /> : <Plus className="size-3" />}
@@ -527,7 +527,7 @@ export function LocationsStep({ draft, update, suggest }: StepProps) {
           </div>
           {suggest?.places.length ? (
             <div>
-              <p className="mb-1.5 text-xs font-medium text-muted">{RESUME_LABEL(suggest)}</p>
+              <p className="mb-1.5 type-meta font-medium text-muted">{RESUME_LABEL(suggest)}</p>
               <ToggleChips
                 size="sm"
                 label="Places from your resume"
@@ -563,7 +563,7 @@ export function LocationsStep({ draft, update, suggest }: StepProps) {
           </div>
           {suggest?.remoteRegions.length ? (
             <div>
-              <p className="mb-1.5 text-xs font-medium text-muted">{RESUME_LABEL(suggest)}</p>
+              <p className="mb-1.5 type-meta font-medium text-muted">{RESUME_LABEL(suggest)}</p>
               <ToggleChips
                 size="sm"
                 label="Remote regions from your resume"
@@ -642,9 +642,9 @@ export function IndustriesStep({ draft, update, suggest }: StepProps) {
   return (
     <div className="space-y-6">
       {fromResume.length > 0 && (
-        <div className="rounded-xl border border-dashed border-line p-4">
-          <p className="mb-2 text-sm">
-            <span className="font-semibold text-accent">{RESUME_LABEL(suggest)}</span>
+        <div className="rounded-md border border-dashed border-line p-4">
+          <p className="mb-2 type-small">
+            <span className="font-semibold text-accent-text">{RESUME_LABEL(suggest)}</span>
             <span className="text-muted">: click to add or remove</span>
           </p>
           <ToggleChips
@@ -664,7 +664,7 @@ export function IndustriesStep({ draft, update, suggest }: StepProps) {
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search industries, e.g. forex, neobank, payments…"
           aria-label="Search industries"
-          className="h-9 w-full rounded-lg border border-line bg-surface pl-9 pr-3 text-sm outline-none placeholder:text-muted focus:border-accent"
+          className="h-9 w-full rounded-md border border-line bg-raised pl-9 pr-3 type-small outline-none placeholder:text-muted focus:border-accent"
         />
       </div>
 
@@ -690,7 +690,7 @@ export function IndustriesStep({ draft, update, suggest }: StepProps) {
         </Button>
       )}
 
-      <p className="text-sm text-muted">
+      <p className="type-small text-muted">
         {draft.industries.length === 0
           ? "None picked. That's OK: your jobs are found by your roles and places."
           : `${draft.industries.length} picked. We'll scan and suggest companies in ${draft.industries.length === 1 ? "this industry" : "these industries"}, and you can narrow your Radar to ${draft.industries.length === 1 ? "it" : "them"}.`}
@@ -798,7 +798,7 @@ export function KeywordsStep({ draft, update, suggest, resumeText = "" }: StepPr
             rows={3}
             aria-label="Text to find topics in"
             placeholder="Paste text here…"
-            className="w-full resize-y rounded-lg border border-line bg-surface p-2.5 text-sm outline-none placeholder:text-muted focus:border-accent"
+            className="w-full resize-y rounded-md border border-line bg-raised p-2.5 type-small outline-none placeholder:text-muted focus:border-accent"
           />
         </Field>
         {entries.length > 0 && (
@@ -806,21 +806,21 @@ export function KeywordsStep({ draft, update, suggest, resumeText = "" }: StepPr
             label="Importance"
             hint={
               <>
-                <b className="text-fg">5</b> = core, <b className="text-fg">1</b> = nice to have.
+                <b className="text-ink">5</b> = core, <b className="text-ink">1</b> = nice to have.
               </>
             }
           >
             <ul className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
               {entries.map(([k, w]) => (
                 <li key={k} className="flex items-center gap-2 py-1">
-                  <span className="min-w-0 flex-1 truncate text-sm">{k}</span>
+                  <span className="min-w-0 flex-1 truncate type-small">{k}</span>
                   <WeightControl keyword={k} weight={w} onChange={(n) => setWeight(k, n)} />
                   <button
                     type="button"
                     onClick={() => setWeight(k, 0)}
                     aria-label={`Remove ${k}`}
                     title={`Remove ${k}`}
-                    className="flex size-7 items-center justify-center rounded-lg text-muted hover:bg-surface-2 hover:text-bad"
+                    className="flex size-7 items-center justify-center rounded-md text-muted hover:bg-inset hover:text-danger-text"
                   >
                     <X className="size-4" />
                   </button>
@@ -857,8 +857,8 @@ function WeightControl({ keyword, weight, onChange }: { keyword: string; weight:
           tabIndex={i === weight ? 0 : -1}
           onClick={() => onChange(i)}
           className={cx(
-            "flex size-6 items-center justify-center rounded-md text-xs font-medium tabular transition-colors",
-            i === weight ? "bg-accent text-accent-fg" : i < weight ? "bg-accent-soft text-accent" : "bg-surface-2 text-muted hover:bg-line",
+            "flex size-6 items-center justify-center rounded-md type-meta font-medium tabular transition-colors",
+            i === weight ? "bg-accent text-on-accent" : i < weight ? "bg-accent-subtle text-accent-text" : "bg-inset text-muted hover:bg-line",
           )}
         >
           {i}
@@ -883,7 +883,7 @@ function AddKeyword({ onAdd }: { onAdd: (k: string) => void }) {
         onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), submit())}
         placeholder="Add a keyword, e.g. tokenization"
         aria-label="Add a keyword"
-        className="h-9 min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 text-sm outline-none placeholder:text-muted focus:border-accent"
+        className="h-9 min-w-0 flex-1 rounded-md border border-line bg-raised px-3 type-small outline-none placeholder:text-muted focus:border-accent"
       />
       <Button onClick={submit} disabled={!text.trim()}>
         <Plus className="size-4" /> Add
@@ -911,17 +911,17 @@ export function ThresholdPicker({ draft, update }: StepProps) {
           onClick={() => update({ minScore: t.value })}
           aria-pressed={draft.minScore === t.value}
           className={cx(
-            "rounded-xl border p-3 text-left transition-colors",
-            draft.minScore === t.value ? "border-accent bg-accent-soft/50" : "border-line hover:bg-surface-2",
+            "rounded-md border p-3 text-left transition-colors",
+            draft.minScore === t.value ? "border-accent bg-accent-subtle/50" : "border-line hover:bg-inset",
           )}
         >
-          <span className="block text-sm font-semibold">
+          <span className="block type-small font-semibold">
             {t.label} <span className="tabular font-normal text-muted">({t.value}+)</span>
           </span>
-          <span className="mt-0.5 block text-xs text-muted">{t.hint}</span>
+          <span className="mt-0.5 block type-meta text-muted">{t.hint}</span>
         </button>
       ))}
-      {custom && <p className="text-xs text-muted sm:col-span-3">Custom threshold from your config: {draft.minScore}+</p>}
+      {custom && <p className="type-meta text-muted sm:col-span-3">Custom threshold from your config: {draft.minScore}+</p>}
     </div>
   );
 }

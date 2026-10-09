@@ -5,14 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex" />
     <title>RawJobs</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='none' stroke='%230d9488' stroke-width='3'/><circle cx='16' cy='16' r='7' fill='none' stroke='%230d9488' stroke-width='3'/><circle cx='16' cy='16' r='2.5' fill='%230d9488'/></svg>" />
+    <link rel="icon" type="image/svg+xml" href="/src/design/logos/rawjobs-mark.svg" />
     <script>
-      // Apply the saved theme before first paint to avoid a flash.
-      try {
-        const t = localStorage.getItem("rawjobs.theme") ?? localStorage.getItem("jobhunter.theme");
-        const dark = t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
-        document.documentElement.classList.toggle("dark", dark);
-      } catch {}
+      // Pick the theme before first paint so the page never flashes the wrong one. Same rules as
+      // resolveTheme() in src/lib/theme.ts: your choice in Settings, otherwise the system setting.
+      (function () {
+        var theme = null;
+        var contrast = null;
+        try {
+          theme = localStorage.getItem("rawjobs.theme") || localStorage.getItem("jobhunter.theme");
+          contrast = localStorage.getItem("rawjobs.contrast");
+        } catch (e) {}
+        var dark = theme === "dark" || (theme !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+        var more = contrast === "more" || matchMedia("(prefers-contrast: more)").matches;
+        document.documentElement.dataset.theme = (dark ? "dark" : "light") + (more ? "-hc" : "");
+      })();
     </script>
   </head>
   <body>

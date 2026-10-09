@@ -64,17 +64,17 @@ function ToastRow({ item }: { item: ToastItem }) {
 
   return (
     <div
-      className="pointer-events-auto flex max-w-md items-center gap-3 rounded-xl border border-line bg-surface px-4 py-2.5 text-sm shadow-xl"
+      className="pointer-events-auto flex max-w-md items-center gap-3 rounded-md border border-line bg-raised px-4 py-2.5 type-small shadow-l3"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
     >
-      <span className={item.tone === "bad" ? "text-bad" : undefined}>{item.message}</span>
+      <span className={item.tone === "bad" ? "text-danger-text" : undefined}>{item.message}</span>
       {item.actionLabel && item.onAction && (
         <button
           type="button"
-          className="min-h-8 shrink-0 rounded-md px-1 font-medium text-accent hover:underline"
+          className="min-h-8 shrink-0 rounded-md px-1 font-medium text-accent-text hover:underline"
           onClick={() => {
             item.onAction!();
             dismissToast(item.id);
@@ -83,7 +83,7 @@ function ToastRow({ item }: { item: ToastItem }) {
           {item.actionLabel}
         </button>
       )}
-      <button type="button" aria-label="Dismiss" className="-mr-1 inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-fg" onClick={() => dismissToast(item.id)}>
+      <button type="button" aria-label="Dismiss" className="-mr-1 inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted hover:bg-inset hover:text-ink" onClick={() => dismissToast(item.id)}>
         <X className="size-4" />
       </button>
     </div>

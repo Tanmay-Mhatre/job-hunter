@@ -63,21 +63,21 @@ export function FacetMenu({ label, options, selected, onChange, single, searchab
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         className={cx(
-          "inline-flex h-8 max-w-56 items-center gap-1 rounded-full border px-3 text-xs font-medium transition-colors",
-          active ? "border-accent bg-accent-soft text-accent" : "border-line bg-surface text-fg hover:bg-surface-2",
+          "inline-flex h-8 max-w-56 items-center gap-1 rounded-sm border px-3 type-meta font-medium transition-colors",
+          active ? "border-accent bg-accent-subtle text-accent-text" : "border-line bg-raised text-ink hover:bg-inset",
         )}
       >
         <span className="truncate">{summary}</span>
         <ChevronDown className={cx("size-3.5 shrink-0 transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <div id={panelId} role="group" aria-label={label} className="absolute left-0 top-full z-30 mt-1 w-72 rounded-xl border border-line bg-surface p-1.5 shadow-xl">
-          {optionsLabel && options.length > 0 && <p className="px-2 pb-0.5 pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted">{optionsLabel}</p>}
+        <div id={panelId} role="group" aria-label={label} className="absolute left-0 top-full z-30 mt-1 w-72 rounded-md border border-line bg-raised p-1.5 shadow-l3">
+          {optionsLabel && options.length > 0 && <p className="px-2 pb-0.5 pt-1 type-meta font-semibold uppercase tracking-wide text-muted">{optionsLabel}</p>}
           <OptionList label={label} options={options} selected={selected} onChange={onChange} single={single} searchable={searchable} autoFocus />
           {footer}
           {active && (
             <div className="mt-1 border-t border-line pt-1 text-right">
-              <button type="button" className="rounded-md px-2 py-1 text-xs font-medium text-accent hover:bg-surface-2" onClick={() => onChange([])}>
+              <button type="button" className="rounded-md px-2 py-1 type-meta font-medium text-accent-text hover:bg-inset" onClick={() => onChange([])}>
                 Clear
               </button>
             </div>
@@ -112,7 +112,7 @@ export function OptionList({
             onChange={(e) => setQ(e.target.value)}
             placeholder={`Search ${label.toLowerCase()}…`}
             aria-label={`Search ${label.toLowerCase()}`}
-            className="h-8 w-full rounded-lg border border-line bg-surface pl-8 pr-2 text-xs outline-none focus:border-accent"
+            className="h-8 w-full rounded-md border border-line bg-raised pl-8 pr-2 type-meta outline-none focus:border-accent"
           />
         </div>
       )}
@@ -123,24 +123,24 @@ export function OptionList({
           const heading = o.group && o.group !== shown[i - 1]?.group ? (o.group === "yours" ? "From your profile" : "Also mentioned in jobs") : null;
           return (
             <li key={o.value}>
-              {heading && <p className="px-2 pb-0.5 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted first:pt-0.5">{heading}</p>}
+              {heading && <p className="px-2 pb-0.5 pt-2 type-meta font-semibold uppercase tracking-wide text-muted first:pt-0.5">{heading}</p>}
               <button
                 type="button"
                 aria-pressed={on}
                 onClick={() => toggle(o.value)}
                 disabled={!on && o.count === 0}
-                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-surface-2 disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left type-small hover:bg-inset disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent"
               >
-                <span className={cx("flex size-4 shrink-0 items-center justify-center border", single ? "rounded-full" : "rounded", on ? "border-accent bg-accent text-accent-fg" : "border-line")}>
+                <span className={cx("flex size-4 shrink-0 items-center justify-center border", single ? "rounded-dot" : "rounded-sm", on ? "border-accent bg-accent text-on-accent" : "border-line")}>
                   {on && <Check className="size-3" />}
                 </span>
                 <span className="min-w-0 flex-1 truncate">{o.label}</span>
-                <span className="tabular text-xs text-muted">{o.count}</span>
+                <span className="tabular type-meta text-muted">{o.count}</span>
               </button>
             </li>
           );
         })}
-        {shown.length === 0 && <li className="px-2 py-3 text-center text-xs text-muted">Nothing here with the current filters.</li>}
+        {shown.length === 0 && <li className="px-2 py-3 text-center type-meta text-muted">Nothing here with the current filters.</li>}
       </ul>
     </>
   );

@@ -1,4 +1,4 @@
-import { ArrowRight, Building2, Keyboard, KanbanSquare, LoaderCircle, Moon, Radar as RadarIcon, RefreshCw, Settings as SettingsIcon, Sun, X } from "lucide-react";
+import { ArrowRight, Building2, Keyboard, KanbanSquare, LoaderCircle, Radar as RadarIcon, RefreshCw, Settings as SettingsIcon, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CompaniesTab } from "./components/CompaniesTab";
 import { Dialog } from "./components/Dialog";
@@ -23,7 +23,11 @@ import { checkNow, draftFromConfig, draftToConfig, emptyDraft, rebaseDraft, save
 import { buildSuggestions } from "./lib/suggest";
 import { load, save } from "./lib/storage";
 import { timeAgo } from "./lib/format";
+import { useTheme } from "./lib/theme";
 import { useUserState, type Status } from "./lib/userState";
+import logoMark from "./design/logos/rawjobs-mark.svg";
+import wordmarkInk from "./design/logos/rawjobs-wordmark-ink.svg";
+import wordmarkPaper from "./design/logos/rawjobs-wordmark-paper.svg";
 import { Wizard } from "./setup/Wizard";
 
 const TABS = [
@@ -57,7 +61,8 @@ export function App() {
   const [applying, setApplying] = useState<Job | null>(null);
   const [route, setRoute] = useState<Route>(parseHash);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
+  // Keeps data-theme in step with the system while Settings > Appearance is on System.
+  useTheme();
   const [showKeys, setShowKeys] = useState(false);
 
   const status = setup.status;
@@ -224,15 +229,6 @@ export function App() {
     [goStep, setupState, progress],
   );
 
-  const toggleTheme = () => {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    try {
-      localStorage.setItem("rawjobs.theme", next ? "dark" : "light");
-    } catch {}
-  };
-
   const jobs = state.kind === "ready" ? state.jobs : [];
   const jobsById = useMemo(() => new Map(jobs.map((j) => [j.id, j])), [jobs]);
   const openJob = openId ? jobsById.get(openId) : undefined;
@@ -278,19 +274,21 @@ export function App() {
 
   return (
     <div className="min-h-dvh">
-      <a href="#main" onClick={(e) => (e.preventDefault(), document.getElementById("main")?.focus())} className="sr-only-focusable fixed left-3 top-3 z-[70] rounded-lg bg-surface px-3 py-2 text-sm font-medium shadow-xl">
+      <a href="#main" onClick={(e) => (e.preventDefault(), document.getElementById("main")?.focus())} className="sr-only-focusable fixed left-3 top-3 z-[70] rounded-md bg-raised px-3 py-2 type-label shadow-l3">
         Skip to content
       </a>
-      <header className="sticky top-0 z-30 border-b border-line bg-surface/85 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-line bg-raised/85 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4">
-          <a href="#radar" onClick={() => go({ tab: "radar" })} className="flex items-center gap-2 font-semibold tracking-tight">
-            <span className="flex size-7 items-center justify-center rounded-lg bg-accent text-accent-fg">
-              <RadarIcon className="size-4" />
+          <a href="#radar" onClick={() => go({ tab: "radar" })} className="flex shrink-0 items-center rounded-sm" aria-label="RawJobs, go to Radar">
+            {/* The wordmark from 96px up; the mark on phones (design/logos). */}
+            <img src={logoMark} alt="" className={cx("size-7", inSetup ? "hidden" : "sm:hidden")} />
+            <span className={cx(inSetup ? "contents" : "hidden sm:contents")}>
+              <img src={wordmarkInk} alt="" className="rj-wordmark-ink h-auto w-25" />
+              <img src={wordmarkPaper} alt="" className="rj-wordmark-paper h-auto w-25" />
             </span>
-            <span className={cx(inSetup ? "inline" : "hidden sm:inline")}>RawJobs</span>
           </a>
           {inSetup ? (
-            <span className="text-sm text-muted">· Setup</span>
+            <span className="type-small text-muted">· Setup</span>
           ) : (
             <nav className="ml-2 hidden items-center gap-1 md:flex" aria-label="Sections">
               {TABS.map((t) => (
@@ -306,7 +304,7 @@ export function App() {
             ) : (
               <>
                 {lastRun && (
-                  <span className="hidden text-xs text-muted lg:inline" title={lastRun.startedAt}>
+                  <span className="hidden type-meta text-muted lg:inline" title={lastRun.startedAt}>
                     Last scan {timeAgo(lastRun.startedAt)}
                   </span>
                 )}
@@ -323,16 +321,13 @@ export function App() {
                 </span>
               </>
             )}
-            <IconButton label={dark ? "Light theme" : "Dark theme"} onClick={toggleTheme}>
-              {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
-            </IconButton>
           </div>
         </div>
       </header>
 
       <main id="main" tabIndex={-1} className={cx("mx-auto max-w-6xl px-4 pt-5 outline-none", inSetup ? "pb-10" : "pb-24 md:pb-10")}>
         {status === undefined || state.kind === "loading" ? (
-          <p className="py-20 text-center text-sm text-muted">Loading…</p>
+          <p className="py-20 text-center type-small text-muted">Loading…</p>
         ) : inSetup ? (
           <Wizard
             step={(route as { setup: number }).setup}
@@ -492,13 +487,13 @@ export function App() {
       </main>
 
       {!inSetup && (
-        <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-line bg-surface/95 backdrop-blur md:hidden" aria-label="Sections">
+        <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-line bg-raised/95 backdrop-blur md:hidden" aria-label="Sections">
           {TABS.map((t) => (
             <button
               key={t.id}
               type="button"
               onClick={() => go({ tab: t.id })}
-              className={cx("flex flex-col items-center gap-0.5 py-2 text-xs font-medium", tab === t.id ? "text-accent" : "text-muted")}
+              className={cx("flex flex-col items-center gap-0.5 py-2 type-meta font-medium", tab === t.id ? "text-accent-text" : "text-muted")}
               aria-current={tab === t.id ? "page" : undefined}
             >
               <t.icon className="size-5" />
@@ -550,8 +545,8 @@ function TabLink({ tab, active, onClick }: { tab: (typeof TABS)[number]; active:
       onClick={onClick}
       aria-current={active ? "page" : undefined}
       className={cx(
-        "inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium transition-colors",
-        active ? "bg-surface-2 text-fg" : "text-muted hover:text-fg",
+        "inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 type-label transition-colors",
+        active ? "bg-inset text-ink" : "text-muted hover:text-ink",
       )}
     >
       <tab.icon className="size-4" />
@@ -565,13 +560,13 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
   return (
     <Card className="mx-auto max-w-lg p-8 text-center">
       <div role="alert">
-        <h2 className="text-lg font-semibold">Couldn't load your jobs</h2>
-        <p className="mt-1 text-sm text-muted">The job data didn't load. This is usually a brief hiccup: try again. If it keeps happening, run a new scan.</p>
+        <h2 className="type-subheading font-semibold">Couldn't load your jobs</h2>
+        <p className="mt-1 type-small text-muted">The job data didn't load. This is usually a brief hiccup: try again. If it keeps happening, run a new scan.</p>
       </div>
       <Button variant="primary" className="mt-4" onClick={onRetry}>
         <RefreshCw className="size-4" /> Retry
       </Button>
-      <details className="mt-4 text-left text-xs text-muted">
+      <details className="mt-4 text-left type-meta text-muted">
         <summary className="cursor-pointer">Technical details</summary>
         <p className="mt-1 break-words font-mono">{message}</p>
       </details>
@@ -592,23 +587,23 @@ function ShortcutHelp({ open, onClose }: { open: boolean; onClose: () => void })
   ];
   return (
     <Dialog open={open} onClose={onClose} labelledBy="shortcut-help-title" className="max-w-sm">
-      <Card className="w-full p-5 shadow-2xl">
+      <Card className="w-full p-5 shadow-l3">
         <div className="flex items-center justify-between gap-2">
-          <h2 id="shortcut-help-title" className="text-base font-semibold">
+          <h2 id="shortcut-help-title" className="type-body font-semibold">
             Keyboard shortcuts
           </h2>
           <IconButton label="Close" onClick={onClose} className="-mr-2">
             <X className="size-4" />
           </IconButton>
         </div>
-        <ul className="mt-3 space-y-2 text-sm">
+        <ul className="mt-3 space-y-2 type-small">
           {rows.map(([keys, label]) => (
             <li key={label} className="flex items-center justify-between">
               <span className="text-muted">{label}</span>
               <span className="flex items-center gap-1">
                 {keys.map((k, i) => (
                   <span key={k} className="flex items-center gap-1">
-                    {i > 0 && <span className="text-xs text-muted">{k === "4" ? "–" : "/"}</span>}
+                    {i > 0 && <span className="type-meta text-muted">{k === "4" ? "–" : "/"}</span>}
                     <Kbd>{k}</Kbd>
                   </span>
                 ))}

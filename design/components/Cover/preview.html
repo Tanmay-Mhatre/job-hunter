@@ -1,0 +1,53 @@
+<!-- @dsCard height=288 -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>RawJobs</title>
+<style>
+  html, body { margin:0; height:100%; }
+  body { background:var(--bg-canvas); color:var(--text-primary); font-family:var(--font-sans); overflow:hidden; }
+  .cover { position:relative; height:288px; overflow:hidden; }
+  .art { position:absolute; top:0; left:480px; width:480px; height:288px; overflow:hidden; }
+  .art svg { display:block; width:480px; height:288px; }
+  .slab { fill:var(--text-primary); rx:var(--radius-md); }
+  .cursor { fill:var(--accent-solid); }
+  .tint { fill:var(--border-default); rx:var(--radius-md); }
+  .state { fill:var(--success-solid); rx:var(--radius-sm); }
+  .line { fill:var(--bg-canvas); fill-opacity:.3; }
+  .words { position:absolute; left:var(--space-8); bottom:var(--space-8); max-width:440px; }
+  .name { margin:0; font-size:100px; line-height:.92; font-weight:600; letter-spacing:-.03em; color:var(--text-primary); }
+  .tag { margin:var(--space-3) 0 0 4px; font-size:14px; line-height:20px; color:var(--text-secondary); }
+</style>
+</head>
+<body>
+<div class="cover">
+<div class="art" aria-hidden="true">
+<svg viewBox="0 0 480 288" width="480" height="288">
+<!--
+  blocks      text-primary slab 288x248 bled off the top (the feed, largest) · accent-solid 96x144 (the cursor, the brand) · border-default 48x104 bled off top and right (relief) · success-solid 48x24 once (it only ever means a strong match)
+  arrangement one tall ink slab with satellites, bottoms on one line space-12 above the edge, space-4 gutters
+  pattern     literal motif, "the feed, uncooked": rows of bars cut from bg-canvas at 30% at a space-6 pitch inside the slab, read as job rows streaming, with the signal block as the cursor at the end of the stream
+  scales      bars space-2 tall; pitch space-6; insets space-6; gutters space-4; corners radius-md on blocks, radius-sm on the state chip, the cursor square like raw data (radius-0)
+-->
+<rect class="slab" x="32" y="-8" width="288" height="248" rx="4"/>
+<rect class="line" x="56" y="32" width="128" height="8"/><rect class="line" x="200" y="32" width="40" height="8"/>
+<rect class="line" x="56" y="56" width="96" height="8"/><rect class="line" x="168" y="56" width="48" height="8"/>
+<rect class="line" x="56" y="80" width="160" height="8"/><rect class="line" x="232" y="80" width="32" height="8"/>
+<rect class="line" x="56" y="104" width="112" height="8"/><rect class="line" x="184" y="104" width="40" height="8"/>
+<rect class="line" x="56" y="128" width="144" height="8"/><rect class="line" x="216" y="128" width="32" height="8"/>
+<rect class="line" x="56" y="152" width="80" height="8"/><rect class="line" x="152" y="152" width="48" height="8"/>
+<rect class="line" x="56" y="176" width="120" height="8"/><rect class="line" x="192" y="176" width="40" height="8"/>
+<rect class="line" x="56" y="200" width="104" height="8"/><rect class="line" x="176" y="200" width="32" height="8"/>
+<rect class="cursor" x="336" y="96" width="96" height="144"/>
+<rect class="tint" x="448" y="-8" width="48" height="104" rx="4"/>
+<rect class="state" x="336" y="56" width="48" height="24" rx="2"/>
+</svg>
+</div>
+<div class="words">
+<h1 class="name">RawJobs</h1>
+<p class="tag">Jobs, straight from the source.</p>
+</div>
+</div>
+</body>
+</html>

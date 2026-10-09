@@ -123,32 +123,32 @@ export function ForYou({ state, watched, muted, pastEmployers, onPastEmployers, 
     <Wrap className={compact ? "" : "p-5 sm:p-6"}>
       <div className={cx("flex flex-wrap items-start justify-between gap-3", compact && "hidden")}>
         <div className="min-w-0">
-          <h2 className="flex items-center gap-2 text-base font-semibold">
-            <Sparkles className="size-4 text-accent" /> Picked for you
+          <h2 className="flex items-center gap-2 type-body font-semibold">
+            <Sparkles className="size-4 text-accent-text" /> Picked for you
           </h2>
-          <p className="mt-0.5 text-sm text-muted">From your roles, places, industries and past employers. Worked out on this computer; nothing about you is sent anywhere.</p>
+          <p className="mt-0.5 type-small text-muted">From your roles, places, industries and past employers. Worked out on this computer; nothing about you is sent anywhere.</p>
         </div>
         {data && data.coverage.in_industries > 0 && (
-          <p className="rounded-full bg-surface-2 px-3 py-1 text-xs text-muted" title="Companies in the directory tagged with your industries, and how many of them are on a hiring system we can scan">
-            We can scan <b className="tabular text-fg">{data.coverage.trackable.toLocaleString()}</b> of {data.coverage.in_industries.toLocaleString()} companies in your industries
+          <p className="rounded-sm bg-inset px-3 py-1 type-meta text-muted" title="Companies in the directory tagged with your industries, and how many of them are on a hiring system we can scan">
+            We can scan <b className="tabular text-ink">{data.coverage.trackable.toLocaleString()}</b> of {data.coverage.in_industries.toLocaleString()} companies in your industries
           </p>
         )}
       </div>
 
       <PastEmployers names={pastEmployers} suggested={data?.pastEmployers.map((p) => p.name)} onChange={onPastEmployers} />
       {compact && top5.length > 0 && (
-        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl bg-accent-soft/50 p-3 text-sm">
+        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-md bg-accent-subtle/50 p-3 type-small">
           <span className="mr-auto">Quick start: add the {top5.length} best fits ({top5.map((s) => s.name).join(", ")}).</span>
           <AddAll items={top5.map(refOf)} watched={watched} onAddMany={onAddMany} onRemoveMany={onRemoveMany} />
         </div>
       )}
 
       {state.kind === "off" && offSettled ? (
-        <p className="mt-4 rounded-xl border border-dashed border-line p-4 text-sm text-muted">
+        <p className="mt-4 rounded-md border border-dashed border-line p-4 type-small text-muted">
           {!canRunLocally && offHint ? offHint : canRunLocally ? "Pick the roles you want first, and we'll suggest companies hiring for them." : "Suggestions aren't available in this version of the app. Search the directory or add a company by link instead."}
         </p>
       ) : state.kind === "error" ? (
-        <div role="alert" className="mt-4 space-y-2 rounded-xl bg-warn-soft/50 p-4 text-sm">
+        <div role="alert" className="mt-4 space-y-2 rounded-md bg-warning-subtle/50 p-4 type-small">
           <p className="font-medium">Suggestions aren't available right now.</p>
           <div className="flex flex-wrap items-center gap-3">
             {onRetry ? (
@@ -159,14 +159,14 @@ export function ForYou({ state, watched, muted, pastEmployers, onPastEmployers, 
               <span className="text-muted">Try again in a moment.</span>
             )}
           </div>
-          <details className="text-xs text-muted">
+          <details className="type-meta text-muted">
             <summary className="cursor-pointer">Technical details</summary>
             {state.message}
           </details>
         </div>
       ) : !lists ? (
         <div className="mt-4 space-y-3">
-          <p role="status" className="flex items-center gap-2 text-sm text-muted">
+          <p role="status" className="flex items-center gap-2 type-small text-muted">
             <LoaderCircle className="size-4 animate-spin" /> Matching thousands of companies to your profile… (the first time takes about 10 seconds)
           </p>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -191,11 +191,11 @@ export function ForYou({ state, watched, muted, pastEmployers, onPastEmployers, 
           <LensHeader lens={current} lists={lists} watched={watched} onAddMany={onAddMany} onRemoveMany={onRemoveMany} />
 
           {hidden && muted.has(hidden.key) && (
-            <p className="flex items-center gap-2 rounded-lg bg-surface-2 px-3 py-2 text-sm">
+            <p className="flex items-center gap-2 rounded-md bg-inset px-3 py-2 type-small">
               <span className="mr-auto">
                 Hid <b>{hidden.name}</b>. Its jobs won't show either.
               </span>
-              <button type="button" className="inline-flex items-center gap-1 text-xs font-medium text-accent" onClick={() => (onUnmute(hidden.key), setHidden(null))}>
+              <button type="button" className="inline-flex items-center gap-1 type-meta font-medium text-accent-text" onClick={() => (onUnmute(hidden.key), setHidden(null))}>
                 <Undo2 className="size-3.5" /> Undo
               </button>
             </p>
@@ -266,7 +266,7 @@ function LensHeader({
             : lists.soon;
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-      <p className="min-w-0 flex-1 text-sm text-muted">{LENS_INTRO[lens]}</p>
+      <p className="min-w-0 flex-1 type-small text-muted">{LENS_INTRO[lens]}</p>
       {/* Keyed by lens, so its "Added n · Undo" belongs to this list only. */}
       <AddAll key={lens} items={items.map(refOf)} watched={watched} onAddMany={onAddMany} onRemoveMany={onRemoveMany} />
     </div>
@@ -274,7 +274,7 @@ function LensHeader({
 }
 
 function Empty({ children }: { children: ReactNode }) {
-  return <p className="rounded-xl border border-dashed border-line p-4 text-sm text-muted">{children}</p>;
+  return <p className="rounded-md border border-dashed border-line p-4 type-small text-muted">{children}</p>;
 }
 
 function LikeLens({
@@ -306,9 +306,9 @@ function LikeLens({
       {rows.map((r) => (
         <section key={r.seed} className="space-y-2.5">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <h3 className="min-w-0 flex-1 text-sm font-semibold">
+            <h3 className="min-w-0 flex-1 type-small font-semibold">
               Because you worked at {r.seed}
-              {!r.in_directory && <span className="ml-2 text-xs font-normal text-muted">(matched on the industries in that role on your resume)</span>}
+              {!r.in_directory && <span className="ml-2 type-meta text-muted">(matched on the industries in that role on your resume)</span>}
             </h3>
             <AddAll items={r.items.map(refOf)} watched={watched} onAddMany={onAddMany} onRemoveMany={onRemoveMany} />
           </div>
@@ -317,22 +317,22 @@ function LikeLens({
       ))}
       {goBack.length > 0 && (
         <section className="space-y-2">
-          <h3 className="flex items-center gap-2 text-sm font-semibold">
+          <h3 className="flex items-center gap-2 type-small font-semibold">
             <History className="size-4 text-muted" /> Go back?
           </h3>
-          <p className="text-xs text-muted">Your past employers that we can scan. Some people like to keep an eye on them.</p>
+          <p className="type-meta text-muted">Your past employers that we can scan. Some people like to keep an eye on them.</p>
           <ul className="flex flex-wrap gap-2">
             {goBack.map(({ company: c }) => (
-              <li key={c!.key} className="flex items-center gap-2 rounded-xl border border-line py-1.5 pl-2 pr-1.5">
+              <li key={c!.key} className="flex items-center gap-2 rounded-md border border-line py-1.5 pl-2 pr-1.5">
                 <Monogram name={c!.name} size="sm" />
-                <span className="text-sm font-medium">{c!.name}</span>
-                {c!.open_jobs ? <span className="text-xs text-muted">{c!.open_jobs} jobs</span> : null}
+                <span className="type-label">{c!.name}</span>
+                {c!.open_jobs ? <span className="type-meta text-muted">{c!.open_jobs} jobs</span> : null}
                 <AddButton added={watched.has(c!.key)} onAdd={() => void onAddMany([c!])} onRemove={() => onRemoveMany([c!.key])} name={c!.name} />
                 <button
                   type="button"
                   aria-label={`Don't suggest ${c!.name}`}
                   title="Don't suggest"
-                  className="inline-flex size-7 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-fg"
+                  className="inline-flex size-7 items-center justify-center rounded-md text-muted hover:bg-inset hover:text-ink"
                   onClick={() => onDismiss(c!.key)}
                 >
                   <X className="size-4" />
@@ -360,10 +360,10 @@ function Packs({
   return (
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
       {packs.map((p) => (
-        <section key={p.industry} className="flex flex-col gap-3 rounded-xl border border-line p-4">
+        <section key={p.industry} className="flex flex-col gap-3 rounded-md border border-line p-4">
           <header className="flex items-center gap-2">
-            <Package className="size-4 text-accent" />
-            <h3 className="mr-auto text-sm font-semibold">{INDUSTRY_BY_ID.get(p.industry)?.label ?? p.industry}</h3>
+            <Package className="size-4 text-accent-text" />
+            <h3 className="mr-auto type-small font-semibold">{INDUSTRY_BY_ID.get(p.industry)?.label ?? p.industry}</h3>
             <AddAll items={p.items.map(refOf)} watched={watched} onAddMany={onAddMany} onRemoveMany={onRemoveMany} />
           </header>
           <ul className="flex flex-wrap gap-1.5">
@@ -377,19 +377,19 @@ function Packs({
                     onClick={() => (on ? onRemoveMany([s.key]) : onAddMany([refOf(s)]))}
                     title={s.reasons.join(" · ")}
                     className={cx(
-                      "inline-flex h-8 items-center gap-1.5 rounded-lg border pl-1.5 pr-2.5 text-xs font-medium transition-colors",
-                      on ? "border-accent bg-accent-soft text-accent" : "border-line hover:border-muted/50",
+                      "inline-flex h-8 items-center gap-1.5 rounded-md border pl-1.5 pr-2.5 type-meta font-medium transition-colors",
+                      on ? "border-accent bg-accent-subtle text-accent-text" : "border-line hover:border-muted/50",
                     )}
                   >
                     <Monogram name={s.name} size="xs" />
                     {s.name}
-                    {s.matches > 0 && <span className="tabular text-accent">{s.matches}</span>}
+                    {s.matches > 0 && <span className="tabular text-accent-text">{s.matches}</span>}
                   </button>
                 </li>
               );
             })}
           </ul>
-          <p className="text-xs text-muted">Numbers are roles that match you now. Tap a company to add or remove it.</p>
+          <p className="type-meta text-muted">Numbers are roles that match you now. Tap a company to add or remove it.</p>
         </section>
       ))}
     </div>
@@ -401,12 +401,12 @@ export function PastEmployers({ names, suggested = [], onChange }: { names: stri
   const [text, setText] = useState("");
   if (!names.length && suggested.length) {
     return (
-      <div className="mt-4 flex flex-wrap items-center gap-1.5 rounded-xl border border-dashed border-line p-2.5">
-        <span className="mr-1 inline-flex items-center gap-1.5 text-xs font-medium text-muted">
+      <div className="mt-4 flex flex-wrap items-center gap-1.5 rounded-md border border-dashed border-line p-2.5">
+        <span className="mr-1 inline-flex items-center gap-1.5 type-meta font-medium text-muted">
           <Briefcase className="size-3.5" /> From your resume, you've worked at
         </span>
         {suggested.map((n) => (
-          <Chip key={n} className="h-7 text-xs">
+          <Chip key={n} className="h-7 type-meta">
             {n}
           </Chip>
         ))}
@@ -423,17 +423,17 @@ export function PastEmployers({ names, suggested = [], onChange }: { names: stri
   };
   return (
     <div className="mt-4 flex flex-wrap items-center gap-1.5">
-      <span className="mr-1 inline-flex items-center gap-1.5 text-xs font-medium text-muted">
+      <span className="mr-1 inline-flex items-center gap-1.5 type-meta font-medium text-muted">
         <Briefcase className="size-3.5" /> You've worked at
       </span>
       {names.map((n) => (
-        <Chip key={n} className="h-7 gap-1 pl-2 pr-1 text-xs">
+        <Chip key={n} className="h-7 gap-1 pl-2 pr-1 type-meta">
           {n}
           <button
             type="button"
             aria-label={`Remove ${n}`}
             title={`Remove ${n}`}
-            className="inline-flex size-6 items-center justify-center rounded-md hover:bg-surface-2 hover:text-fg"
+            className="inline-flex size-6 items-center justify-center rounded-md hover:bg-inset hover:text-ink"
             onClick={() => onChange(names.filter((x) => x !== n))}
           >
             <X className="size-3.5" />
@@ -452,10 +452,10 @@ export function PastEmployers({ names, suggested = [], onChange }: { names: stri
           onChange={(e) => setText(e.target.value)}
           placeholder={names.length ? "Add another" : "Past employer…"}
           aria-label="Add a past employer"
-          className="h-7 w-44 rounded-md border border-dashed border-line bg-transparent px-2 text-xs outline-none placeholder:text-muted focus:border-accent"
+          className="h-7 w-44 rounded-md border border-dashed border-line bg-transparent px-2 type-meta outline-none placeholder:text-muted focus:border-accent"
         />
         {text.trim() && (
-          <button type="submit" aria-label={`Add ${text.trim()} as a past employer`} className="ml-1 inline-flex size-7 items-center justify-center rounded-md text-accent hover:bg-accent-soft">
+          <button type="submit" aria-label={`Add ${text.trim()} as a past employer`} className="ml-1 inline-flex size-7 items-center justify-center rounded-md text-accent-text hover:bg-accent-subtle">
             <Plus className="size-4" />
           </button>
         )}

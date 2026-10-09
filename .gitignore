@@ -29,3 +29,6 @@ scripts/catalog/out/
 dist-data/
 directory-repo/
 .wrangler/
+
+# Design screenshots and axe reports (pnpm design:shots)
+.design-shots/

@@ -1,0 +1,17 @@
+<!-- @dsCard group="Feedback" height=300 subtitle="Skeleton feed and scan progress" -->
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Loading</title><style>html,body{margin:0}body{background:var(--bg-canvas);color:var(--text-primary);padding:16px}.stack{display:grid;gap:16px}.wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center}.cap{font:var(--text-meta,400 12px/16px var(--font-sans));color:var(--text-secondary);margin:0}</style></head>
+<body class="rj-root">
+<div class="stack">
+<div class="rj-panel" style="padding:16px;display:grid;gap:16px" aria-busy="true" aria-label="Loading jobs">
+<div style="display:grid;grid-template-columns:52px 1fr;gap:16px;align-items:center"><span class="rj-skel" style="height:28px"></span><span style="display:grid;gap:8px"><span class="rj-skel" style="width:55%"></span><span class="rj-skel" style="width:35%"></span></span></div>
+<div style="display:grid;grid-template-columns:52px 1fr;gap:16px;align-items:center"><span class="rj-skel" style="height:28px"></span><span style="display:grid;gap:8px"><span class="rj-skel" style="width:48%"></span><span class="rj-skel" style="width:30%"></span></span></div>
+</div>
+<div class="rj-panel" style="padding:16px">
+<div class="rj-progress" role="group" aria-label="Scan progress">
+<div class="rj-progress__row"><span class="rj-source">Greenhouse</span><span class="rj-progress__track"><span class="rj-progress__fill" style="transform:scaleX(.34)"></span></span><span class="rj-progress__count">41 / 120</span></div>
+<div class="rj-progress__row"><span class="rj-source">Lever</span><span class="rj-progress__track"><span class="rj-progress__fill" style="transform:scaleX(1)"></span></span><span class="rj-progress__count">64 / 64</span></div>
+<div class="rj-progress__row"><span class="rj-source">Workday</span><span class="rj-progress__track"><span class="rj-progress__fill" style="transform:scaleX(.1)"></span></span><span class="rj-progress__count">3 / 30</span></div>
+</div></div>
+</div>
+</body></html>

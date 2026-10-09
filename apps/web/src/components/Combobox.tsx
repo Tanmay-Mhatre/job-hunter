@@ -67,19 +67,19 @@ export function Combobox({ label, placeholder, search, onPick, onFreeText }: Pro
             setOpen(false);
           }
         }}
-        className="h-11 w-full rounded-xl border border-line bg-surface pl-9 pr-3 text-sm outline-none placeholder:text-muted focus:border-accent"
+        className="h-11 w-full rounded-md border border-line bg-raised pl-9 pr-3 type-small outline-none placeholder:text-muted focus:border-accent"
       />
       {open && q.trim() && (
         <ul
           id={listId}
           role="listbox"
-          className="absolute inset-x-0 top-12 z-20 max-h-72 overflow-y-auto rounded-xl border border-line bg-surface p-1 shadow-xl"
+          className="absolute inset-x-0 top-12 z-20 max-h-72 overflow-y-auto rounded-md border border-line bg-raised p-1 shadow-l3"
         >
           {items.length === 0 ? (
-            <li className="px-3 py-2 text-sm text-muted">
+            <li className="px-3 py-2 type-small text-muted">
               {onFreeText ? (
                 <>
-                  No match. Press <b className="text-fg">Enter</b> to add “{q.trim().toLowerCase()}” as typed.
+                  No match. Press <b className="text-ink">Enter</b> to add “{q.trim().toLowerCase()}” as typed.
                 </>
               ) : (
                 "No match."
@@ -97,11 +97,11 @@ export function Combobox({ label, placeholder, search, onPick, onFreeText }: Pro
                   pick(item);
                 }}
                 onMouseEnter={() => setActive(i)}
-                className={cx("flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm", i === active && "bg-surface-2")}
+                className={cx("flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 type-small", i === active && "bg-inset")}
               >
-                <Plus className="size-3.5 shrink-0 text-accent" />
+                <Plus className="size-3.5 shrink-0 text-accent-text" />
                 <span className="min-w-0 flex-1 truncate font-medium">{item.label}</span>
-                {item.hint && <span className="hidden max-w-[55%] truncate text-xs text-muted sm:block">{item.hint}</span>}
+                {item.hint && <span className="hidden max-w-[55%] truncate type-meta text-muted sm:block">{item.hint}</span>}
               </li>
             ))
           )}

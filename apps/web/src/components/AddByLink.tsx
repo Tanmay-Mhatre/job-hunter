@@ -76,7 +76,7 @@ export function AddByLink({
   return (
     <div className="space-y-5">
       <div className="space-y-3">
-        <label htmlFor="careers-links" className="block text-sm font-semibold">
+        <label htmlFor="careers-links" className="block type-small font-semibold">
           Paste careers page links
         </label>
         <textarea
@@ -88,9 +88,9 @@ export function AddByLink({
           autoFocus={autoFocus}
           aria-describedby={`${helpId}-hint`}
           placeholder={"https://jobs.lever.co/company\nhttps://job-boards.greenhouse.io/another"}
-          className="w-full resize-y rounded-xl border border-line bg-surface p-3 font-mono text-sm outline-none placeholder:text-muted focus:border-accent"
+          className="w-full resize-y rounded-md border border-line bg-raised p-3 font-mono type-small outline-none placeholder:text-muted focus:border-accent"
         />
-        <p id={`${helpId}-hint`} className="text-xs text-muted">
+        <p id={`${helpId}-hint`} className="type-meta text-muted">
           {FORMATS} One link per line.
         </p>
         <div className="flex flex-wrap items-center gap-3">
@@ -100,7 +100,7 @@ export function AddByLink({
           </Button>
           <button
             type="button"
-            className="inline-flex min-h-8 items-center gap-1 text-sm font-medium text-accent"
+            className="inline-flex min-h-8 items-center gap-1 type-label text-accent-text"
             onClick={() => setShowHelp((v) => !v)}
             aria-expanded={showHelp}
             aria-controls={helpId}
@@ -109,7 +109,7 @@ export function AddByLink({
           </button>
         </div>
         {error && (
-          <div role="alert" className="text-sm text-bad">
+          <div role="alert" className="type-small text-danger-text">
             <p>
               Couldn't scan these links. Check your connection and{" "}
               <button type="button" className="font-medium underline" onClick={() => void check()}>
@@ -117,13 +117,13 @@ export function AddByLink({
               </button>
               .
             </p>
-            <details className="mt-1 text-xs text-muted">
+            <details className="mt-1 type-meta text-muted">
               <summary className="cursor-pointer">Technical details</summary>
               {error}
             </details>
           </div>
         )}
-        <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
+        <div className="flex flex-wrap items-center gap-1.5 type-meta text-muted">
           <span>Supported hiring systems:</span>
           {[...SUPPORTED].map((a) => (
             <Chip key={a} tone="accent">
@@ -132,25 +132,25 @@ export function AddByLink({
           ))}
         </div>
         {showHelp && (
-          <div id={helpId} className="rounded-xl bg-surface-2 p-3 text-sm">
+          <div id={helpId} className="rounded-md bg-inset p-3 type-small">
             <p>Open the company's careers page and click any job. If the address looks like one of these, paste it (anything after the company name is fine):</p>
-            <ul className="mt-2 space-y-1 font-mono text-xs text-muted">
-              <li>job-boards.greenhouse.io/<b className="text-fg">company</b></li>
-              <li>jobs.lever.co/<b className="text-fg">company</b></li>
-              <li>jobs.ashbyhq.com/<b className="text-fg">company</b></li>
-              <li>careers.smartrecruiters.com/<b className="text-fg">Company</b></li>
+            <ul className="mt-2 space-y-1 font-mono type-meta text-muted">
+              <li>job-boards.greenhouse.io/<b className="text-ink">company</b></li>
+              <li>jobs.lever.co/<b className="text-ink">company</b></li>
+              <li>jobs.ashbyhq.com/<b className="text-ink">company</b></li>
+              <li>careers.smartrecruiters.com/<b className="text-ink">Company</b></li>
               <li>
-                <b className="text-fg">company</b>.wd3.myworkdayjobs.com/en-US/<b className="text-fg">Site</b>
+                <b className="text-ink">company</b>.wd3.myworkdayjobs.com/en-US/<b className="text-ink">Site</b>
               </li>
-              <li>apply.workable.com/<b className="text-fg">company</b></li>
+              <li>apply.workable.com/<b className="text-ink">company</b></li>
               <li>
-                <b className="text-fg">company</b>.recruitee.com, .bamboohr.com, .breezy.hr, .teamtailor.com, .jobs.personio.com
-              </li>
-              <li>
-                <b className="text-fg">pod</b>.fa.<b className="text-fg">dc</b>.oraclecloud.com/hcmUI/CandidateExperience/en/sites/<b className="text-fg">CX_1</b>
+                <b className="text-ink">company</b>.recruitee.com, .bamboohr.com, .breezy.hr, .teamtailor.com, .jobs.personio.com
               </li>
               <li>
-                <b className="text-fg">host</b>.taleo.net/careersection/<b className="text-fg">section</b>/jobsearch.ftl
+                <b className="text-ink">pod</b>.fa.<b className="text-ink">dc</b>.oraclecloud.com/hcmUI/CandidateExperience/en/sites/<b className="text-ink">CX_1</b>
+              </li>
+              <li>
+                <b className="text-ink">host</b>.taleo.net/careersection/<b className="text-ink">section</b>/jobsearch.ftl
               </li>
             </ul>
           </div>
@@ -160,7 +160,7 @@ export function AddByLink({
       {results.length > 0 && (
         <section>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold">
+            <h3 className="type-small font-semibold">
               Checked links <span className="tabular font-normal text-muted">({results.length})</span>
             </h3>
             <div className="flex items-center gap-2">
@@ -242,7 +242,7 @@ function ResultCard({
     );
 
   return (
-    <li className={cx("flex min-w-0 flex-col gap-2 rounded-xl border p-3", added ? "border-accent bg-accent-soft/20" : ok ? "border-line" : "border-bad/40")}>
+    <li className={cx("flex min-w-0 flex-col gap-2 rounded-md border p-3", added ? "border-accent bg-accent-subtle/20" : ok ? "border-line" : "border-danger/40")}>
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           {ok && !added ? (
@@ -254,15 +254,15 @@ function ResultCard({
               className="-ml-1.5 h-8 w-full max-w-72 rounded-md border border-transparent bg-transparent px-1.5 font-semibold outline-none hover:border-line focus:border-accent"
             />
           ) : (
-            <p className={cx("truncate font-semibold", !ok && "font-mono text-sm font-normal")}>{ok ? name : r.input}</p>
+            <p className={cx("truncate font-semibold", !ok && "font-mono type-small")}>{ok ? name : r.input}</p>
           )}
           {r.ats && (
-            <p className="flex min-w-0 items-center gap-1 text-xs text-muted">
+            <p className="flex min-w-0 items-center gap-1 type-meta text-muted">
               <span className="shrink-0">Hiring system: {ATS_LABEL[r.ats] ?? r.ats}</span>
               {ok && r.careers_url && (
                 <>
                   <span>·</span>
-                  <a href={r.careers_url} target="_blank" rel="noreferrer" className="inline-flex min-w-0 items-center gap-1 hover:text-accent">
+                  <a href={r.careers_url} target="_blank" rel="noreferrer" className="inline-flex min-w-0 items-center gap-1 hover:text-accent-text">
                     <span className="truncate">{r.careers_url.replace(/^https:\/\//, "")}</span>
                     <ExternalLink className="size-3 shrink-0" />
                   </a>
@@ -272,7 +272,7 @@ function ResultCard({
           )}
         </div>
         {ok && <AddButton added={added} onAdd={onAdd} onRemove={onRemove} soon={!SUPPORTED.has(r.ats!)} name={name} />}
-        <button type="button" onClick={onDismiss} aria-label="Dismiss" title="Dismiss" className="rounded p-1.5 text-muted hover:text-fg">
+        <button type="button" onClick={onDismiss} aria-label="Dismiss" title="Dismiss" className="rounded-md p-1.5 text-muted hover:text-ink">
           <X className="size-4" />
         </button>
       </div>
@@ -284,14 +284,14 @@ function ResultCard({
       </div>
 
       {places.length > 0 && (
-        <p className="flex items-center gap-1 text-xs text-muted" title={places.join("; ")}>
+        <p className="flex items-center gap-1 type-meta text-muted" title={places.join("; ")}>
           <MapPin className="size-3 shrink-0" />
           <span className="min-w-0 truncate">{places.slice(0, 2).map(displayPlace).join(", ")}</span>
           {places.length > 2 && <span className="shrink-0">+{places.length - 2}</span>}
         </p>
       )}
       {r.match_examples && r.match_examples.length > 0 ? (
-        <ul className="space-y-0.5 text-xs">
+        <ul className="space-y-0.5 type-meta">
           {r.match_examples.map((e) => (
             <li key={e} className="truncate">
               • {e}
@@ -301,18 +301,18 @@ function ResultCard({
       ) : (
         r.sample_titles &&
         r.sample_titles.length > 0 && (
-          <p className="truncate text-xs text-muted">
+          <p className="truncate type-meta text-muted">
             {r.matches === 0 ? "Nothing matching you today. Roles there now: " : "Roles there now: "}
             {r.sample_titles.join(", ")}
           </p>
         )
       )}
-      {r.status === "dormant" && <p className="text-xs text-muted">The careers page exists but has no openings. Add it and we'll tell you when one appears.</p>}
+      {r.status === "dormant" && <p className="type-meta text-muted">The careers page exists but has no openings. Add it and we'll tell you when one appears.</p>}
       {r.status === "soon" && r.ats && (
-        <p className="text-xs text-muted">We can't scan {ATS_LABEL[r.ats] ?? "this hiring system"} yet. Add it now and we'll scan it once it's supported.</p>
+        <p className="type-meta text-muted">We can't scan {ATS_LABEL[r.ats] ?? "this hiring system"} yet. Add it now and we'll scan it once it's supported.</p>
       )}
       {!ok && r.status !== "soon" && (
-        <div className="space-y-1.5 text-xs text-muted">
+        <div className="space-y-1.5 type-meta text-muted">
           <p>
             {r.status === "unknown"
               ? FORMATS
@@ -320,18 +320,18 @@ function ResultCard({
           </p>
           <div className="flex flex-wrap items-center gap-3">
             {r.status !== "unknown" && (
-              <button type="button" className="min-h-8 font-medium text-accent" onClick={onRetry}>
+              <button type="button" className="min-h-8 font-medium text-accent-text" onClick={onRetry}>
                 Try again
               </button>
             )}
-            <button type="button" className="inline-flex min-h-8 items-center gap-1 font-medium text-accent" onClick={onHelp}>
+            <button type="button" className="inline-flex min-h-8 items-center gap-1 font-medium text-accent-text" onClick={onHelp}>
               <HelpCircle className="size-3.5" /> Where do I find this link?
             </button>
           </div>
         </div>
       )}
       {r.error && (
-        <details className="text-xs text-muted">
+        <details className="type-meta text-muted">
           <summary className="cursor-pointer">Technical details</summary>
           {r.error}
         </details>

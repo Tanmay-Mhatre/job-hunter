@@ -27,10 +27,10 @@ export function ScanButton({ scan, onRequest, onChoose, onStop }: { scan: ScanSt
     );
   return (
     <div className="inline-flex">
-      <Button size="sm" className="rounded-r-none" onClick={onRequest} title={prefs.ask ? "Scan now: choose which scan" : `Scan now: ${SCOPE_LABEL[prefs.scope]}`}>
+      <Button size="sm" className="rounded-r-0" onClick={onRequest} title={prefs.ask ? "Scan now: choose which scan" : `Scan now: ${SCOPE_LABEL[prefs.scope]}`}>
         <RefreshCw className="size-3.5" /> Scan now
       </Button>
-      <Button size="sm" className="-ml-px rounded-l-none px-1.5" onClick={onChoose} aria-label="Choose which scan to run" title="Choose which scan to run">
+      <Button size="sm" className="-ml-px rounded-l-0 px-1.5" onClick={onChoose} aria-label="Choose which scan to run" title="Choose which scan to run">
         <ChevronDown className="size-3.5" />
       </Button>
     </div>
@@ -61,13 +61,13 @@ export function ScanChooser({ open, onClose, onStart }: { open: boolean; onClose
 
   return (
     <Dialog open={open} onClose={onClose} labelledBy="scan-chooser-title" placement="bottom" initialFocus="[data-autofocus]">
-      <Card className="relative p-5 shadow-2xl sm:p-6">
+      <Card className="relative p-5 shadow-l3 sm:p-6">
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
-            <h2 id="scan-chooser-title" className="text-lg font-semibold">
+            <h2 id="scan-chooser-title" className="type-subheading font-semibold">
               Which scan?
             </h2>
-            <p className="mt-0.5 text-sm text-muted">Both update the company directory first, then scan each company live for new jobs.</p>
+            <p className="mt-0.5 type-small text-muted">Both update the company directory first, then scan each company live for new jobs.</p>
           </div>
           <IconButton label="Close" className="-mr-2 -mt-1" onClick={onClose}>
             <X className="size-4" />
@@ -79,26 +79,26 @@ export function ScanChooser({ open, onClose, onStart }: { open: boolean; onClose
             const p = plan?.[s];
             const count = p ? p.yours + p.extra : 0;
             return (
-              <label key={s} className={cx("flex cursor-pointer gap-3 rounded-xl border p-3.5 transition-colors", scope === s ? "border-accent bg-accent-soft/30" : "border-line hover:border-muted/50")}>
-                <input type="radio" name="scan-scope" checked={scope === s} onChange={() => setScope(s)} className="mt-1 accent-[var(--accent)]" />
+              <label key={s} className={cx("flex cursor-pointer gap-3 rounded-md border p-3.5 transition-colors", scope === s ? "border-accent bg-accent-subtle/30" : "border-line hover:border-muted/50")}>
+                <input type="radio" name="scan-scope" checked={scope === s} onChange={() => setScope(s)} className="mt-1 accent-accent" />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold">{scopeLabel(s, hasIndustries)}</span>
-                  <span className="block text-xs text-muted">{s === "mine" && !hasIndustries ? "The companies you've added. Add industries in Settings to scan more." : SCOPE_HINT[s]}</span>
-                  <span className="mt-1.5 block text-xs font-medium tabular">
+                  <span className="block type-small font-semibold">{scopeLabel(s, hasIndustries)}</span>
+                  <span className="block type-meta text-muted">{s === "mine" && !hasIndustries ? "The companies you've added. Add industries in Settings to scan more." : SCOPE_HINT[s]}</span>
+                  <span className="mt-1.5 block type-meta font-medium tabular">
                     {p ? `${s === "all" ? roughCount(count) : count.toLocaleString()} companies · ${aboutTime(p.seconds)}` : <LoaderCircle className="inline size-3 animate-spin text-muted" />}
                   </span>
-                  {p?.resumable && <span className="mt-0.5 block text-xs text-accent">Carries on a stopped scan ({p.resumable.done.toLocaleString()} done)</span>}
+                  {p?.resumable && <span className="mt-0.5 block type-meta text-accent-text">Carries on a stopped scan ({p.resumable.done.toLocaleString()} done)</span>}
                 </span>
               </label>
             );
           })}
         </div>
 
-        <label className="mt-4 flex cursor-pointer items-start gap-2 text-sm">
-          <input type="checkbox" checked={always} onChange={(e) => setAlways(e.target.checked)} className="mt-0.5 size-4 accent-[var(--accent)]" />
+        <label className="mt-4 flex cursor-pointer items-start gap-2 type-small">
+          <input type="checkbox" checked={always} onChange={(e) => setAlways(e.target.checked)} className="mt-0.5 size-4 accent-accent" />
           <span>
             Always run this scan, don't ask again
-            <span className="block text-xs text-muted">Change it any time with ▾ next to Scan now, or in Settings.</span>
+            <span className="block type-meta text-muted">Change it any time with ▾ next to Scan now, or in Settings.</span>
           </span>
         </label>
 
@@ -130,14 +130,14 @@ export function ScanPrefsPicker() {
   ];
   return (
     <fieldset>
-      <legend className="text-sm font-medium">When I click Scan now</legend>
+      <legend className="type-label">When I click Scan now</legend>
       <div className="mt-1.5 grid gap-2 sm:grid-cols-3">
         {options.map((o) => (
-          <label key={o.id} className={cx("flex cursor-pointer gap-2.5 rounded-xl border p-3", o.on ? "border-accent bg-accent-soft/30" : "border-line hover:border-muted/50")}>
-            <input type="radio" name="scan-now" checked={o.on} onChange={o.pick} className="mt-0.5 accent-[var(--accent)]" />
-            <span className="text-sm">
+          <label key={o.id} className={cx("flex cursor-pointer gap-2.5 rounded-md border p-3", o.on ? "border-accent bg-accent-subtle/30" : "border-line hover:border-muted/50")}>
+            <input type="radio" name="scan-now" checked={o.on} onChange={o.pick} className="mt-0.5 accent-accent" />
+            <span className="type-small">
               <b>{o.label}</b>
-              <span className="block text-xs text-muted">{o.hint}</span>
+              <span className="block type-meta text-muted">{o.hint}</span>
             </span>
           </label>
         ))}

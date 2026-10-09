@@ -1,0 +1,10 @@
+<!-- @dsCard group="Forms" height=312 subtitle="Label, search, help and error" -->
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Field</title><style>html,body{margin:0}body{background:var(--bg-canvas);color:var(--text-primary);padding:16px}.stack{display:grid;gap:16px}.wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center}.cap{font:var(--text-meta,400 12px/16px var(--font-sans));color:var(--text-secondary);margin:0}</style></head>
+<body class="rj-root">
+<div class="stack" style="max-width:420px">
+<div class="rj-search"><svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><label class="rj-sr" for="q">Search jobs</label><input class="rj-input" id="q" type="search" placeholder="Search titles, companies, places"><span class="rj-kbd" aria-hidden="true">/</span></div>
+<div class="rj-field"><label class="rj-field__label" for="thr">Strong match threshold</label><input class="rj-input" id="thr" inputmode="numeric" value="65"><p class="rj-field__help">Jobs scoring this or higher are marked strong and alert you first.</p></div>
+<div class="rj-field"><label class="rj-field__label" for="url">Careers page link</label><input class="rj-input" id="url" value="jobs.lever.co/acme-exchange/" aria-invalid="true" aria-describedby="url-err"><p class="rj-field__error" id="url-err"><svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>This board returned no jobs. Check the link or try the company's main careers page.</p></div>
+</div>
+</body></html>

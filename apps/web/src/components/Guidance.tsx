@@ -66,19 +66,19 @@ function ChecklistRows({ items, onStep, onScan, onCompanies }: { items: Item[]; 
               type="button"
               disabled={!action}
               onClick={action}
-              className="flex w-full items-center gap-3 px-4 py-2.5 text-left enabled:hover:bg-surface-2/60 disabled:cursor-default"
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-left enabled:hover:bg-inset/60 disabled:cursor-default"
             >
               <span
                 className={cx(
-                  "flex size-6 shrink-0 items-center justify-center rounded-full border",
-                  i.done ? "border-accent bg-accent text-accent-fg" : i.key === "daily" ? "border-line text-muted" : "border-line",
+                  "flex size-6 shrink-0 items-center justify-center rounded-sm border",
+                  i.done ? "border-accent bg-accent text-on-accent" : i.key === "daily" ? "border-line text-muted" : "border-line",
                 )}
               >
                 {i.done ? <Check className="size-3.5" /> : i.key === "daily" ? <Bell className="size-3" /> : null}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-medium">{i.label}</span>
-                <span className={cx("block truncate text-xs", i.detail.includes("failing") ? "text-bad" : "text-muted")}>{i.detail}</span>
+                <span className="block type-label">{i.label}</span>
+                <span className={cx("block truncate type-meta", i.detail.includes("failing") ? "text-danger-text" : "text-muted")}>{i.detail}</span>
               </span>
               {action && <ChevronRight className="size-4 text-muted" />}
             </button>
@@ -97,7 +97,7 @@ const countDone = (items: Item[]) => {
 function ProgressBar({ done, total, className }: { done: number; total: number; className?: string }) {
   return (
     <div
-      className={cx("h-1.5 overflow-hidden rounded-full bg-surface-2", className)}
+      className={cx("h-1.5 overflow-hidden rounded-0 bg-inset", className)}
       role="progressbar"
       aria-label="Setup progress"
       aria-valuemin={0}
@@ -105,7 +105,7 @@ function ProgressBar({ done, total, className }: { done: number; total: number; 
       aria-valuenow={done}
       aria-valuetext={`${done} of ${total} done`}
     >
-      <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${(done / total) * 100}%` }} />
+      <div className="h-full rounded-0 bg-accent transition-all" style={{ width: `${(done / total) * 100}%` }} />
     </div>
   );
 }
@@ -134,8 +134,8 @@ export function SetupChecklist({
   if (complete) {
     const daily = items.find((i) => i.key === "daily");
     return (
-      <div className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-2.5 text-sm">
-        <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-accent text-accent-fg">
+      <div className="flex items-center gap-3 rounded-md border border-line bg-raised px-4 py-2.5 type-small">
+        <span className="flex size-5 shrink-0 items-center justify-center rounded-sm bg-accent text-on-accent">
           <Check className="size-3" />
         </span>
         <span className="min-w-0 flex-1">
@@ -143,7 +143,7 @@ export function SetupChecklist({
           {daily && !scheduled && (
             <span className="text-muted">
               Next:{" "}
-              <button type="button" className="font-medium text-accent hover:underline" onClick={goDailyAlerts}>
+              <button type="button" className="font-medium text-accent-text hover:underline" onClick={goDailyAlerts}>
                 get new jobs on Telegram every day <span aria-hidden="true">&rarr;</span>
               </button>
             </span>
@@ -152,7 +152,7 @@ export function SetupChecklist({
         <button
           type="button"
           aria-label="Hide setup checklist"
-          className="inline-flex size-8 items-center justify-center rounded-lg text-muted hover:bg-surface-2 hover:text-fg"
+          className="inline-flex size-8 items-center justify-center rounded-md text-muted hover:bg-inset hover:text-ink"
           onClick={() => {
             save(DISMISS_KEY, true);
             setDismissed(true);
@@ -168,8 +168,8 @@ export function SetupChecklist({
     <Card className="overflow-hidden">
       <header className="flex items-center gap-3 border-b border-line px-4 py-3">
         <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-semibold">Finish setting up</h2>
-          <p className="text-xs text-muted">
+          <h2 className="type-small font-semibold">Finish setting up</h2>
+          <p className="type-meta text-muted">
             {done} of {total} done
           </p>
         </div>
@@ -198,22 +198,22 @@ export function SetupHero({
   return (
     <Card className="overflow-hidden">
       <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
-        <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-accent-fg">
+        <span className="flex size-12 shrink-0 items-center justify-center rounded-md bg-accent text-on-accent">
           <RadarIcon className="size-6" />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-semibold">{started ? "Finish setting up your radar" : "Set up your radar"}</h2>
-          <p className="mt-0.5 text-sm text-muted">
+          <h2 className="type-subheading font-semibold">{started ? "Finish setting up your radar" : "Set up your radar"}</h2>
+          <p className="mt-0.5 type-small text-muted">
             Tell us the roles and places you want, and we'll find and rank matching jobs across thousands of companies. About 3 minutes.
           </p>
           <div className="mt-3 flex items-center gap-3">
             <ProgressBar done={done} total={total} className="w-40" />
-            <span className="tabular text-xs text-muted">
+            <span className="tabular type-meta text-muted">
               {done} of {total} done
             </span>
           </div>
         </div>
-        <Button variant="primary" className="h-11 shrink-0 px-5 text-base" onClick={() => onStep(started ? nextStep : STEP.resume)}>
+        <Button variant="primary" className="h-11 shrink-0 px-5 type-body" onClick={() => onStep(started ? nextStep : STEP.resume)}>
           {started ? `Continue setup · step ${nextStep} of ${STEP_COUNT}` : "Start setup"} <ArrowRight className="size-4" />
         </Button>
       </div>
@@ -227,16 +227,16 @@ export function SetupHero({
 /** The saved settings exist but don't validate (usually a hand edit). */
 export function ConfigProblemCard({ errors, onFix }: { errors?: string; onFix: () => void }) {
   return (
-    <Card className="border-warn/40 p-5">
+    <Card className="border-warning/40 p-5">
       <div className="flex items-start gap-3">
-        <TriangleAlert className="mt-0.5 size-5 shrink-0 text-warn" />
+        <TriangleAlert className="mt-0.5 size-5 shrink-0 text-warning-text" />
         <div className="min-w-0 flex-1">
           <h2 className="font-semibold">Some of your saved settings can't be read</h2>
-          <p className="mt-0.5 text-sm text-muted">Scans can't run until they're fixed. Setup loads everything it can read, so you only fix what's wrong.</p>
+          <p className="mt-0.5 type-small text-muted">Scans can't run until they're fixed. Setup loads everything it can read, so you only fix what's wrong.</p>
           {errors && (
-            <details className="mt-2 text-xs text-muted">
+            <details className="mt-2 type-meta text-muted">
               <summary className="cursor-pointer">Technical details</summary>
-              <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded-lg bg-surface-2 p-2.5 font-mono">{errors}</pre>
+              <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded-md bg-inset p-2.5 font-mono">{errors}</pre>
             </details>
           )}
         </div>
@@ -253,8 +253,8 @@ export function FirstScanCard({ scan, onScan }: { scan: ScanState; onScan: () =>
   const running = scan.phase === "running";
   return (
     <Card className="p-6 text-center sm:p-8">
-      <h2 className="text-lg font-semibold">{running ? "Finding jobs for you…" : "Ready for your first scan"}</h2>
-      <p className="mx-auto mt-1 max-w-md text-sm text-muted">
+      <h2 className="type-subheading font-semibold">{running ? "Finding jobs for you…" : "Ready for your first scan"}</h2>
+      <p className="mx-auto mt-1 max-w-md type-small text-muted">
         We check thousands of companies for jobs that match your roles and places. This usually takes a few minutes.
       </p>
       {running ? (
@@ -262,7 +262,7 @@ export function FirstScanCard({ scan, onScan }: { scan: ScanState; onScan: () =>
           <ScanProgress scan={scan} onRetry={onScan} />
         </div>
       ) : (
-        <Button variant="primary" className="mt-5 h-11 px-5 text-base" onClick={onScan}>
+        <Button variant="primary" className="mt-5 h-11 px-5 type-body" onClick={onScan}>
           <RefreshCw className="size-4" /> Start my first scan
         </Button>
       )}
@@ -276,24 +276,24 @@ export function NoMatches({ jobs, onStep, onCompanies }: { jobs: Job[]; onStep: 
   return (
     <Card className="p-5 sm:p-6">
       <div className="flex items-start gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-warn-soft text-warn">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-warning-subtle text-warning-text">
           <SearchX className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="text-base font-semibold">No matches yet. Here's why.</h2>
-          <p className="mt-1 text-sm text-muted">
-            We checked <b className="tabular text-fg">{d.scanned.toLocaleString()}</b> open jobs:{" "}
-            <b className="tabular text-fg">{d.titleMiss.toLocaleString()}</b> had other job titles and{" "}
-            <b className="tabular text-fg">{d.locationMiss.toLocaleString()}</b> had the right title but were in other places.
+          <h2 className="type-body font-semibold">No matches yet. Here's why.</h2>
+          <p className="mt-1 type-small text-muted">
+            We checked <b className="tabular text-ink">{d.scanned.toLocaleString()}</b> open jobs:{" "}
+            <b className="tabular text-ink">{d.titleMiss.toLocaleString()}</b> had other job titles and{" "}
+            <b className="tabular text-ink">{d.locationMiss.toLocaleString()}</b> had the right title but were in other places.
           </p>
         </div>
       </div>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border border-line p-3">
-          <h3 className="text-sm font-semibold">Right title, other places</h3>
+        <div className="rounded-md border border-line p-3">
+          <h3 className="type-small font-semibold">Right title, other places</h3>
           {d.nearMissLocations.length ? (
-            <ul className="mt-2 space-y-1 text-sm">
+            <ul className="mt-2 space-y-1 type-small">
               {d.nearMissLocations.map((l) => (
                 <li key={l.location} className="flex justify-between gap-2">
                   <span className="truncate text-muted">{l.location}</span>
@@ -302,16 +302,16 @@ export function NoMatches({ jobs, onStep, onCompanies }: { jobs: Job[]; onStep: 
               ))}
             </ul>
           ) : (
-            <p className="mt-1 text-sm text-muted">None. Nobody is hiring for this role in the companies we checked right now.</p>
+            <p className="mt-1 type-small text-muted">None. Nobody is hiring for this role in the companies we checked right now.</p>
           )}
           <Button size="sm" className="mt-3" onClick={() => onStep(STEP.locations)}>
             Add locations or remote <ArrowRight className="size-3.5" />
           </Button>
         </div>
-        <div className="rounded-xl border border-line p-3">
-          <h3 className="text-sm font-semibold">Right place, other titles</h3>
+        <div className="rounded-md border border-line p-3">
+          <h3 className="type-small font-semibold">Right place, other titles</h3>
           {d.nearMissTitles.length ? (
-            <ul className="mt-2 space-y-1 text-sm text-muted">
+            <ul className="mt-2 space-y-1 type-small text-muted">
               {d.nearMissTitles.map((t) => (
                 <li key={t} className="truncate">
                   {t}
@@ -319,16 +319,16 @@ export function NoMatches({ jobs, onStep, onCompanies }: { jobs: Job[]; onStep: 
               ))}
             </ul>
           ) : (
-            <p className="mt-1 text-sm text-muted">No other openings in your places right now.</p>
+            <p className="mt-1 type-small text-muted">No other openings in your places right now.</p>
           )}
           <Button size="sm" className="mt-3" onClick={() => onStep(STEP.roles)}>
             Widen job titles <ArrowRight className="size-3.5" />
           </Button>
         </div>
       </div>
-      <p className="mt-4 text-sm text-muted">
+      <p className="mt-4 type-small text-muted">
         Or{" "}
-        <button type="button" className="font-medium text-accent" onClick={onCompanies}>
+        <button type="button" className="font-medium text-accent-text" onClick={onCompanies}>
           add companies you'd like to work at
         </button>
         : we scan them every time, even ones the directory doesn't list.
@@ -342,16 +342,16 @@ export function FailingBanner({ count, onOpen }: { count: number; onOpen: () => 
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full items-center gap-2.5 rounded-xl border border-warn/40 bg-warn-soft/40 px-4 py-2.5 text-left text-sm hover:bg-warn-soft/60"
+      className="flex w-full items-center gap-2.5 rounded-md border border-warning/40 bg-warning-subtle/40 px-4 py-2.5 text-left type-small hover:bg-warning-subtle/60"
     >
-      <TriangleAlert className="size-4 shrink-0 text-warn" />
+      <TriangleAlert className="size-4 shrink-0 text-warning-text" />
       <span className="flex-1">
         <b>
           {count} compan{count === 1 ? "y" : "ies"}
         </b>{" "}
         couldn't be scanned last time. Usually the careers page moved.
       </span>
-      <span className="font-medium text-warn">Review failing companies</span>
+      <span className="font-medium text-warning-text">Review failing companies</span>
     </button>
   );
 }
@@ -359,20 +359,20 @@ export function FailingBanner({ count, onOpen }: { count: number; onOpen: () => 
 export function ScanningBar({ scan, onStop }: { scan: ScanState; onStop?: () => void }) {
   if (scan.phase !== "running") return null;
   return (
-    <Card className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 text-sm">
-      <LoaderCircle className="size-4 animate-spin text-accent" aria-hidden="true" />
+    <Card className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 type-small">
+      <LoaderCircle className="size-4 animate-spin text-accent-text" aria-hidden="true" />
       <span className="min-w-0 flex-1" role="status">
         {scanLine(scan)}
       </span>
       <div
-        className="h-1.5 w-28 overflow-hidden rounded-full bg-surface-2"
+        className="h-1.5 w-28 overflow-hidden rounded-0 bg-inset"
         role="progressbar"
         aria-label="Scan progress"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={scan.total ? Math.round((scan.done / scan.total) * 100) : 0}
       >
-        <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${scan.total ? (scan.done / scan.total) * 100 : 4}%` }} />
+        <div className="h-full rounded-0 bg-accent transition-all" style={{ width: `${scan.total ? (scan.done / scan.total) * 100 : 4}%` }} />
       </div>
       {onStop && (
         <Button size="sm" variant="ghost" onClick={onStop} disabled={scan.stopping}>
