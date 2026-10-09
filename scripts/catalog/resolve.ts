@@ -140,7 +140,7 @@ async function resolveSeed(seed: Seed): Promise<Resolved> {
     return {
       ...base,
       status: "board",
-      board: { ats, slug, ...(region ? { region } : {}), ...(shard ? { shard, site } : {}), key, supported },
+      board: { ats, slug, ...(region ? { region } : {}), ...(shard ? { shard } : {}), ...(site ? { site } : {}), key, supported },
       ...(found.length > 1 ? { also: found.slice(1, 4).map((f) => f.key) } : {}),
       evidence: best.evidence,
       careers_url: careersPage,

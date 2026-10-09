@@ -21,8 +21,16 @@ export interface Connector<Raw = unknown> {
    * For ATSs whose list has no descriptions: fetch one job's description. The run calls this
    * only for jobs that already pass the title/location gates, so keyword scoring stays cheap.
    */
-  describe?(raw: Raw, ref: CompanyRef, ctx: Ctx): Promise<string>;
+  describe?(raw: Raw, ref: CompanyRef, ctx: Ctx): Promise<string | JobDetail>;
+  /**
+   * True when the list's location is only a placeholder ("3 Locations"): the run then asks
+   * describe() for the real one before the location gate, for jobs whose title already matches.
+   */
+  vagueLocation?(raw: Raw): boolean;
 }
+
+/** What a job's own page adds to its list entry. */
+export type JobDetail = Partial<Pick<NormalizedJob, "description" | "location" | "country" | "workplace" | "postedAt">>;
 
 export function jobId(ats: AtsType, slug: string, atsJobId: string | number): string {
   return `${ats}:${slug.toLowerCase()}:${atsJobId}`;

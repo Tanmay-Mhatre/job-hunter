@@ -5,10 +5,11 @@ import { careersLinks, findBoards, urlsInHtml } from "../src/catalog/find-boards
 const page = (name: string) => readFileSync(new URL(`./fixtures/pages/${name}`, import.meta.url), "utf8");
 
 describe("findBoards", () => {
-  it("finds boards in links, script src and script text, supported first", () => {
+  it("finds boards in links, script src and script text, the most-mentioned first", () => {
     const boards = findBoards(page("careers-embed.html"), "https://acme-markets.com/en/careers");
-    expect(boards.map((b) => b.key)).toEqual(["greenhouse:acmemarkets", "workday:acme|wd3|external", "comeet:a1.b2c"]);
-    expect(boards[0]).toMatchObject({ supported: true, evidence: "https://boards.greenhouse.io/embed/job_board/js?for=acmemarkets" });
+    expect(boards.map((b) => b.key)).toEqual(["workday:acme|wd3|external", "greenhouse:acmemarkets", "comeet:a1.b2c"]);
+    expect(boards.every((b) => b.supported)).toBe(true);
+    expect(boards[1]).toMatchObject({ evidence: "https://boards.greenhouse.io/embed/job_board/js?for=acmemarkets" });
   });
 
   it("ignores links to the hiring systems' own websites", () => {

@@ -10,13 +10,13 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { detectCompany } from "../../packages/core/src/index";
+import { ATS_TYPES, companyKey, detectCompany, type AtsType } from "../../packages/core/src/index";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const raw = (...p: string[]) => join(here, "raw", ...p);
 
-type Ats = "greenhouse" | "lever" | "ashby" | "smartrecruiters" | "workday";
-const TRACKED = new Set<string>(["greenhouse", "lever", "ashby", "smartrecruiters", "workday"]);
+type Ats = AtsType;
+const TRACKED = new Set<string>(ATS_TYPES);
 
 /** Sources that copy from the same place count as one family when we count agreement. */
 const SOURCES = {
@@ -60,18 +60,20 @@ type Board = {
 };
 
 const boards = new Map<string, Board>();
-const keyOf = (ats: string, slug: string, shard?: string, site?: string) =>
-  (ats === "workday" ? `workday:${slug}|${shard}|${site}` : `${ats}:${slug}`).toLowerCase();
+const keyOf = (ats: string, slug: string, shard?: string, site?: string) => companyKey({ ats, slug, shard, site });
 
 function add(src: SourceId, b: { ats: string; slug: string; region?: string; shard?: string; site?: string; name?: string }) {
   if (!TRACKED.has(b.ats) || !b.slug) return;
   if (b.ats === "workday" && (!b.shard || !b.site)) return;
+  if ((b.ats === "taleo" && !b.site) || (b.ats === "oracle" && !b.shard)) return;
   const key = keyOf(b.ats, b.slug, b.shard, b.site);
   const prev = boards.get(key);
   if (prev) {
     prev.sources.add(src);
     if (!prev.name && b.name) prev.name = b.name;
     if (!prev.region && b.region) prev.region = b.region;
+    if (!prev.site && b.site) prev.site = b.site;
+    if (!prev.shard && b.shard) prev.shard = b.shard;
     return;
   }
   boards.set(key, { key, ats: b.ats as Ats, slug: b.slug, region: b.region, shard: b.shard, site: b.site, name: b.name, sources: new Set([src]) });
@@ -243,7 +245,7 @@ const out = [...boards.values()]
       ats: b.ats,
       slug: b.slug,
       ...(b.region ? { region: b.region } : {}),
-      ...(b.shard ? { shard: b.shard, site: b.site } : {}),
+      ...(b.shard ? { shard: b.shard } : {}), ...(b.site ? { site: b.site } : {}),
       ...(b.name ? { name: b.name } : {}),
       sources: [...b.sources].sort(),
       families,

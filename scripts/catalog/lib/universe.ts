@@ -8,11 +8,12 @@
  *    figure the 90% target is measured on.
  * 3. Hold-one-out: how many live boards only one URL source lists (what we'd lose without it).
  */
+import { ATS_TYPES } from "../../../packages/core/src/index";
 import { chao2 } from "./estimate";
 
 /** Families that pick companies rather than crawl URLs: excluded from estimates and from "already known". */
 export const COMPANY_FIRST = new Set(["seeds", "probe", "contributions"]);
-export const SYSTEMS = ["greenhouse", "lever", "ashby", "smartrecruiters", "workday"] as const;
+export const SYSTEMS = ATS_TYPES;
 
 export type UniverseInput = {
   boards: { key: string; ats: string; families: string[] }[];

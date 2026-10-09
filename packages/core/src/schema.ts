@@ -160,20 +160,23 @@ export const CompanySchema = z
     slug: term,
     /** Lever and Greenhouse host region. */
     region: z.enum(["global", "eu"]).optional(),
-    /** Workday only, e.g. "wd3". */
-    shard: z.string().regex(/^wd\d+$/, 'shard looks like "wd1", "wd3", "wd5"...').optional(),
-    /** Workday only, the career site name, e.g. "External". */
+    /** Where the board lives: Workday "wd3", Oracle data centre "ocs", SuccessFactors host "career2.successfactors.eu". */
+    shard: term.optional(),
+    /** The career site within the company: Workday "External", Oracle "CX_1", Taleo section, Zoho page, Comeet company name. */
     site: term.optional(),
     /** Optional link to the public careers page, for your reference. */
     careers_url: z.url().optional(),
     enabled: z.boolean().default(true),
   })
   .superRefine((c, ctx) => {
-    if (c.ats === "workday" && (!c.shard || !c.site)) {
+    if (c.ats === "workday" && (!c.shard || !/^wd\d+$/.test(c.shard) || !c.site)) {
       ctx.addIssue({
         code: "custom",
         message: `${c.name}: workday companies need "shard" (e.g. wd3) and "site" (e.g. External) from the careers URL`,
       });
+    }
+    if (c.ats === "oracle" && !c.shard) {
+      ctx.addIssue({ code: "custom", message: `${c.name}: oracle companies need "shard" (the data centre, e.g. "ocs") from the careers URL` });
     }
   });
 export type CompanyRef = z.infer<typeof CompanySchema>;

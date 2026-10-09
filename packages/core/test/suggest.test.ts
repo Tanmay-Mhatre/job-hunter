@@ -169,9 +169,9 @@ describe("suggestCompanies", () => {
     const dir = (key: string, tags: string[]): DirectoryCompany => ({ key, name: key, ats: key.split(":")[0]!, slug: "x", careers_url: "https://x", open_jobs: 12, tags });
     const r = suggestCompanies(profile({ industries: ["brokerage"] }), [], {
       now,
-      others: [dir("workday:cmc|wd3|careers", ["brokerage"]), dir("workday:other|wd1|x", ["healthtech"]), dir("lever:quiet", ["brokerage"])],
+      others: [dir("kenexa:cmc", ["brokerage"]), dir("kenexa:other", ["healthtech"]), dir("lever:quiet", ["brokerage"])],
     });
-    expect(r.notScannable.map((s) => s.key)).toEqual(["workday:cmc|wd3|careers"]);
+    expect(r.notScannable.map((s) => s.key)).toEqual(["kenexa:cmc"]);
     expect(r.worthWatching.map((s) => s.key)).toEqual(["lever:quiet"]);
   });
 

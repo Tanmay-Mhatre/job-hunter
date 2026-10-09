@@ -40,9 +40,9 @@ companies:
   });
 });
 
-describe("detectCompany for not-yet-supported ATSs", () => {
+describe("detectCompany for every hiring system", () => {
   it.each([
-    ["https://acme.wd3.myworkdayjobs.com/en-US/External", { ats: "workday", slug: "acme", shard: "wd3", site: "External", supported: false }],
+    ["https://acme.wd3.myworkdayjobs.com/en-US/External", { ats: "workday", slug: "acme", shard: "wd3", site: "External", supported: true }],
     ["https://acme.wd5.myworkdayjobs.com/Careers/job/Dubai/PM_123", { ats: "workday", slug: "acme", shard: "wd5", site: "Careers" }],
     ["https://careers.smartrecruiters.com/AcmeCorp", { ats: "smartrecruiters", slug: "AcmeCorp" }],
     ["https://apply.workable.com/acme/", { ats: "workable", slug: "acme" }],
@@ -50,21 +50,27 @@ describe("detectCompany for not-yet-supported ATSs", () => {
     ["https://acme.jobs.personio.de/", { ats: "personio", slug: "acme" }],
     ["https://acme.bamboohr.com/careers", { ats: "bamboohr", slug: "acme" }],
     ["https://acme.breezy.hr/", { ats: "breezy", slug: "acme" }],
-    ["https://career5.successfactors.eu/career?company=AcmeBank&career_ns=job_listing", { ats: "successfactors", slug: "AcmeBank" }],
+    ["https://career5.successfactors.eu/career?company=AcmeBank&career_ns=job_listing", { ats: "successfactors", slug: "AcmeBank", shard: "career5.successfactors.eu" }],
     ["https://acme.teamtailor.com/jobs", { ats: "teamtailor", slug: "acme" }],
     ["https://www.comeet.com/jobs/acme/A1.B2C", { ats: "comeet", slug: "A1.B2C", site: "acme", name: "Acme" }],
     ["https://abcd.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/requisitions", { ats: "oracle", slug: "abcd", shard: "em2", site: "CX_1" }],
-    ["https://careers-acme.icims.com/jobs/search", { ats: "icims", slug: "acme" }],
-    ["https://acme.taleo.net/careersection/2/jobsearch.ftl", { ats: "taleo", slug: "acme" }],
+    ["https://careers-acme.icims.com/jobs/search", { ats: "icims", slug: "careers-acme", name: "Acme" }],
+    ["https://acme.taleo.net/careersection/2/jobsearch.ftl", { ats: "taleo", slug: "acme", site: "2" }],
     ["https://jobs.jobvite.com/acme/jobs", { ats: "jobvite", slug: "acme" }],
     ["https://acme.pinpointhq.com/", { ats: "pinpoint", slug: "acme" }],
     ["https://ats.rippling.com/acme/jobs", { ats: "rippling", slug: "acme" }],
     ["https://acme.applytojob.com/apply", { ats: "jazzhr", slug: "acme" }],
-    ["https://acme.zohorecruit.com/jobs/Careers", { ats: "zoho", slug: "acme" }],
+    ["https://acme.zohorecruit.com/jobs/Careers-Page", { ats: "zoho", slug: "acme", site: "Careers-Page" }],
     ["https://acme.careers.hibob.com/", { ats: "hibob", slug: "acme" }],
     ["https://acme.freshteam.com/jobs", { ats: "freshteam", slug: "acme" }],
   ])("%s", (url, expected) => {
     expect(detectCompany(url)).toMatchObject(expected);
+  });
+
+  it("doesn't take a Taleo asset folder for a career section", () => {
+    const d = detectCompany("https://aa010.taleo.net/careersection/2025PRD.4.0.15.3.0/css/ftl.css");
+    expect(d).toMatchObject({ ats: "taleo", slug: "aa010" });
+    expect(d!.site).toBeUndefined();
   });
 
   it("marks built connectors as supported", () => {
@@ -78,13 +84,13 @@ describe("detectCompany for not-yet-supported ATSs", () => {
 });
 
 describe("checkCompanies", () => {
-  it("reports live / error / soon / unknown with the full directory record", async () => {
+  it("reports live / error / unknown with the full directory record", async () => {
     const { http, calls } = fakeHttp((url) => (url.includes("greenhouse") ? json(fixture("greenhouse.json")) : json({}, 404)));
     const res = await checkCompanies(
       ["https://job-boards.greenhouse.io/acme/jobs/123", " jobs.lever.co/nope ", "https://acme.wd3.myworkdayjobs.com/en-US", "https://example.com/careers", ""],
       { http },
     );
-    expect(res.map((r) => r.status)).toEqual(["live", "error", "soon", "unknown"]);
+    expect(res.map((r) => r.status)).toEqual(["live", "error", "error", "unknown"]);
     expect(res[0]).toMatchObject({
       key: "greenhouse:acme",
       name: "Acme",
@@ -100,7 +106,7 @@ describe("checkCompanies", () => {
     expect(res[0]!.matches).toBeUndefined(); // no profile given
     expect(res[1]!.error).toMatch(/Not found/);
     expect(res[2]!.error).toMatch(/full Workday link/); // no site in that URL
-    expect(calls).toHaveLength(2); // never fetches unsupported or unknown
+    expect(calls).toHaveLength(2); // never fetches an incomplete Workday link or an unknown site
   });
 
   it("counts jobs matching the profile and marks companies already in the directory", async () => {

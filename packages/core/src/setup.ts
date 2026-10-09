@@ -132,8 +132,11 @@ export async function checkCompanies(inputs: readonly string[], opts: CheckOptio
       careers_url: careersUrl(ref) || input,
       in_directory: !!known,
     };
+    if (ref.ats === "workday" && !ref.site) {
+      out.push({ ...base, status: "error", error: "Use the full Workday link, including the site name (e.g. …/en-US/External)." });
+      continue;
+    }
     if (!supported) {
-      if (ref.ats === "workday" && !ref.site) base.error = "Use the full Workday link, including the site name (e.g. …/en-US/External).";
       out.push(base);
       continue;
     }

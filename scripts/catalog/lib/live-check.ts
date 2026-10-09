@@ -1,5 +1,5 @@
 /** The cheapest live check each hiring system offers for one board (shared by check.ts and contributions). */
-import { HttpError, type HttpClient } from "../../../packages/core/src/index";
+import { getConnector, HttpError, type AtsType, type HttpClient } from "../../../packages/core/src/index";
 
 export type Board = { key: string; ats: string; slug: string; region?: string; shard?: string; site?: string };
 export type CheckResult = { status: "live" | "dormant" | "dead" | "error"; jobs: number | null; name?: string; http?: number; error?: string };
@@ -43,10 +43,19 @@ export async function checkBoard(http: HttpClient, b: Board): Promise<CheckResul
         const n = d.total ?? 0;
         return { status: n ? "live" : "dormant", jobs: n };
       }
+      default: {
+        // The rest have no cheap count: one full list (one request for most of them).
+        const connector = getConnector(b.ats as AtsType);
+        if (!connector) return { status: "error", jobs: null, error: "unknown ats" };
+        const ref = { name: b.slug, ats: b.ats as AtsType, slug: b.slug, enabled: true, ...(b.region ? { region: b.region as "eu" } : {}), ...(b.shard ? { shard: b.shard } : {}), ...(b.site ? { site: b.site } : {}) };
+        const n = (await connector.fetch(ref, { http, now: new Date() })).length;
+        return { status: n ? "live" : "dormant", jobs: n };
+      }
     }
-    return { status: "error", jobs: null, error: "unknown ats" };
   } catch (err) {
     if (err instanceof HttpError && err.status && [404, 410, 422].includes(err.status)) return { status: "dead", jobs: null, http: err.status };
+    // Page-read connectors say so when the page has no board ("…not found…", "not a job portal").
+    if (!(err instanceof HttpError) && /not found|not an? (job|careers|rss)/i.test((err as Error).message)) return { status: "dead", jobs: null };
     const e = err as HttpError;
     return { status: "error", jobs: null, http: e.status, error: e.message.slice(0, 120) };
   }

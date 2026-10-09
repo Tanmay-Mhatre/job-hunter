@@ -18,9 +18,10 @@ describe("groupBoards", () => {
   });
 
   it("prefers a board we can scan, and treats company suffixes as the same name", () => {
-    const [g] = groupBoards([b("workday:gusto|wd1|x", "Gusto", "live", 50), b("greenhouse:gusto", "Gusto, Inc.", "live", 20)]);
+    // "kenexa": a hiring system we can't read.
+    const [g] = groupBoards([b("kenexa:gusto", "Gusto", "live", 50), b("greenhouse:gusto", "Gusto, Inc.", "live", 20)]);
     expect(g!.lead.key).toBe("greenhouse:gusto");
-    expect(g!.others.map((o) => o.key)).toEqual(["workday:gusto|wd1|x"]);
+    expect(g!.others.map((o) => o.key)).toEqual(["kenexa:gusto"]);
   });
 
   it("keeps a dead board you watch, and keeps dead boards when nothing is live", () => {

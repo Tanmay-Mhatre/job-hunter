@@ -80,12 +80,16 @@ export async function runRadar(config: Config, opts: RunOptions = {}): Promise<R
         const prev = previous.get(base.id);
         const firstSeen = prev?.firstSeen ?? nowIso;
         let { score, why } = scoreJob(base, config.profile, now, new Date(firstSeen));
-        // Lists without descriptions: reuse the stored one, else fetch it for jobs that pass the gates.
-        if (!why.gate && !base.description && connector.describe) {
-          if (prev?.description) base.description = prev.description;
+        // Lists without descriptions (or with only "3 Locations"): reuse what's stored, else fetch the
+        // job's page for jobs that pass the gates (or pass the title gate, when the location is vague).
+        const vague = !!connector.vagueLocation?.(raw);
+        if (connector.describe && (vague ? !why.gate || why.gate === "location" : !why.gate && !base.description)) {
+          if (prev?.description) Object.assign(base, { description: prev.description }, vague ? { location: prev.location, country: prev.country, workplace: prev.workplace } : {});
           else if (described < MAX_DESCRIBE_PER_COMPANY) {
             described++;
-            base.description = await connector.describe(raw, company, { http, now }).catch(() => "");
+            const d = await connector.describe(raw, company, { http, now }).catch(() => "");
+            if (typeof d === "string") base.description = d;
+            else for (const [k, v] of Object.entries(d)) if (v) Object.assign(base, { [k]: v });
           }
           ({ score, why } = scoreJob(base, config.profile, now, new Date(firstSeen)));
         }

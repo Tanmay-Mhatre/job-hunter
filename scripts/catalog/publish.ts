@@ -170,7 +170,7 @@ for (const [key, v] of index) {
     ats: d.ats,
     slug: d.slug,
     ...(d.region ? { region: d.region } : {}),
-    ...(d.shard ? { shard: d.shard, site: d.site } : {}),
+    ...(d.shard ? { shard: d.shard } : {}), ...(d.site ? { site: d.site } : {}),
     careers_url: d.careers_url,
     open_jobs: v.open_jobs,
     // Row ages count from this fetch, which can be up to a week older than the index itself.
@@ -189,7 +189,7 @@ const slim = [
     ats: d.ats,
     slug: d.slug,
     ...(d.region ? { region: d.region } : {}),
-    ...(d.shard ? { shard: d.shard, site: d.site } : {}),
+    ...(d.shard ? { shard: d.shard } : {}), ...(d.site ? { site: d.site } : {}),
     careers_url: d.careers_url,
     tier: seedBoards.has(d.key) ? ("curated" as const) : d.tier,
     status: d.status,

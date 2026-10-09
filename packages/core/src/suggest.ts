@@ -307,7 +307,7 @@ function boardOf(c: DirectoryCompany | IndexedCompany) {
     slug: c.slug,
     careers_url: c.careers_url,
     ...(c.region ? { region: c.region } : {}),
-    ...(c.shard ? { shard: c.shard, site: c.site } : {}),
+    ...(c.shard ? { shard: c.shard } : {}), ...(c.site ? { site: c.site } : {}),
   };
 }
 

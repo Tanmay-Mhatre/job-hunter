@@ -1,17 +1,55 @@
 import type { AtsType, CompanyRef } from "../schema";
 import { ashby } from "./ashby";
+import { bamboohr } from "./bamboohr";
+import { breezy } from "./breezy";
+import { comeet } from "./comeet";
 import { detectKnownAts } from "./detect-known";
+import { freshteam } from "./freshteam";
 import { greenhouse } from "./greenhouse";
+import { hibob } from "./hibob";
+import { icims } from "./icims";
+import { jazzhr } from "./jazzhr";
+import { jobvite } from "./jobvite";
 import { lever } from "./lever";
+import { oracle } from "./oracle";
+import { personio } from "./personio";
+import { pinpoint } from "./pinpoint";
+import { recruitee } from "./recruitee";
+import { rippling } from "./rippling";
 import { smartrecruiters } from "./smartrecruiters";
+import { successfactors } from "./successfactors";
+import { taleo } from "./taleo";
+import { teamtailor } from "./teamtailor";
 import type { Connector, DetectedCompany } from "./types";
+import { workable } from "./workable";
+import { workday } from "./workday";
+import { zoho } from "./zoho";
 
-/** Connectors shipped so far. The rest of ATS_TYPES arrive in phases 1 and 3. */
+/** One connector per hiring system in ATS_TYPES. */
 export const connectors: Partial<Record<AtsType, Connector<any>>> = {
   greenhouse,
   lever,
   ashby,
   smartrecruiters,
+  workday,
+  workable,
+  recruitee,
+  personio,
+  bamboohr,
+  breezy,
+  successfactors,
+  teamtailor,
+  comeet,
+  oracle,
+  icims,
+  taleo,
+  jobvite,
+  pinpoint,
+  rippling,
+  jazzhr,
+  zoho,
+  hibob,
+  freshteam,
 };
 
 export function getConnector(ats: AtsType): Connector<unknown> | undefined {
@@ -32,7 +70,7 @@ export function detectCompany(input: string): DetectResult | null {
   try {
     for (const c of Object.values(connectors)) {
       const found = c?.detect(url);
-      if (found) return { name: guessName(found.slug), ...found, supported: true };
+      if (found) return { name: guessName(nameSource(found)), ...found, supported: true };
     }
   } catch {
     return null;
@@ -43,7 +81,14 @@ export function detectCompany(input: string): DetectResult | null {
   } catch {
     return null;
   }
-  return known ? { name: guessName(known.site && known.ats === "comeet" ? known.site : known.slug), ...known, supported: false } : null;
+  return known ? { name: guessName(nameSource(known)), ...known, supported: false } : null;
+}
+
+/** The part of a board address that names the company. */
+function nameSource(d: DetectedCompany): string {
+  if (d.ats === "comeet" && d.site) return d.site;
+  if (d.ats === "icims") return d.slug.replace(/^(careers|jobs|uscareers|external|internal|careers\d*)-/i, "");
+  return d.slug;
 }
 
 /**
@@ -91,15 +136,37 @@ export function careersUrl(c: DetectedCompany): string {
       return `https://jobs.jobvite.com/${c.slug}`;
     case "rippling":
       return `https://ats.rippling.com/${c.slug}/jobs`;
+    case "personio":
+      return `https://${c.slug}.jobs.personio.com`;
+    case "jazzhr":
+      return `https://${c.slug}.applytojob.com/apply`;
+    case "zoho":
+      return `https://${c.slug}.zohorecruit.com/jobs/${c.site ?? "Careers"}`;
+    case "hibob":
+      return `https://${c.slug}.careers.hibob.com`;
+    case "freshteam":
+      return `https://${c.slug}.freshteam.com/jobs`;
+    case "icims":
+      return `https://${c.slug}.icims.com/jobs`;
+    case "taleo":
+      return c.site ? `https://${c.slug}.taleo.net/careersection/${c.site}/jobsearch.ftl` : "";
+    case "oracle":
+      return c.shard ? `https://${c.slug}.fa.${c.shard}.oraclecloud.com/hcmUI/CandidateExperience/en/sites/${c.site ?? "CX_1"}` : "";
+    case "successfactors":
+      return c.shard ? `https://${c.shard}/career?company=${encodeURIComponent(c.slug)}` : "";
     default:
-      // Hosts we can't rebuild from the slug (SuccessFactors, Oracle, iCIMS…): keep the link we were given.
       return "";
   }
 }
 
-/** Company directory key: "ats:slug", or "workday:tenant|shard|site". Lowercase. */
+/**
+ * Company directory key: "ats:slug", or "workday:tenant|shard|site", or "taleo:host|section" (a
+ * Taleo pod hosts many companies, told apart by section). Lowercase.
+ */
 export function companyKey(c: { ats: string; slug: string; shard?: string; site?: string }): string {
-  return (c.ats === "workday" ? `workday:${c.slug}|${c.shard}|${c.site}` : `${c.ats}:${c.slug}`).toLowerCase();
+  if (c.ats === "workday") return `workday:${c.slug}|${c.shard}|${c.site}`.toLowerCase();
+  if (c.ats === "taleo" && c.site) return `taleo:${c.slug}|${c.site}`.toLowerCase();
+  return `${c.ats}:${c.slug}`.toLowerCase();
 }
 
 export type { Connector, Ctx, DetectedCompany } from "./types";
