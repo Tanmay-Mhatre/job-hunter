@@ -27,6 +27,13 @@ export interface Connector<Raw = unknown> {
    * describe() for the real one before the location gate, for jobs whose title already matches.
    */
   vagueLocation?(raw: Raw): boolean;
+  /** A job board (JOB_BOARDS): its name, used instead of one guessed from the slug. */
+  label?: string;
+  /**
+   * Fetch at most this often; in between, a scan reuses the jobs from the last fetch. For boards that
+   * ask for few requests a day.
+   */
+  minIntervalHours?: number;
 }
 
 /** What a job's own page adds to its list entry. */

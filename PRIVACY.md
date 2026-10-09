@@ -23,10 +23,17 @@ Workday and others). These requests come from your computer, so those sites see 
 like any website you visit. The app identifies itself with a Job Hunter User-Agent. It never sends
 your profile or resume to them, and never touches apply forms.
 
+### Public job boards you add
+If you add Hacker News "Who is hiring", Remotive, Arbeitnow or Remote OK, the app reads their free
+public APIs from your computer (Hacker News through Algolia's HN API), at most a few times a day.
+Nothing about you is sent; those sites see your IP address, like any website you visit.
+
 ### The shared company directory
 The app downloads the company directory and job index (`manifest.json`, `directory.json.gz`,
-`index.json.gz`) from GitHub Releases of `Tanmay-Mhatre/job-hunter-directory`. GitHub sees your IP
-address, as with any download. Nothing about you is uploaded.
+`index.json.gz`) and the daily job feed (`jobs-manifest.json` and its shards, from the `jobs` release)
+from GitHub Releases of `Tanmay-Mhatre/job-hunter-directory`. GitHub sees your IP address, as with
+any download. Everyone downloads the same files, and your filters are applied on your computer, so
+nothing about you is uploaded and the downloads don't reveal what you're looking for.
 
 ### Sharing companies you add (on by default)
 When you add a company by its careers link, and it isn't in the directory yet, the app sends that

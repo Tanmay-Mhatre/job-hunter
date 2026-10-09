@@ -158,7 +158,7 @@ Your config lists the companies you're targeting. If you run Job Hunter from Git
 
 - **Code:** MIT ([LICENSE](LICENSE)).
 - **Shared directory and job index:** CC BY 4.0. Sources and credits (Common Crawl, the Wayback Machine, Wikidata, permissively licensed board lists, user contributions) are in the directory repo's `NOTICE.md` ([template](services/directory-repo-template/NOTICE.md)).
-- **Third-party job APIs** (Remotive, The Muse, Jobicy, RemoteOK, Hacker News; planned) will be fetched on your own computer only, with credit, and never redistributed.
+- **Public job boards** (Hacker News "Who is hiring", Remotive, Arbeitnow, Remote OK) are added like a company, by pasting their link. They're fetched on your own computer only, at most a few times a day, credited by name with every job linking back to the board, and never shared or redistributed. (The Muse and Jobicy aren't included: their terms weren't confirmed.)
 - **Remove a company:** open a [takedown request](.github/ISSUE_TEMPLATE/takedown.yml). We reply within 7 days, and removed companies go into `denylist.json`.
 - **Running a fork with your own data:** [docs/self-hosting.md](docs/self-hosting.md).
 

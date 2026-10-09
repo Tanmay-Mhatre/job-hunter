@@ -66,10 +66,14 @@ import {
   type IndexedCompany,
   type Job,
 } from "@jobhunter/core";
+import { ATS_TYPES } from "@jobhunter/core";
+
+/** A company's own hiring system, not a job board (JOB_BOARDS): boards are never shared or put in the directory. */
+const isAts = (ats: string | undefined) => (ATS_TYPES as readonly string[]).includes(ats ?? "");
 
 /** Remember boards found by "Add by link" that the directory doesn't have yet. */
 function recordAdditions(dataDir: string, results: CompanyCheck[]): void {
-  const fresh = results.filter((r) => (r.status === "live" || r.status === "dormant") && !r.in_directory && r.key);
+  const fresh = results.filter((r) => (r.status === "live" || r.status === "dormant") && !r.in_directory && r.key && isAts(r.ats));
   if (!fresh.length) return;
   const file = resolve(dataDir, "catalog", "additions.json");
   const current = existsSync(file) ? (JSON.parse(readFileSync(file, "utf8")) as { companies: (DirectoryEntry & { added_at: string })[] }).companies : [];
@@ -762,7 +766,7 @@ async function cmdSetup(args: string[]): Promise<number> {
       // Share new boards with the directory (unless turned off in settings). Best effort: the
       // outbox keeps anything that couldn't be sent, and the next update retries it.
       if (status.config?.directory.share_additions !== false) {
-        const fresh = results.filter((r) => (r.status === "live" || r.status === "dormant") && !r.in_directory && r.ats && r.slug);
+        const fresh = results.filter((r) => (r.status === "live" || r.status === "dormant") && !r.in_directory && isAts(r.ats) && r.slug);
         if (fresh.length) {
           queueContributions(
             values.data,

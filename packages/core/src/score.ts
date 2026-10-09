@@ -208,7 +208,9 @@ export function locationFit(location: string, profile: Profile): { points: numbe
   if (!remote) return { points: 0 };
   // What's left once remote wording and punctuation are gone is a place: the job is remote there only.
   const rest = plain.replace(REMOTE_WORDS, " ").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
-  if (!rest && r.bareRemote && !excluded) return { points: POINTS.locationRemote };
+  // "Remote (Worldwide)", "Remote - Anywhere": open to everyone, so plain remote.
+  const anywhere = !!rest && rest.split(" ").every((w) => GENERIC_REMOTE.includes(w.toLowerCase()));
+  if ((!rest || anywhere) && r.bareRemote && !excluded) return { points: POINTS.locationRemote };
   if (!rest) return { points: 0 };
   const known = allPlaceNames().find((p) => matchesTerm(rest, p));
   const where = known && placeOwnerName(known);

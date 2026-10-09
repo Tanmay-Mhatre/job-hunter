@@ -1,4 +1,4 @@
-import { getConnector, jobCompanyKey } from "./connectors";
+import { companyOfJobId, getConnector, jobCompanyKey } from "./connectors";
 import { HttpClient, HttpError } from "./http";
 import type { CompanyHealth, CompanyRef, Config, Job } from "./schema";
 import { scoreJob } from "./score";
@@ -65,6 +65,13 @@ export async function runRadar(config: Config, opts: RunOptions = {}): Promise<R
   const todo = [...companies.map((c) => [c, false] as const), ...checks.map((c) => [c, true] as const)].filter(([c]) => !opts.skip?.has(jobCompanyKey(c)));
   todo.forEach(([c], i) => order.set(`${c.ats}:${c.slug}`, i));
 
+  /** A company's open jobs from the last fetch, if that was less than `hours` ago. */
+  const recentJobs = (key: string, hours: number): Job[] | undefined => {
+    const last = [...previous.values()].filter((j) => j.status === "open" && companyOfJobId(j.id) === key);
+    const lastSeen = Math.max(0, ...last.map((j) => Date.parse(j.lastSeen)));
+    return last.length && now.getTime() - lastSeen < hours * 3_600_000 ? last : undefined;
+  };
+
   const fetchOne = async (company: CompanyRef, extra: boolean) => {
     const started = Date.now();
     const h: CompanyHealth = { company: company.name, ats: company.ats, slug: company.slug, key: jobCompanyKey(company), ok: false, jobsFound: 0, matches: 0, durationMs: 0 };
@@ -75,7 +82,14 @@ export async function runRadar(config: Config, opts: RunOptions = {}): Promise<R
         h.unsupported = true;
         throw new Error(`${company.ats} support is coming soon`);
       }
-      const raws = await connector.fetch(company, { http, now });
+      // Boards that ask for few requests a day: between fetches, keep the jobs from the last one.
+      const recent = connector.minIntervalHours ? recentJobs(jobCompanyKey(company), connector.minIntervalHours) : undefined;
+      for (const j of recent ?? []) {
+        const { score, why } = scoreJob(j, config.profile, now, new Date(j.firstSeen));
+        if (!extra || !why.gate) kept.push({ ...j, score, why });
+        if (!why.gate) h.matches++;
+      }
+      const raws = recent ? [] : await connector.fetch(company, { http, now });
       let described = 0;
       for (const raw of raws) {
         const base = connector.normalize(raw, company);
@@ -99,7 +113,7 @@ export async function runRadar(config: Config, opts: RunOptions = {}): Promise<R
         if (!extra || !why.gate) kept.push({ ...base, firstSeen, lastSeen: nowIso, status: "open", score, why });
         if (!why.gate) h.matches++;
       }
-      h.jobsFound = raws.length;
+      h.jobsFound = recent?.length ?? raws.length;
       h.ok = true;
     } catch (err) {
       h.error =

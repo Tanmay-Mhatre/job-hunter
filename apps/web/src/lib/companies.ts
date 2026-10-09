@@ -26,6 +26,11 @@ export const ATS_LABEL: Record<string, string> = {
   zoho: "Zoho Recruit",
   hibob: "HiBob",
   freshteam: "Freshteam",
+  // Job boards: credited by name (Remote OK's terms ask for it), linked back on every job.
+  hackernews: "Hacker News",
+  remotive: "Remotive",
+  arbeitnow: "Arbeitnow",
+  remoteok: "Remote OK",
 };
 
 /** Hiring systems we can scan (every one we recognise). Anything else is kept as "not supported yet". */

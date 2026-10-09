@@ -18,7 +18,7 @@ used only to confirm boards that are already listed, and are never published.
 | [Wikidata](https://www.wikidata.org) companies | CC0 | company names and websites, to find their boards |
 | Job Hunter industry seed list | MIT (Job Hunter) | adds companies, industry labels |
 | Boards shared by Job Hunter users ("Add by link") | CC BY 4.0 (this directory) | adds companies, after a live check |
-| LastRound ATS directory (planned, not used yet) | CC BY 4.0 | will add companies, each verified live |
+| [LastRound AI ATS company directory](https://datahub.io/lastroundai-hiring-data/lastroundai-hiring-data/ats-directory) | CC BY 4.0 | adds companies, each verified live |
 | [Feashliaa/job-board-aggregator](https://github.com/Feashliaa/job-board-aggregator) | CC BY-NC | confirmation only, never published |
 | [ElliotGbaum/upstreamit](https://github.com/ElliotGbaum/upstreamit) | CC BY-SA | confirmation only, never published |
 
@@ -27,11 +27,15 @@ Attribution 4.0 International licence.
 
 Contains data from Wikidata, made available under CC0.
 
+Contains information from the LastRound AI ATS company directory (August 2026 snapshot), made available
+under the Creative Commons Attribution 4.0 International licence. Credit: LastRound AI.
+
 ## Never redistributed
 
-Job Hunter may also read third-party job APIs (planned): Remotive, The Muse, Jobicy, RemoteOK and
-Hacker News "Who is hiring". Their data is fetched on each user's own computer, shown with credit
-to the source, and **never** included in this directory, the index or any release.
+Job Hunter can also read public job boards a user adds: Hacker News "Who is hiring" (through Algolia's
+HN API), Remotive, Arbeitnow and Remote OK. Their data is fetched on each user's own computer, shown
+with credit to the source and linked back to it, and **never** included in this directory, the index,
+the job feed or any release.
 
 ## Takedown and opt-out
 
