@@ -1,5 +1,5 @@
-import { groupPlaces } from "@jobhunter/core/catalog/places";
-import { configToYaml } from "@jobhunter/core/yaml-writer";
+import { groupPlaces } from "@rawjobs/core/catalog/places";
+import { configToYaml } from "@rawjobs/core/yaml-writer";
 import { ArrowLeft, ArrowRight, ChevronDown, CircleAlert, Download, FileText, Radar as RadarIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Button, Card, cx } from "../components/ui";
@@ -47,7 +47,7 @@ export function Wizard(props: Props) {
   // Each step is a new "page": name it in the tab title and move focus to its heading.
   useEffect(() => {
     const label = STEPS.find((s) => s.id === step)?.label;
-    document.title = label ? `Setup · ${label} · Job Hunter` : "Setup · Job Hunter";
+    document.title = label ? `Setup · ${label} · RawJobs` : "Setup · RawJobs";
     heading.current?.focus();
   }, [step]);
 
@@ -304,7 +304,7 @@ function Review({
     const blob = new Blob([configToYaml(draftToConfig(draft))], { type: "text/yaml" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "jobhunter.config.local.yaml";
+    a.download = "rawjobs.config.local.yaml";
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -410,7 +410,7 @@ function Review({
 
       {!canRunLocally && (
         <p className="text-sm text-muted">
-          This dashboard is hosted, so it can't save files. Download the config and save it in the app's folder as <code className="font-mono text-xs">jobhunter.config.local.yaml</code>. It stays on your computer; don't commit it.
+          This dashboard is hosted, so it can't save files. Download the config and save it in the app's folder as <code className="font-mono text-xs">rawjobs.config.local.yaml</code>. It stays on your computer; don't commit it.
         </p>
       )}
 

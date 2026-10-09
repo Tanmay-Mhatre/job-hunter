@@ -1,5 +1,5 @@
 /**
- * Job Hunter contribution inbox (Cloudflare Worker).
+ * RawJobs contribution inbox (Cloudflare Worker).
  *
  * Apps send the company boards their users added with "Add by link". The inbox only checks the
  * shape and keeps them; the directory workflow pulls them, live-checks each board, adds good ones
@@ -33,8 +33,8 @@ type Board = { ats: string; slug: string; region?: string; shard?: string; site?
 
 const SCANNABLE = new Set(["greenhouse", "lever", "ashby", "smartrecruiters", "workday"]);
 const SLUG = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
-/** The app's name and, optionally, its version ("job-hunter", "job-hunter/0.1.0"). Anything else is dropped. */
-const CLIENT = /^job-hunter(\/\d{1,3}\.\d{1,3}\.\d{1,4})?$/;
+/** The app's name and, optionally, its version ("rawjobs", "rawjobs/0.1.0"; apps from before the rename send "job-hunter"). Anything else is dropped. */
+const CLIENT = /^(rawjobs|job-hunter)(\/\d{1,3}\.\d{1,3}\.\d{1,4})?$/;
 const MAX_BODY = 20_000;
 const MAX_BOARDS = 25;
 const KEEP_DAYS = 30;
@@ -159,7 +159,7 @@ export default {
       if (req.method === "POST" && pathname === "/v1/contributions") return await contribute(req, env);
       if (req.method === "GET" && pathname === "/v1/pending") return authorized(req, env) ? await pending(env) : json({ error: "Unauthorized" }, 401);
       if (req.method === "POST" && pathname === "/v1/ack") return authorized(req, env) ? await ack(req, env) : json({ error: "Unauthorized" }, 401);
-      if (req.method === "GET" && pathname === "/") return new Response("Job Hunter contribution inbox. POST /v1/contributions\n", { headers: { "content-type": "text/plain" } });
+      if (req.method === "GET" && pathname === "/") return new Response("RawJobs contribution inbox. POST /v1/contributions\n", { headers: { "content-type": "text/plain" } });
       return json({ error: "Not found" }, 404);
     } catch (err) {
       return json({ error: (err as Error).message }, 500);

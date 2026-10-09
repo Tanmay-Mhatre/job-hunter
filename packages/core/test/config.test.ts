@@ -13,7 +13,7 @@ companies:
 
 describe("parseConfig", () => {
   it("parses the example config shipped in the repo", () => {
-    const text = readFileSync(fileURLToPath(new URL("../../../jobhunter.config.example.yaml", import.meta.url)), "utf8");
+    const text = readFileSync(fileURLToPath(new URL("../../../rawjobs.config.example.yaml", import.meta.url)), "utf8");
     const cfg = parseConfig(text);
     expect(cfg.companies.length).toBeGreaterThan(0);
     expect(cfg.profile.min_score).toBe(70);

@@ -23,4 +23,4 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - name: Example config is valid
-        run: pnpm jobhunter validate --config jobhunter.config.example.yaml
+        run: pnpm rawjobs validate --config rawjobs.config.example.yaml

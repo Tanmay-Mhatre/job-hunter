@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
-import { CONFIG_CANDIDATES } from "./config";
+import { CONFIG_CANDIDATES, LEGACY_CONFIG_CANDIDATES } from "./config";
 import { careersUrl, companyKey, detectCompany, getConnector } from "./connectors";
 import { HttpClient, HttpError } from "./http";
 import { RESUME_PATH } from "./resume";
@@ -10,8 +10,15 @@ import { ConfigSchema, type AtsType, type Config, type Profile } from "./schema"
 import { passesGates } from "./score";
 import { configToYaml } from "./yaml-writer";
 
-/** The user's own config. The shipped jobhunter.config.example.yaml is only an example. */
+/** The user's own config. The shipped rawjobs.config.example.yaml is only an example. */
 export const PERSONAL_CONFIG = CONFIG_CANDIDATES[0]!;
+
+/** The personal config file: rawjobs.config.local.yaml, or the pre-rename jobhunter one while that's the only one there. */
+export function personalConfigPath(cwd = process.cwd()): string {
+  const path = resolve(cwd, PERSONAL_CONFIG);
+  const legacy = resolve(cwd, LEGACY_CONFIG_CANDIDATES[0]!);
+  return !existsSync(path) && existsSync(legacy) ? legacy : path;
+}
 
 export type SetupStatus = {
   configPath: string;
@@ -30,7 +37,7 @@ export type SetupStatus = {
 };
 
 export function setupStatus(cwd = process.cwd(), dataDir = resolve(cwd, "data")): SetupStatus {
-  const configPath = resolve(cwd, PERSONAL_CONFIG);
+  const configPath = personalConfigPath(cwd);
   const hasData = existsSync(join(dataDir, "jobs.json"));
   const hasResume = existsSync(resolve(cwd, RESUME_PATH));
   if (!existsSync(configPath)) return { configPath, isPersonal: false, valid: false, hasData, hasResume };
@@ -59,7 +66,7 @@ export function saveConfig(input: unknown, cwd = process.cwd()): SaveResult {
       issues: parsed.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
     };
   }
-  const path = resolve(cwd, PERSONAL_CONFIG);
+  const path = personalConfigPath(cwd);
   writeFileSync(path, configToYaml(parsed.data));
   return { ok: true, path };
 }

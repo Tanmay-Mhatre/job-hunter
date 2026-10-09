@@ -1,4 +1,4 @@
-import { COUNTRIES, countryTerms, placeOwner } from "@jobhunter/core/catalog/places";
+import { COUNTRIES, countryTerms, placeOwner } from "@rawjobs/core/catalog/places";
 import { REMOTE } from "./filters";
 import type { Draft } from "./setup";
 

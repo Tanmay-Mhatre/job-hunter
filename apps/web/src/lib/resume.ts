@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { canRunLocally } from "./data";
 import { load, save } from "./storage";
 
-const LOCAL_KEY = "jobhunter.resume";
+const LOCAL_KEY = "rawjobs.resume";
 
 export type ResumeState = { text: string; updatedAt?: string; loaded: boolean };
 

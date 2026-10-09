@@ -92,7 +92,7 @@ export type Job = {
   why: ScoreBreakdown;
 };
 
-/** What a connector's normalize() returns; Job Hunter fills in the rest. */
+/** What a connector's normalize() returns; RawJobs fills in the rest. */
 export type NormalizedJob = Omit<Job, "firstSeen" | "lastSeen" | "status" | "missedRuns" | "closedAt" | "score" | "why">;
 
 // ---------- run output (data/ files, read by the dashboard) ----------

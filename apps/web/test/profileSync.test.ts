@@ -1,4 +1,4 @@
-import { ProfileSchema } from "@jobhunter/core/schema";
+import { ProfileSchema } from "@rawjobs/core/schema";
 import { describe, expect, it } from "vitest";
 import { profileFilters, profilePlaces } from "../src/lib/filters";
 import { profileFromPicks } from "../src/lib/profileSync";

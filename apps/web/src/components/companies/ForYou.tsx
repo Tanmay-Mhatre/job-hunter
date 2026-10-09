@@ -1,5 +1,5 @@
-import { INDUSTRY_BY_ID } from "@jobhunter/core/catalog/industries";
-import { isPlaceholderBoard } from "@jobhunter/core/text";
+import { INDUSTRY_BY_ID } from "@rawjobs/core/catalog/industries";
+import { isPlaceholderBoard } from "@rawjobs/core/text";
 import { Briefcase, History, LoaderCircle, Package, Plus, RefreshCw, Sparkles, Undo2, X } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { keyOf, type CompanyRef } from "../../lib/companies";
@@ -33,7 +33,7 @@ type Props = {
   onRetry?: () => void;
 };
 
-const DISMISSED_KEY = "jobhunter.goBackDismissed";
+const DISMISSED_KEY = "rawjobs.goBackDismissed";
 /** "Off" for less than this right after mount or a change is just the request starting: keep the skeleton (M3). */
 const OFF_GRACE_MS = 1000;
 const PAGE = 9;

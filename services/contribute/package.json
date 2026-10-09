@@ -1,5 +1,5 @@
 {
-  "name": "@jobhunter/contribute",
+  "name": "@rawjobs/contribute",
   "private": true,
   "description": "Contribution inbox for the shared company directory (Cloudflare Worker).",
   "scripts": {

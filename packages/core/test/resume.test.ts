@@ -28,7 +28,7 @@ ${RESUME}
 
 \`\`\`json
 {
-  "jobhunter_profile": {
+  "rawjobs_profile": {
     "target_titles": ["Senior Product Manager", "head of product", "product lead", "head of product"],
     "seniority": ["senior", "head"],
     "exclude_titles": ["intern"],
@@ -49,7 +49,7 @@ describe("parseAiAnswer", () => {
     const r = parseAiAnswer(AI_ANSWER);
     expect(r.resume.startsWith("# Jane Doe")).toBe(true);
     expect(r.resume).toContain("## Skills");
-    expect(r.resume).not.toContain("jobhunter_profile");
+    expect(r.resume).not.toContain("rawjobs_profile");
     expect(r.resume).not.toContain("Let me know");
     expect(r.profile).toEqual({
       target_titles: ["senior product manager", "head of product", "product lead"],
@@ -67,7 +67,7 @@ describe("parseAiAnswer", () => {
     expect(r.warnings).toEqual([]);
   });
 
-  it("reads a bare (unfenced) JSON block", () => {
+  it("reads a bare (unfenced) JSON block, also under the key from before the rename", () => {
     const bare = `${RESUME}\n\n{"jobhunter_profile": {"target_titles": ["product lead"], "keywords": ["payments", "crypto"]}}`;
     const r = parseAiAnswer(bare);
     expect(r.profile?.target_titles).toEqual(["product lead"]);
@@ -77,7 +77,7 @@ describe("parseAiAnswer", () => {
 
   it("works without any profile block, and warns on broken JSON or a short paste", () => {
     expect(parseAiAnswer(RESUME)).toMatchObject({ profile: undefined, warnings: [] });
-    const broken = parseAiAnswer(`${RESUME}\n\`\`\`json\n{ "jobhunter_profile": { "target_titles": [ }\n\`\`\``);
+    const broken = parseAiAnswer(`${RESUME}\n\`\`\`json\n{ "rawjobs_profile": { "target_titles": [ }\n\`\`\``);
     expect(broken.profile).toBeUndefined();
     expect(broken.warnings.join(" ")).toMatch(/JSON looks broken/);
     expect(parseAiAnswer("# Me\nshort").warnings.join(" ")).toMatch(/very short/);
@@ -112,7 +112,7 @@ describe("saveResume / readResume", () => {
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
   it("round-trips profile/resume.md and rejects empty text", () => {
-    dir = mkdtempSync(join(tmpdir(), "jobhunter-resume-"));
+    dir = mkdtempSync(join(tmpdir(), "rawjobs-resume-"));
     expect(readResume(dir).text).toBeNull();
     expect(saveResume("   ", dir)).toMatchObject({ ok: false });
     expect(saveResume("# Me\r\nline", dir)).toMatchObject({ ok: true });

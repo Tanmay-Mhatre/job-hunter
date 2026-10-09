@@ -1,6 +1,6 @@
-# Job Hunter
+# RawJobs
 
-A free, self-hosted job radar. Describe what you're looking for in one config file; Job Hunter finds matching openings across ~21,000 companies' applicant-tracking-system (ATS) feeds, scores each one against your profile with transparent keyword rules, and shows you the matches, with the companies you'd most like to join always on top.
+A free, self-hosted job radar. Describe what you're looking for in one config file; RawJobs finds matching openings across ~21,000 companies' applicant-tracking-system (ATS) feeds, scores each one against your profile with transparent keyword rules, and shows you the matches, with the companies you'd most like to join always on top.
 
 Good roles often appear on company careers pages (Greenhouse, Lever, Ashby, Workday…) before LinkedIn, or never reach it. Checking 50 careers pages by hand doesn't happen. This does it for you.
 
@@ -25,9 +25,9 @@ The dashboard walks you through setup the first time (about 3 minutes; you can s
 
 Saving runs your first scan: no company list needed. It finds every job in the company directory that fits your roles and places, checks the best companies live and scores each job. Then, optionally, pick the companies you'd love to work at in the **Companies** tab (search the directory, or paste a careers link): they're checked every scan and their jobs always come first.
 
-Setup writes `jobhunter.config.local.yaml` (gitignored, commented, safe to edit by hand). After that, the Radar shows a checklist of anything still missing, explains a scan with no matches (and what to change), and flags companies whose links broke. Change anything later in **Settings**.
+Setup writes `rawjobs.config.local.yaml` (gitignored, commented, safe to edit by hand). After that, the Radar shows a checklist of anything still missing, explains a scan with no matches (and what to change), and flags companies whose links broke. Change anything later in **Settings**.
 
-Prefer the terminal? Copy `jobhunter.config.example.yaml` to `jobhunter.config.local.yaml`, edit it, then `pnpm jobhunter validate` and `pnpm jobhunter run`.
+Prefer the terminal? Copy `rawjobs.config.example.yaml` to `rawjobs.config.local.yaml`, edit it, then `pnpm rawjobs validate` and `pnpm rawjobs run`.
 
 ## Dashboard
 
@@ -59,7 +59,7 @@ Each run merges into `data/`: jobs keep their first-seen date, and a job missing
 Paste careers URLs into `detect` and copy the lines into `companies:`:
 
 ```bash
-pnpm jobhunter detect https://jobs.lever.co/somecompany https://job-boards.greenhouse.io/other
+pnpm rawjobs detect https://jobs.lever.co/somecompany https://job-boards.greenhouse.io/other
 ```
 
 | ATS | Careers URL looks like | Read from |
@@ -109,7 +109,7 @@ your companies ───────────────► checked live eve
 - **Hidden companies** (config `companies_muted:`, or Hide on a job): never shown, never checked.
 - Industries never filter on their own: a company's industries come from public lists and the seed list (`tags`); industries its job titles merely hire for (`title_tags`, e.g. "hires AI roles") are kept apart.
 
-Everything is matched and scored on your computer, from shared public data. Your profile never leaves it. `pnpm jobhunter companies suggest` still ranks whole companies for you in the terminal.
+Everything is matched and scored on your computer, from shared public data. Your profile never leaves it. `pnpm rawjobs companies suggest` still ranks whole companies for you in the terminal.
 
 ### How the directory is built (no AI, `scripts/catalog/`)
 
@@ -152,7 +152,7 @@ Your profile, resume, config, Telegram token and run history stay on your comput
 
 **Sharing is on by default:** when you add a company by link that the directory doesn't have, its careers board (hiring system, board name, company name) is sent to the project's contribution inbox so everyone can find it. Nothing about you is sent. Turn it off in **Settings → Sharing** or with `directory.share_additions: false`. Full details: [PRIVACY.md](PRIVACY.md).
 
-Your config lists the companies you're targeting. If you run Job Hunter from GitHub, **create your copy as a private repository** (use "Use this template" → Private, not Fork; forks of public repos must stay public).
+Your config lists the companies you're targeting. If you run RawJobs from GitHub, **create your copy as a private repository** (use "Use this template" → Private, not Fork; forks of public repos must stay public).
 
 ## Data & licenses
 
@@ -164,7 +164,7 @@ Your config lists the companies you're targeting. If you run Job Hunter from Git
 
 ## Fair use
 
-Job Hunter only reads public job postings that companies publish for their own careers pages. It makes one request per company per run (your companies, plus up to 30 others it checks for you, each at most once a week), spaces requests to the same host, identifies itself with a User-Agent, backs off on rate limits, links to the original posting and never touches apply endpoints or candidate data. Keep it that way: keep your own list to the companies you really want (the Companies tab flags ones that never have anything for you), and don't run it more than a couple of times a day.
+RawJobs only reads public job postings that companies publish for their own careers pages. It makes one request per company per run (your companies, plus up to 30 others it checks for you, each at most once a week), spaces requests to the same host, identifies itself with a User-Agent, backs off on rate limits, links to the original posting and never touches apply endpoints or candidate data. Keep it that way: keep your own list to the companies you really want (the Companies tab flags ones that never have anything for you), and don't run it more than a couple of times a day.
 
 ## Development
 
@@ -178,7 +178,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Changes go through pull requests. Label 
 
 ```
 packages/core   connectors, normalise, score, run, history (shared Job types)
-packages/cli    jobhunter run | detect | validate | setup (JSON API used by the dashboard)
+packages/cli    rawjobs run | detect | validate | setup (JSON API used by the dashboard)
 apps/web        React + Vite + Tailwind dashboard (static; reads data/). In dev, a local API
                 lets it save your config and run scans; the static build has no server.
 ```

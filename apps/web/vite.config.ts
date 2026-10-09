@@ -9,15 +9,15 @@ import { defineConfig, type Plugin } from "vite";
 
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 /** The run output folder is served as the site root: /jobs.json, /meta.json. */
-const dataDir = resolve(repoRoot, process.env.JOBHUNTER_DATA ?? "data");
+const dataDir = resolve(repoRoot, process.env.RAWJOBS_DATA ?? process.env.JOBHUNTER_DATA ?? "data");
 // Vite only serves a public dir that exists at startup; the first scan creates the files later.
 mkdirSync(dataDir, { recursive: true });
 const tsxCli = resolve(repoRoot, "node_modules/tsx/dist/cli.mjs");
-const jobhunterCli = resolve(repoRoot, "packages/cli/src/index.ts");
+const rawjobsCli = resolve(repoRoot, "packages/cli/src/index.ts");
 
-/** Run `jobhunter <args>` from the repo root (node + tsx directly: no shell, so no quoting issues). */
+/** Run `rawjobs <args>` from the repo root (node + tsx directly: no shell, so no quoting issues). */
 function cli(args: string[], stdin?: string) {
-  const child = spawn(process.execPath, [tsxCli, jobhunterCli, ...args], { cwd: repoRoot });
+  const child = spawn(process.execPath, [tsxCli, rawjobsCli, ...args], { cwd: repoRoot });
   if (stdin !== undefined) child.stdin.end(stdin);
   else child.stdin.end();
   return child;
@@ -54,7 +54,7 @@ async function respondJson(res: ServerResponse, args: string[], stdin?: string) 
     res.end(out);
   } else {
     res.statusCode = 500;
-    res.end(JSON.stringify({ ok: false, errors: (r.stderr || r.stdout || "jobhunter failed").trim().slice(-2000) }));
+    res.end(JSON.stringify({ ok: false, errors: (r.stderr || r.stdout || "rawjobs failed").trim().slice(-2000) }));
   }
 }
 
@@ -89,9 +89,9 @@ function suggestions(body: string): Promise<string> {
 }
 
 /**
- * Dev only: a small local API so the dashboard can set up and run Job Hunter on this machine.
+ * Dev only: a small local API so the dashboard can set up and run RawJobs on this machine.
  *   GET  /api/setup           setup status (+ current config)
- *   POST /api/setup/config    validate and save jobhunter.config.local.yaml
+ *   POST /api/setup/config    validate and save rawjobs.config.local.yaml
  *   POST /api/setup/check     detect + live-check careers URLs
  *   GET/POST /api/setup/resume  read / save the master resume (profile/resume.md, gitignored)
  *   GET  /api/directory       the shared company directory's local copy (and what's waiting to be shared)
@@ -110,7 +110,7 @@ function suggestions(body: string): Promise<string> {
 function localApi(): Plugin {
   let running = false;
   return {
-    name: "jobhunter-local-api",
+    name: "rawjobs-local-api",
     apply: "serve",
     configureServer(server) {
       // Keep the shared company directory fresh: a weekly check in the background, off if you turned it off.

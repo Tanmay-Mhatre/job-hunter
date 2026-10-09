@@ -30,7 +30,7 @@ const tmp = () => {
 afterEach(() => {
   for (const d of dirs) rmSync(d, { recursive: true, force: true });
   dirs = [];
-  delete process.env.JOBHUNTER_JOBS_URL;
+  delete process.env.RAWJOBS_JOBS_URL;
 });
 
 /** Serve a manifest and its shards like the release does. */
@@ -55,7 +55,7 @@ function feedServer(shards: Record<string, JobFeedShard>, schema = JOB_FEED_SCHE
 
 describe("syncJobFeed", () => {
   it("downloads the shards, then only ones that changed", async () => {
-    process.env.JOBHUNTER_JOBS_URL = "https://feed.example/jobs";
+    process.env.RAWJOBS_JOBS_URL = "https://feed.example/jobs";
     const dir = tmp();
     const s = shard({ "lever:acme": { fetched_at: at(0), jobs: [["1", "Product Manager", "Dubai", "onsite", null]] } });
     const server = feedServer({ lever: s });

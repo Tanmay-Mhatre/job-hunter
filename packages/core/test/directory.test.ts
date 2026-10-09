@@ -4,18 +4,30 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { directoryStatus, queueContributions, sendContributions, updateDirectory } from "../src/directory";
+import { contributeUrl, directoryStatus, directoryUrl, queueContributions, sendContributions, updateDirectory } from "../src/directory";
 
 let dir: string;
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "jobhunter-dir-"));
-  process.env.JOBHUNTER_DIRECTORY_URL = "https://example.test/latest";
-  process.env.JOBHUNTER_CONTRIBUTE_URL = "https://inbox.example.test";
+  dir = mkdtempSync(join(tmpdir(), "rawjobs-dir-"));
+  process.env.RAWJOBS_DIRECTORY_URL = "https://example.test/latest";
+  process.env.RAWJOBS_CONTRIBUTE_URL = "https://inbox.example.test";
 });
 afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
+  delete process.env.RAWJOBS_DIRECTORY_URL;
+  delete process.env.RAWJOBS_CONTRIBUTE_URL;
   delete process.env.JOBHUNTER_DIRECTORY_URL;
   delete process.env.JOBHUNTER_CONTRIBUTE_URL;
+});
+
+describe("directory settings", () => {
+  it("reads RAWJOBS_ first, then the JOBHUNTER_ names from before the rename", () => {
+    delete process.env.RAWJOBS_DIRECTORY_URL;
+    process.env.JOBHUNTER_DIRECTORY_URL = "https://old.example.test/latest/";
+    expect(directoryUrl()).toBe("https://old.example.test/latest");
+    process.env.JOBHUNTER_CONTRIBUTE_URL = "https://old-inbox.example.test";
+    expect(contributeUrl()).toBe("https://inbox.example.test");
+  });
 });
 
 const directory = gzipSync(JSON.stringify({ generated_at: "2026-10-06T00:00:00Z", count: 2, companies: [{ key: "lever:a" }, { key: "lever:b" }] }));
@@ -88,7 +100,7 @@ describe("sharing additions", () => {
   });
 
   it("does nothing when no inbox is configured", async () => {
-    process.env.JOBHUNTER_CONTRIBUTE_URL = "";
+    process.env.RAWJOBS_CONTRIBUTE_URL = "";
     queueContributions(dir, [{ ats: "lever", slug: "acme" }]);
     expect((await sendContributions(dir)).message).toMatch(/isn't set up/);
   });

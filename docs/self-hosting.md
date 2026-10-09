@@ -14,14 +14,14 @@ Two environment variables, read by the CLI and the dev server (`packages/core/sr
 
 | Variable | Default | What it is |
 |---|---|---|
-| `JOBHUNTER_DIRECTORY_URL` | `https://github.com/Tanmay-Mhatre/job-hunter-directory/releases/latest/download` | Where `manifest.json`, `directory.json.gz` and `index.json.gz` are downloaded from. |
-| `JOBHUNTER_CONTRIBUTE_URL` | `https://job-hunter-contribute.tanmay-jobhunter.workers.dev` | The contribution inbox that shared boards are sent to. Set it to an empty string to send nothing. |
+| `RAWJOBS_DIRECTORY_URL` | `https://github.com/Tanmay-Mhatre/job-hunter-directory/releases/latest/download` | Where `manifest.json`, `directory.json.gz` and `index.json.gz` are downloaded from. |
+| `RAWJOBS_CONTRIBUTE_URL` | `https://job-hunter-contribute.tanmay-jobhunter.workers.dev` | The contribution inbox that shared boards are sent to. Set it to an empty string to send nothing. |
 
 For example:
 
 ```bash
-JOBHUNTER_DIRECTORY_URL=https://github.com/you/your-directory/releases/latest/download \
-JOBHUNTER_CONTRIBUTE_URL=https://your-inbox.you.workers.dev \
+RAWJOBS_DIRECTORY_URL=https://github.com/you/your-directory/releases/latest/download \
+RAWJOBS_CONTRIBUTE_URL=https://your-inbox.you.workers.dev \
 pnpm dev
 ```
 

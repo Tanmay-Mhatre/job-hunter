@@ -27,7 +27,7 @@ async function main() {
   let failed = 0;
   for (const [folder, name, url] of FILES) {
     try {
-      const res = await fetch(url, { headers: { "user-agent": "JobHunter-catalog/0.1 (open-source job radar)" } });
+      const res = await fetch(url, { headers: { "user-agent": "RawJobs-catalog/0.1 (open-source job radar)" } });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const body = Buffer.from(await res.arrayBuffer());
       mkdirSync(join(here, "raw", folder), { recursive: true });

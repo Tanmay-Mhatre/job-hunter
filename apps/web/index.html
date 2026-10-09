@@ -4,12 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex" />
-    <title>Job Hunter</title>
+    <title>RawJobs</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='none' stroke='%230d9488' stroke-width='3'/><circle cx='16' cy='16' r='7' fill='none' stroke='%230d9488' stroke-width='3'/><circle cx='16' cy='16' r='2.5' fill='%230d9488'/></svg>" />
     <script>
       // Apply the saved theme before first paint to avoid a flash.
       try {
-        const t = localStorage.getItem("jobhunter.theme");
+        const t = localStorage.getItem("rawjobs.theme") ?? localStorage.getItem("jobhunter.theme");
         const dark = t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
         document.documentElement.classList.toggle("dark", dark);
       } catch {}

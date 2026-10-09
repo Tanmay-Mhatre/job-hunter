@@ -1,5 +1,5 @@
-import { INDUSTRY_BY_ID } from "@jobhunter/core/catalog/industries";
-import { groupPlaces } from "@jobhunter/core/catalog/places";
+import { INDUSTRY_BY_ID } from "@rawjobs/core/catalog/industries";
+import { groupPlaces } from "@rawjobs/core/catalog/places";
 import { ArrowRight, Download, RefreshCw, Save, Upload, X } from "lucide-react";
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { canRunLocally, useDirectorySize } from "../lib/data";
@@ -103,7 +103,7 @@ export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanni
       setStatus({ tone: "ok", text: thenScan ? "Saved. Scanning with your new settings…" : "Saved. Changes apply from the next scan." });
       if (thenScan) onScan();
     } catch (err) {
-      setStatus({ tone: "bad", text: "Couldn't save your settings. Make sure Job Hunter is still running on this computer, then try again.", detail: (err as Error).message, retry: true });
+      setStatus({ tone: "bad", text: "Couldn't save your settings. Make sure RawJobs is still running on this computer, then try again.", detail: (err as Error).message, retry: true });
     } finally {
       setSaving(false);
     }
@@ -380,7 +380,7 @@ function TrackingData({ user, prefs, onImport }: { user: UserState; prefs: Prefs
       if (tracked) setPending(next);
       else apply(next);
     } catch (err) {
-      setMsg({ tone: "bad", text: "Couldn't import that file. Pick a file made with Export in Job Hunter.", detail: (err as Error).message });
+      setMsg({ tone: "bad", text: "Couldn't import that file. Pick a file made with Export in RawJobs.", detail: (err as Error).message });
     } finally {
       if (fileRef.current) fileRef.current.value = "";
     }

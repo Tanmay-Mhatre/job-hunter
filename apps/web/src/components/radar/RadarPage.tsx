@@ -1,4 +1,4 @@
-import { INDUSTRY_BY_ID } from "@jobhunter/core/catalog/industries";
+import { INDUSTRY_BY_ID } from "@rawjobs/core/catalog/industries";
 import { ArrowRight, ArrowUpDown, Building2, Check, Globe, LoaderCircle, MapPin, Pencil, Plus, Search, SlidersHorizontal, Star, UserRound, X } from "lucide-react";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useOtherJobs, type DataMeta, type Job, type Profile } from "../../lib/data";
@@ -73,9 +73,9 @@ type Props = {
   onSaveProfile?: (picks: FilterPicks) => Promise<string | null>;
 };
 
-const FILTER_KEY = "jobhunter.radar.v2";
+const FILTER_KEY = "rawjobs.radar.v2";
 /** "Show everywhere" was picked for these profile places (JSON); a change of places brings the place filter back. */
-const EVERYWHERE_KEY = "jobhunter.radar.everywhere";
+const EVERYWHERE_KEY = "rawjobs.radar.everywhere";
 const PAGE = 40;
 const SORTS: { value: Sort; label: string }[] = [
   { value: "best", label: "Best match" },

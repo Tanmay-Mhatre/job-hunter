@@ -133,7 +133,7 @@ describe("saveRun / readJobs", () => {
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
   it("round-trips jobs, keeps run history, and drops descriptions of gated jobs", () => {
-    dir = mkdtempSync(join(tmpdir(), "jobhunter-"));
+    dir = mkdtempSync(join(tmpdir(), "rawjobs-"));
     const config = parseConfig(`
 profile:
   titles: { include: ["product manager"] }
@@ -159,7 +159,7 @@ companies:
   });
 
   it("splits dashboard files: matches, the rest, descriptions; and tags companies with industries", () => {
-    dir = mkdtempSync(join(tmpdir(), "jobhunter-"));
+    dir = mkdtempSync(join(tmpdir(), "rawjobs-"));
     mkdirSync(join(dir, "catalog"));
     writeFileSync(join(dir, "catalog", "directory.json"), JSON.stringify({ companies: [{ key: "greenhouse:acme", tags: ["crypto"] }] }));
     const config = parseConfig(`
@@ -186,7 +186,7 @@ companies:
   });
 
   it("reads the old single jobs.json until history.json exists", () => {
-    dir = mkdtempSync(join(tmpdir(), "jobhunter-"));
+    dir = mkdtempSync(join(tmpdir(), "rawjobs-"));
     writeFileSync(join(dir, "jobs.json"), JSON.stringify({ version: 1, generatedAt: T0, jobs: [job("9")] }));
     expect(readJobs(dir).map((j) => j.id)).toEqual(["greenhouse:acme:9"]);
   });

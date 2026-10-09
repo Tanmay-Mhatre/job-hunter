@@ -1,5 +1,5 @@
 {
-  "name": "@jobhunter/web",
+  "name": "@rawjobs/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@jobhunter/core": "workspace:*",
+    "@rawjobs/core": "workspace:*",
     "lucide-react": "^1.51.0",
     "mammoth": "^1.13.0",
     "minisearch": "^7.2.0",

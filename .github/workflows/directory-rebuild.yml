@@ -92,7 +92,7 @@ jobs:
         run: |
           cp ../scripts/catalog/out/coverage.md coverage.md
           cp ../dist/manifest.json manifest.json
-          git config user.name "job-hunter-bot"
-          git config user.email "job-hunter-bot@users.noreply.github.com"
+          git config user.name "rawjobs-bot"
+          git config user.email "rawjobs-bot@users.noreply.github.com"
           git add coverage.md manifest.json
           git diff --cached --quiet || (git commit -m "Weekly directory $(date -u +%Y-%m-%d)" && git push)

@@ -16,8 +16,8 @@ used only to confirm boards that are already listed, and are never published.
 | [Common Crawl](https://commoncrawl.org) URL index (our own query) | [Common Crawl terms of use](https://commoncrawl.org/terms-of-use) | adds companies (board URLs only) |
 | [Wayback Machine](https://web.archive.org) CDX index (our own query) | [Internet Archive terms of use](https://archive.org/about/terms.php) | adds companies (board URLs only) |
 | [Wikidata](https://www.wikidata.org) companies | CC0 | company names and websites, to find their boards |
-| Job Hunter industry seed list | MIT (Job Hunter) | adds companies, industry labels |
-| Boards shared by Job Hunter users ("Add by link") | CC BY 4.0 (this directory) | adds companies, after a live check |
+| RawJobs industry seed list | MIT (RawJobs) | adds companies, industry labels |
+| Boards shared by RawJobs users ("Add by link") | CC BY 4.0 (this directory) | adds companies, after a live check |
 | [LastRound AI ATS company directory](https://datahub.io/lastroundai-hiring-data/lastroundai-hiring-data/ats-directory) | CC BY 4.0 | adds companies, each verified live |
 | [Feashliaa/job-board-aggregator](https://github.com/Feashliaa/job-board-aggregator) | CC BY-NC | confirmation only, never published |
 | [ElliotGbaum/upstreamit](https://github.com/ElliotGbaum/upstreamit) | CC BY-SA | confirmation only, never published |
@@ -32,7 +32,7 @@ under the Creative Commons Attribution 4.0 International licence. Credit: LastRo
 
 ## Never redistributed
 
-Job Hunter can also read public job boards a user adds: Hacker News "Who is hiring" (through Algolia's
+RawJobs can also read public job boards a user adds: Hacker News "Who is hiring" (through Algolia's
 HN API), Remotive, Arbeitnow and Remote OK. Their data is fetched on each user's own computer, shown
 with credit to the source and linked back to it, and **never** included in this directory, the index,
 the job feed or any release.

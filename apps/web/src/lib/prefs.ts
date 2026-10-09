@@ -12,7 +12,7 @@ export type Prefs = {
   hiddenCompanies: string[];
 };
 
-const KEY = "jobhunter.prefs.v1";
+const KEY = "rawjobs.prefs.v1";
 const EMPTY: Prefs = { views: [], hiddenCompanies: [] };
 
 export function usePrefs() {

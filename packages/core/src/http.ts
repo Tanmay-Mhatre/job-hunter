@@ -3,7 +3,7 @@ export const VERSION = "0.1.0";
 export function defaultUserAgent(): string {
   const repo = process.env.GITHUB_REPOSITORY;
   const home = repo ? `https://github.com/${repo}` : "self-hosted";
-  return `JobHunter/${VERSION} (personal job radar; +${home})`;
+  return `RawJobs/${VERSION} (personal job radar; +${home})`;
 }
 
 export class HttpError extends Error {

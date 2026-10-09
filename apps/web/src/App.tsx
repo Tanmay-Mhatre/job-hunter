@@ -43,9 +43,9 @@ function parseHash(): Route {
   return { tab: (TABS.some((t) => t.id === h) ? h : "radar") as Tab };
 }
 
-const DRAFT_KEY = "jobhunter.setupDraft.v1";
+const DRAFT_KEY = "rawjobs.setupDraft.v1";
 /** The first-visit Welcome has been answered (Start or Skip); never auto-open it again. */
-const WELCOME_SEEN_KEY = "jobhunter.welcomeSeen";
+const WELCOME_SEEN_KEY = "rawjobs.welcomeSeen";
 const sameConfig = (a: Draft, b: Draft) => JSON.stringify(draftToConfig(a)) === JSON.stringify(draftToConfig(b));
 
 export function App() {
@@ -229,7 +229,7 @@ export function App() {
     setDark(next);
     document.documentElement.classList.toggle("dark", next);
     try {
-      localStorage.setItem("jobhunter.theme", next ? "dark" : "light");
+      localStorage.setItem("rawjobs.theme", next ? "dark" : "light");
     } catch {}
   };
 
@@ -249,7 +249,7 @@ export function App() {
   const lastTab = useRef<Tab | null>(tab);
   useEffect(() => {
     // Setup routes set their own title.
-    if (viewLabel) document.title = `${viewLabel} · Job Hunter`;
+    if (viewLabel) document.title = `${viewLabel} · RawJobs`;
     if (tab && lastTab.current !== tab) headingRef.current?.focus({ preventScroll: true });
     lastTab.current = tab;
   }, [tab, viewLabel]);
@@ -287,7 +287,7 @@ export function App() {
             <span className="flex size-7 items-center justify-center rounded-lg bg-accent text-accent-fg">
               <RadarIcon className="size-4" />
             </span>
-            <span className={cx(inSetup ? "inline" : "hidden sm:inline")}>Job Hunter</span>
+            <span className={cx(inSetup ? "inline" : "hidden sm:inline")}>RawJobs</span>
           </a>
           {inSetup ? (
             <span className="text-sm text-muted">· Setup</span>

@@ -1,13 +1,13 @@
 # Privacy
 
-Job Hunter runs on your computer. Your profile, resume and searches stay there. This page lists
+RawJobs runs on your computer. Your profile, resume and searches stay there. This page lists
 everything the app sends over the network, and to whom.
 
 ## What stays on your computer
 
 | What | Where |
 |---|---|
-| Your profile: roles, places, topics, companies | `jobhunter.config.local.yaml` (or `jobhunter.config.yaml`), gitignored |
+| Your profile: roles, places, topics, companies | `rawjobs.config.local.yaml` (or `rawjobs.config.yaml`), gitignored |
 | Your resume | `profile/resume.md`, gitignored |
 | Telegram bot token and chat id | `profile/secrets.json` (gitignored), or the `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` environment variables |
 | Run history, jobs found, scan results | `data/`, gitignored |
@@ -20,7 +20,7 @@ Scoring and filtering happen on your computer. Nothing above is uploaded by the 
 ### Company job boards
 Scans fetch public job postings straight from each company's hiring system (Greenhouse, Lever,
 Workday and others). These requests come from your computer, so those sites see your IP address,
-like any website you visit. The app identifies itself with a Job Hunter User-Agent. It never sends
+like any website you visit. The app identifies itself with a RawJobs User-Agent. It never sends
 your profile or resume to them, and never touches apply forms.
 
 ### Public job boards you add
@@ -43,7 +43,7 @@ What is sent:
 - the hiring system and the board name (for example `lever` and `acme`), plus the Workday
   shard and site, or the EU region, when needed;
 - the company's name;
-- the app name (`job-hunter`), optionally with a version number.
+- the app name (`rawjobs`), optionally with a version number.
 
 Never sent: your profile, resume, searches, statuses, notes, or which jobs you open.
 
@@ -52,7 +52,7 @@ The inbox is a small Cloudflare Worker (`services/contribute`). What it does wit
   The Worker doesn't store it, and we haven't turned on Cloudflare's request logs. Cloudflare
   itself handles the traffic under its own privacy policy.
 - **It stores** the boards, the time they arrived, and the `client` field only if it is exactly the
-  app name and version (like `job-hunter/0.1.0`); anything else in that field is dropped. Any
+  app name and version (like `rawjobs/0.1.0`); anything else in that field is dropped. Any
   other field in the request is ignored.
 - **It also keeps** a list of the boards accepted each day (no IP, no time beyond the date) for 8
   days, to skip repeats and enforce a daily limit.

@@ -22,8 +22,8 @@ export function configToYaml(config: Config): string {
   const p = config.profile;
   const keywords = Object.entries(p.keywords).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   return [
-    "# Job Hunter config. Written by the setup wizard; safe to edit by hand.",
-    "# Check it with:  pnpm jobhunter validate",
+    "# RawJobs config. Written by the setup wizard; safe to edit by hand.",
+    "# Check it with:  pnpm rawjobs validate",
     "",
     "profile:",
     `  name: ${q(p.name)}`,
@@ -60,7 +60,7 @@ export function configToYaml(config: Config): string {
     "  # Jobs scoring at least this count as strong matches (and trigger alerts).",
     `  min_score: ${p.min_score}`,
     "",
-    "# One line per company. Add more with:  pnpm jobhunter detect <careers url>",
+    "# One line per company. Add more with:  pnpm rawjobs detect <careers url>",
     // An empty block would read back as null, so write an explicit empty list.
     config.companies.length ? "companies:" : "companies: []",
     ...config.companies.map(companyLine),

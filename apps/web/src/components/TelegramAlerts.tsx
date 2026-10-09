@@ -73,7 +73,7 @@ export function TelegramAlerts({
   if (status.error)
     return (
       <div className="text-sm" role="alert">
-        <p className="text-bad">Couldn't check your Telegram alerts. Make sure Job Hunter is running on this computer, then try again.</p>
+        <p className="text-bad">Couldn't check your Telegram alerts. Make sure RawJobs is running on this computer, then try again.</p>
         <Button size="sm" variant="ghost" className="mt-1" onClick={() => void refresh()}>
           <RefreshCw className="size-3.5" /> Try again
         </Button>
