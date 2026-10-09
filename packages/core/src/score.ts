@@ -1,6 +1,6 @@
 import { allPlaceNames, countriesIn, expandPlaces, LOCATION_SEGMENTS, placeOwner, placeOwnerName, spellOutPlaces, SUBDIVISIONS } from "./catalog/places";
 import type { NormalizedJob, Profile, ScoreBreakdown } from "./schema";
-import { matchesAny, matchesTerm, matchesTitle, termRegex, titleForms } from "./text";
+import { matchesAny, matchesTerm, matchesTitle, mayMatchTitle, termRegex, titleForms } from "./text";
 
 export const POINTS = {
   titleMatch: 20,
@@ -100,8 +100,11 @@ function gateLocation(job: Pick<NormalizedJob, "location" | "workplace">): strin
 }
 
 /** Include and exclude terms are read the same way (matchesTitle): "Sr. PMM" is still "product marketing". */
-function titlePasses(title: string, profile: Profile, forms = titleForms(title)): boolean {
-  return matchesTitle(title, profile.titles.include, forms) && !matchesTitle(title, profile.titles.exclude, forms);
+function titlePasses(title: string, profile: Profile, forms?: string): boolean {
+  // The quick check first: most titles share no telling word with your roles, and skip the full reading.
+  if (!mayMatchTitle(title, profile.titles.include)) return false;
+  const f = forms ?? titleForms(title);
+  return matchesTitle(title, profile.titles.include, f) && !matchesTitle(title, profile.titles.exclude, f);
 }
 
 /** Remote wording that names no place: stripped before checking what else a remote job names. */
@@ -219,9 +222,17 @@ export function locationFit(location: string, profile: Profile): { points: numbe
 
 /** Which gate a job fails (title is checked first), or undefined if it passes both. No scoring. */
 export function gateOf(job: Pick<NormalizedJob, "title" | "location" | "workplace">, profile: Profile): "title" | "location" | undefined {
-  if (!titlePasses(job.title, profile)) return "title";
-  if (workplaceFit(job, profile)) return "location";
-  return locationFit(gateLocation(job), profile).points ? undefined : "location";
+  if (!passesTitleGate(job.title, profile)) return "title";
+  return passesLocationGate(job, profile) ? undefined : "location";
+}
+
+/** The title half of gateOf, for callers that check many jobs and remember results per title. */
+export const passesTitleGate = (title: string, profile: Profile): boolean => titlePasses(title, profile);
+
+/** The location half of gateOf (place and way of working), for callers that remember results per location. */
+export function passesLocationGate(job: Pick<NormalizedJob, "location" | "workplace">, profile: Profile): boolean {
+  if (workplaceFit(job, profile)) return false;
+  return !!locationFit(gateLocation(job), profile).points;
 }
 
 /** Title-and-location gate only; cheap check before expensive detail calls. */

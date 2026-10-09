@@ -132,8 +132,11 @@ function slashVariants(words: string[]): string[][] {
   return out;
 }
 
+/** Times of day ("3:00 P.M.", "7 pm"): not the "PM" job title. Lowercase text. */
+const TIME_OF_DAY = /(?<!\p{L})[ap]\.m\.?(?!\p{L})|(?<=\d\s?)[ap]m(?!\p{L})/gu;
+
 function wordsOf(text: string): string[] {
-  const lower = text.toLowerCase();
+  const lower = text.toLowerCase().replace(TIME_OF_DAY, " ");
   return (/[^\x00-\x7f]/.test(lower) ? lower.normalize("NFKD") : lower)
     .replace(/[\u0300-\u036f'’.]/g, "")
     .replace(/&/g, " and ")
@@ -206,6 +209,50 @@ export function titleTermsPattern(terms: readonly string[], o: { broad?: boolean
     titleCache.set(key, re);
   }
   return re;
+}
+
+/** Common words that say little on their own: a term's anchor is one of its other words when it has one. */
+const GENERIC_TITLE_WORDS = new Set(["manager", "engineer", "senior", "lead", "head", "of", "director", "principal", "staff", "junior", "associate", "specialist", "and", "the", "chief", "officer", "vice", "president"]);
+const anchorCache = new Map<string, Set<string>>();
+
+/**
+ * Words at least one of which a title must contain to match these terms (matchesTitle). For each
+ * term, as written and in every equivalent form, its most telling word; plus the abbreviations and
+ * other spellings that read as one of those words ("pm", "swe", "front end", "eng").
+ */
+function titleAnchors(terms: readonly string[]): Set<string> {
+  const key = terms.join("\u0000");
+  let raw = anchorCache.get(key);
+  if (raw) return raw;
+  const need = new Set<string>();
+  const pick = (words: string[]) => {
+    const telling = words.filter((w) => !GENERIC_TITLE_WORDS.has(w));
+    for (const w of telling.length ? [telling.reduce((a, b) => (b.length > a.length ? b : a))] : words) need.add(w);
+  };
+  for (const t of terms) pick(wordsOf(t).flatMap((w) => w.split("/")).filter(Boolean));
+  for (const t of expandTitleTerms(terms)) pick(t.split(" ").filter((w) => w && w !== "of"));
+  raw = new Set(need);
+  for (const [abbr, full] of Object.entries(TITLE_ABBREVIATIONS)) if (full.split(" ").some((w) => need.has(w))) raw.add(abbr);
+  for (const [word, others] of Object.entries(TITLE_SPELLINGS)) if (word.split(" ").some((w) => need.has(w))) for (const o of others) for (const w of o.split(" ")) raw.add(w);
+  if (need.has("engineer") || need.has("engineering")) raw.add("eng");
+  if (anchorCache.size > 50) anchorCache.clear();
+  anchorCache.set(key, raw);
+  return raw;
+}
+
+/**
+ * A quick check that rules out most titles before matchesTitle's full reading: false means the title
+ * can't match these terms. It never says false for a title matchesTitle would accept (tests hold it
+ * to that on a large sample of real titles); it may say true for titles that then don't match.
+ */
+export function mayMatchTitle(title: string, terms: readonly string[]): boolean {
+  if (!terms.length) return false;
+  const raw = titleAnchors(terms);
+  const has = (w: string) => !!w && (raw.has(w) || raw.has(stem(w)));
+  // Read as matchesTitle does ("Sr. PM" -> "sr", "pm")...
+  for (const word of wordsOf(title)) for (const part of [word, ...word.split(/\/|(?<=[+#])(?=\p{L})/u)]) if (has(part)) return true;
+  // ...and as written, where matchesAny's literal check splits "Sr.Product" and "CFO's" at the punctuation.
+  return title.toLowerCase().split(/[^\p{L}\p{N}+#]+/u).some(has);
 }
 
 /**
