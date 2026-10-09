@@ -170,7 +170,7 @@ export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanni
                 </li>
                 <li>
                   <b>All companies</b>
-                  <span className="text-muted">: every company in the directory we can scan. About 2 hours; keep this computer on. Stop any time and it carries on later.</span>
+                  <span className="text-muted">: every company in the directory we can scan. The daily job feed skips companies with nothing for you, so usually minutes; up to 2 hours without it. Stop any time and it carries on later.</span>
                 </li>
               </ul>
               <p className="text-xs text-muted">Every scan first updates the company directory, so new companies and moved careers pages are picked up.</p>

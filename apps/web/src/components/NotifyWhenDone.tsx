@@ -12,7 +12,7 @@ const toTelegramSettings = () => {
 };
 
 /**
- * During an "All companies" scan (about 2 hours): offer a Telegram message when it's done. Set up
+ * During an "All companies" scan (minutes with the job feed, up to 2 hours without): offer a Telegram message when it's done. Set up
  * already: one click. Not yet: the Telegram setup opens, and the message is switched on once it's
  * connected. Then it says what will happen, and finally what did.
  */

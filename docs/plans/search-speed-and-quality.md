@@ -1,6 +1,22 @@
 # Faster, better job search for many users (plan v2)
 
-Status: **proposed 2026-10-09, not started**. v1 was reviewed by two independent reviewers (engineering; open source, legal and operations). Both returned "approve with changes", and v2 includes those changes. Claims marked *(verified)* were checked against the code or live endpoints on 2026-10-09.
+Status: **phases 0–5 built on 2026-10-09 (branch `config-local-only`); phase 6 not started**. v1 was reviewed by two independent reviewers (engineering; open source, legal and operations). Both returned "approve with changes", and v2 includes those changes. Claims marked *(verified)* were checked against the code or live endpoints on 2026-10-09.
+
+## What was built, and how it differs from the plan below
+- **Phase 3 is a "job feed", and the Radar stays live-only.** The feed (`job-feed.ts`, `scripts/catalog/jobs.ts`, `jobs-daily.yml`) only decides which directory companies a scan fetches. Every job shown is fetched live, so decision 1 holds without "from index" jobs. Reviving `discover.ts` wasn't needed.
+- **Daily deltas aren't built.** Shards per hiring system, skipped when unchanged, with versioned file names. Add deltas if downloads grow.
+- **Not built:**
+  - The Muse and Jobicy, because their terms weren't confirmed.
+  - A per-profile switch for broad title synonyms.
+  - BM25 ranking on resume keywords.
+- **Workday ids now use the requisition number;** stored ids are rewritten on merge.
+- **Still to do by hand:**
+  - make `job-hunter` public;
+  - copy `services/directory-repo-template` files (LICENSE-DATA, NOTICE, denylist.json) into the directory repo;
+  - create the `takedown` label;
+  - turn on private vulnerability reporting;
+  - add a second maintainer to CODEOWNERS;
+  - run `Jobs · daily feed` once by hand to publish the first feed.
 
 ## Problem
 Make company and job search better and faster for the user, with zero running cost. The app will be open-sourced, so the design must work for many users, not just one.
