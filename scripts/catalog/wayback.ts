@@ -28,7 +28,7 @@ const PAGE_LIMIT = arg("--pages", Infinity);
 const REPASS_DAYS = 30;
 const CDX = "https://web.archive.org/cdx/search/cdx";
 // The archive asks for gentle use: one request at a time, a few seconds apart.
-const http = new HttpClient({ retries: 4, hostDelayMs: 3_000, timeoutMs: 180_000, backoffMs: 30_000, userAgent: "JobHunter-catalog/0.1 (open-source job radar; reads the CDX index only)" });
+const http = new HttpClient({ retries: 4, hostDelayMs: 3_000, timeoutMs: 180_000, backoffMs: 30_000, userAgent: "RawJobs-catalog/0.1 (open-source job radar; reads the CDX index only)" });
 
 /** Same hosts as commoncrawl.ts. Paged queries can't take a date filter, so dates are checked per line. */
 const QUERIES: { url: string; matchType: "prefix" | "domain" }[] = [

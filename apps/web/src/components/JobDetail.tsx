@@ -1,5 +1,5 @@
-import { INDUSTRY_BY_ID } from "@jobhunter/core/catalog/industries";
-import { SENIORITY_LEVELS } from "@jobhunter/core/catalog/seniority";
+import { INDUSTRY_BY_ID } from "@rawjobs/core/catalog/industries";
+import { SENIORITY_LEVELS } from "@rawjobs/core/catalog/seniority";
 import { ArrowLeft, Building2, Check, ChevronDown, ChevronUp, CircleCheck, Copy, ExternalLink, Info, LoaderCircle, MapPin, Plus, RefreshCw, Star, X } from "lucide-react";
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
 import { copyText } from "../lib/clipboard";

@@ -30,7 +30,7 @@ export type UserState = Record<string, Entry>;
 /** The job fields tracking needs; a full Job or a stored snapshot both fit. */
 export type JobLike = Pick<Job, "id" | "title" | "company" | "url" | "location" | "score">;
 
-const KEY = "jobhunter.state.v1";
+const KEY = "rawjobs.state.v1";
 
 export function useUserState() {
   const [state, setState] = useState<UserState>(() => load<UserState>(KEY, {}));
@@ -75,20 +75,21 @@ export function useUserState() {
 }
 
 export function exportState(state: UserState, prefs?: Prefs): void {
-  const blob = new Blob([JSON.stringify({ app: "job-hunter", version: 1, exportedAt: new Date().toISOString(), state, prefs }, null, 2)], {
+  const blob = new Blob([JSON.stringify({ app: "rawjobs", version: 1, exportedAt: new Date().toISOString(), state, prefs }, null, 2)], {
     type: "application/json",
   });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `job-hunter-tracking-${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `rawjobs-tracking-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(a.href);
 }
 
 export async function readStateFile(file: File): Promise<{ state: UserState; prefs?: Partial<Prefs> }> {
   const parsed = JSON.parse(await file.text()) as { app?: string; state?: UserState; prefs?: Partial<Prefs> };
-  if (parsed.app !== "job-hunter" || !parsed.state || typeof parsed.state !== "object") {
-    throw new Error("That file isn't a Job Hunter export.");
+  // Exports made before the rename to RawJobs say "job-hunter".
+  if ((parsed.app !== "rawjobs" && parsed.app !== "job-hunter") || !parsed.state || typeof parsed.state !== "object") {
+    throw new Error("That file isn't a RawJobs export.");
   }
   return { state: parsed.state, prefs: parsed.prefs };
 }

@@ -22,7 +22,7 @@ const recheckArg = process.argv.indexOf("--recheck-days");
 const RECHECK_CUTOFF = recheckArg > 0 ? Date.now() - Number(process.argv[recheckArg + 1]) * 86_400_000 : 0;
 const OUT = join(OUT_DIR, ONLY ? `checks-${[...ONLY].sort().join("-")}.jsonl` : "checks.jsonl");
 // Polite: each lane is sequential, with a small gap per host on top of request latency.
-const http = new HttpClient({ retries: 2, hostDelayMs: 200, timeoutMs: 20_000, backoffMs: 3_000, userAgent: "JobHunter-catalog/0.1 (open-source job radar; low-rate board validation)" });
+const http = new HttpClient({ retries: 2, hostDelayMs: 200, timeoutMs: 20_000, backoffMs: 3_000, userAgent: "RawJobs-catalog/0.1 (open-source job radar; low-rate board validation)" });
 
 /**
  * Workers per hiring system. Spacing is per host (HttpClient), so extra workers on one host share

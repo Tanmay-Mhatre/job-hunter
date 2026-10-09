@@ -1,8 +1,8 @@
-import { INDUSTRIES } from "@jobhunter/core/catalog/industries";
+import { INDUSTRIES } from "@rawjobs/core/catalog/industries";
 
 /**
  * The prompt users paste into their own Claude or ChatGPT to merge several resumes into one
- * master resume. Job Hunter never sends the resume anywhere; the user runs this themselves.
+ * master resume. RawJobs never sends the resume anywhere; the user runs this themselves.
  * Bump PROMPT_VERSION when the output format changes (parseAiAnswer must still read it).
  */
 export const PROMPT_VERSION = 3;
@@ -29,7 +29,7 @@ After the resume, add a JSON block for my job search tool. Infer it from the res
 
 \`\`\`json
 {
-  "jobhunter_profile": {
+  "rawjobs_profile": {
     "target_titles": ["5-10 job titles I'm qualified for next, e.g. senior product manager"],
     "seniority": ["seniority words that fit me, e.g. senior, lead, head"],
     "exclude_titles": ["titles to avoid, e.g. intern, junior"],

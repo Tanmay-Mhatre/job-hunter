@@ -1,4 +1,4 @@
-# Job Hunter contribution inbox. Setup steps: docs/shared-directory.md (forks: docs/self-hosting.md)
+# RawJobs contribution inbox. Setup steps: docs/shared-directory.md (forks: docs/self-hosting.md)
 name = "job-hunter-contribute"
 main = "src/index.ts"
 compatibility_date = "2026-09-01"

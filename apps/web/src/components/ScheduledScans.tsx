@@ -21,8 +21,8 @@ type Kind = "save" | "remove" | "run";
 
 /** What failed, and how to fix it. The raw reason goes under "Technical details". */
 const FAILED: Record<Kind, string> = {
-  save: "Couldn't save the schedule. Your computer's task scheduler didn't accept it. Try again; if it keeps failing, restart Job Hunter.",
-  remove: "Couldn't turn off scheduled scans. Try again; if it keeps failing, restart Job Hunter.",
+  save: "Couldn't save the schedule. Your computer's task scheduler didn't accept it. Try again; if it keeps failing, restart RawJobs.",
+  remove: "Couldn't turn off scheduled scans. Try again; if it keeps failing, restart RawJobs.",
   run: "Couldn't start the scan. Try again in a moment.",
 };
 

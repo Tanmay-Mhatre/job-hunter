@@ -1,5 +1,5 @@
 {
-  "name": "job-hunter",
+  "name": "rawjobs",
   "version": "0.1.0",
   "private": true,
   "description": "Self-hosted job radar: pulls openings from company ATS feeds daily, scores them against your profile, alerts you on new matches.",
@@ -10,8 +10,9 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "pnpm --filter @jobhunter/web dev",
-    "build": "pnpm --filter @jobhunter/web build",
+    "dev": "pnpm --filter @rawjobs/web dev",
+    "build": "pnpm --filter @rawjobs/web build",
+    "rawjobs": "tsx packages/cli/src/index.ts",
     "jobhunter": "tsx packages/cli/src/index.ts",
     "hooks:install": "git config core.hooksPath scripts/hooks",
     "test": "vitest run",

@@ -41,7 +41,8 @@ import {
   resumable,
   readDirectory,
   SCAN_SCOPES,
-  PERSONAL_CONFIG,
+  personalConfigPath,
+  isLegacyConfig,
   type BoardMove,
   type ScanScope,
   type DirectoryEntry,
@@ -65,8 +66,8 @@ import {
   type DirectoryCompany,
   type IndexedCompany,
   type Job,
-} from "@jobhunter/core";
-import { ATS_TYPES } from "@jobhunter/core";
+} from "@rawjobs/core";
+import { ATS_TYPES } from "@rawjobs/core";
 
 /** A company's own hiring system, not a job board (JOB_BOARDS): boards are never shared or put in the directory. */
 const isAts = (ats: string | undefined) => (ATS_TYPES as readonly string[]).includes(ats ?? "");
@@ -157,7 +158,7 @@ async function cmdCompanies(args: string[]): Promise<number> {
     },
   });
   if (positionals[0] !== "suggest") {
-    console.error("Usage: jobhunter companies suggest [--json] [--limit n]");
+    console.error("Usage: rawjobs companies suggest [--json] [--limit n]");
     return 2;
   }
   const indexFile = resolve(values.data, "catalog", "index.json");
@@ -207,17 +208,17 @@ async function cmdCompanies(args: string[]): Promise<number> {
   return 0;
 }
 
-const HELP = `Job Hunter — self-hosted job radar
+const HELP = `RawJobs: self-hosted job radar
 
 Usage:
-  jobhunter scan [options]      Sync the directory, fetch your companies (and more, by scope) live, score them
-  jobhunter schedule <status|install|remove>   Scan on a schedule on this computer (--time 08:00 [--time 20:00] --scope mine|all)
-  jobhunter alerts telegram <status|token|connect|test|on|off|forget>   Telegram alerts
-  jobhunter detect <url>...     Turn careers URLs into config lines
-  jobhunter validate            Check your config file
-  jobhunter setup <status|save|check>   Used by the dashboard's setup wizard (JSON in/out)
-  jobhunter companies suggest   Companies from the directory that fit your profile (industries, roles, places)
-  jobhunter directory <status|update|share>   The shared company directory: download the latest, share additions
+  rawjobs scan [options]      Sync the directory, fetch your companies (and more, by scope) live, score them
+  rawjobs schedule <status|install|remove>   Scan on a schedule on this computer (--time 08:00 [--time 20:00] --scope mine|all)
+  rawjobs alerts telegram <status|token|connect|test|on|off|forget>   Telegram alerts
+  rawjobs detect <url>...     Turn careers URLs into config lines
+  rawjobs validate            Check your config file
+  rawjobs setup <status|save|check>   Used by the dashboard's setup wizard (JSON in/out)
+  rawjobs companies suggest   Companies from the directory that fit your profile (industries, roles, places)
+  rawjobs directory <status|update|share>   The shared company directory: download the latest, share additions
 
 Options for companies suggest:
   -c, --config <path>   Config file (as for run)
@@ -234,7 +235,7 @@ Options for scan (alias: run):
       --fresh           Start over instead of resuming a stopped scan (Ctrl+C stops and saves progress)
       --plan            Print what each scope covers (companies, minutes) as JSON
       --notify          Send the new jobs to Telegram (when set up in Settings → Alerts)
-  -c, --config <path>   Config file (default: jobhunter.config.local.yaml, then jobhunter.config.yaml)
+  -c, --config <path>   Config file (default: rawjobs.config.local.yaml, then rawjobs.config.yaml)
   -o, --only <name>     Only this company (name or slug); repeatable
   -a, --all             Also list jobs that failed the title/location gates
   -n, --limit <n>       Max jobs to print (default 50)
@@ -311,7 +312,7 @@ function stopSignal(dataDir: string): () => boolean {
 /** Moved boards go into your personal config (the scan already fetched them on their new board). */
 function saveMoves(config: Config, path: string, moves: BoardMove[]): string | undefined {
   if (!moves.length) return undefined;
-  if (resolve(path) !== resolve(PERSONAL_CONFIG)) return `Update ${path} by hand: ${moves.map((m) => `${m.name} is now ${m.to.ats}:${m.to.slug}`).join("; ")}`;
+  if (resolve(path) !== personalConfigPath()) return `Update ${path} by hand: ${moves.map((m) => `${m.name} is now ${m.to.ats}:${m.to.slug}`).join("; ")}`;
   const key = (c: { ats: string; slug: string }) => `${c.ats}:${c.slug}`.toLowerCase();
   const companies = config.companies.map((c) => {
     const m = moves.find((x) => key(x.from) === key(c));
@@ -556,12 +557,12 @@ async function cmdAlerts(args: string[]): Promise<number> {
   const [channel, action = "status"] = args;
   const out = (o: Record<string, unknown>) => console.log(JSON.stringify(o));
   if (channel !== "telegram") {
-    console.error("Usage: jobhunter alerts telegram <status|token|connect|test|off>");
+    console.error("Usage: rawjobs alerts telegram <status|token|connect|test|off>");
     return 2;
   }
   const setEnabled = (on: boolean) => {
     const { config, path } = loadConfig();
-    if (resolve(path) !== resolve(PERSONAL_CONFIG)) return;
+    if (resolve(path) !== personalConfigPath()) return;
     if (config.alerts.telegram !== on) saveConfig({ ...config, alerts: { ...config.alerts, telegram: on } });
   };
   try {
@@ -590,12 +591,12 @@ async function cmdAlerts(args: string[]): Promise<number> {
       if (!chat) return out({ ok: false, error: "No message from you yet. Open your bot in Telegram, press Start (or send it \"hi\"), then try again." }), 0;
       saveTelegramSecrets({ chatId: chat.chatId });
       setEnabled(true);
-      await sendTelegram("✅ Job Hunter is connected. New jobs from your scans will arrive here.", { ...secrets, chatId: chat.chatId });
+      await sendTelegram("✅ RawJobs is connected. New jobs from your scans will arrive here.", { ...secrets, chatId: chat.chatId });
       out({ ok: true, name: chat.name });
       return 0;
     }
     if (action === "test") {
-      await sendTelegram("👋 Test from Job Hunter. Alerts are working.", secrets);
+      await sendTelegram("👋 Test from RawJobs. Alerts are working.", secrets);
       out({ ok: true });
       return 0;
     }
@@ -640,7 +641,7 @@ async function cmdSchedule(args: string[]): Promise<number> {
     } else if (action === "remove") removeSchedule(ctx);
     else if (action === "run") runScheduleNow(ctx);
     else if (action !== "status") {
-      out({ ok: false, error: "Usage: jobhunter schedule <status|install|remove|run>" });
+      out({ ok: false, error: "Usage: rawjobs schedule <status|install|remove|run>" });
       return 2;
     }
     out({ ok: true, ...scheduleStatus(ctx) });
@@ -695,7 +696,7 @@ async function cmdDirectory(args: string[]): Promise<number> {
           ? `Shared directory ${s.local.version}: ${s.local.companies.toLocaleString()} companies, downloaded ${Math.round(age)} day(s) ago.`
           : s.present
             ? "Using a directory built on this computer (not downloaded)."
-            : "No company directory yet. Run: pnpm jobhunter directory update",
+            : "No company directory yet. Run: pnpm rawjobs directory update",
       );
       return 0;
     }
@@ -729,7 +730,7 @@ async function cmdDirectory(args: string[]): Promise<number> {
       return 0;
     }
     default:
-      console.error("Usage: jobhunter directory <status|update|share> [--force] [--if-older <days>] [--json]");
+      console.error("Usage: rawjobs directory <status|update|share> [--force] [--if-older <days>] [--json]");
       return 2;
   }
 }
@@ -779,7 +780,7 @@ async function cmdSetup(args: string[]): Promise<number> {
       return 0;
     }
     default:
-      console.error("Usage: jobhunter setup <status|save|check|resume [save]>");
+      console.error("Usage: rawjobs setup <status|save|check|resume [save]>");
       return 2;
   }
 }
@@ -805,7 +806,7 @@ function printJobs(jobs: Job[], min: number): void {
 
 function cmdDetect(urls: string[]): number {
   if (!urls.length) {
-    console.error("Usage: jobhunter detect <careers-url> [more urls...]");
+    console.error("Usage: rawjobs detect <careers-url> [more urls...]");
     return 2;
   }
   let failures = 0;
@@ -833,6 +834,7 @@ function cmdValidate(args: string[]): number {
   for (const c of config.companies) byAts.set(c.ats, (byAts.get(c.ats) ?? 0) + 1);
   const unsupported = config.companies.filter((c) => !connectors[c.ats]);
   console.log(`✓ ${path} is valid`);
+  if (isLegacyConfig(path)) console.log(`  note: rename it to ${path.replace("jobhunter.config", "rawjobs.config")}; the old name still works for now`);
   console.log(`  profile: ${config.profile.name}, min_score ${config.profile.min_score}, ${Object.keys(config.profile.keywords).length} keywords`);
   console.log(`  companies: ${config.companies.length} (${[...byAts].map(([a, n]) => `${a} ${n}`).join(", ")})`);
   if (unsupported.length) {

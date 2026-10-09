@@ -97,8 +97,8 @@ jobs:
         name: Commit contributions.json
         working-directory: directory-repo
         run: |
-          git config user.name "job-hunter-bot"
-          git config user.email "job-hunter-bot@users.noreply.github.com"
+          git config user.name "rawjobs-bot"
+          git config user.email "rawjobs-bot@users.noreply.github.com"
           git add contributions.json
           git commit -m "Add ${{ steps.accept.outputs.accepted }} companies shared by users"
           git push

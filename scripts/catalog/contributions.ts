@@ -74,7 +74,7 @@ async function main() {
   const known = new Set(shared.map((c) => c.key));
   if (existsSync(directoryFile)) for (const c of (JSON.parse(readFileSync(directoryFile, "utf8")) as { companies: { key: string }[] }).companies) known.add(c.key);
 
-  const http = new HttpClient({ retries: 1, hostDelayMs: 300, timeoutMs: 20_000, userAgent: "JobHunter-catalog/0.1 (open-source job radar; checking shared boards)" });
+  const http = new HttpClient({ retries: 1, hostDelayMs: 300, timeoutMs: 20_000, userAgent: "RawJobs-catalog/0.1 (open-source job radar; checking shared boards)" });
   const accepted: Contribution[] = [];
   const rejected: { board: unknown; reason: string }[] = [];
   const denied = readDenylist();

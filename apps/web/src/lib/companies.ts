@@ -1,5 +1,5 @@
-import { careersUrl, companyKey } from "@jobhunter/core/detect";
-import { isPlaceholderBoard } from "@jobhunter/core/text";
+import { careersUrl, companyKey } from "@rawjobs/core/detect";
+import { isPlaceholderBoard } from "@rawjobs/core/text";
 import { rowId, type CompanyRow, type Draft } from "./setup";
 
 export const ATS_LABEL: Record<string, string> = {

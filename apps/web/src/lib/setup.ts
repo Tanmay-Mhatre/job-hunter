@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { ROLE_FAMILIES } from "@jobhunter/core/catalog/roles";
-import { careersUrl, companyKey, connectors, detectCompany } from "@jobhunter/core/detect";
-import type { AiProfile } from "@jobhunter/core/resume-parse";
-import type { AtsType, CompanyHealth, Config } from "@jobhunter/core/schema";
+import { ROLE_FAMILIES } from "@rawjobs/core/catalog/roles";
+import { careersUrl, companyKey, connectors, detectCompany } from "@rawjobs/core/detect";
+import type { AiProfile } from "@rawjobs/core/resume-parse";
+import type { AtsType, CompanyHealth, Config } from "@rawjobs/core/schema";
 import { canRunLocally } from "./data";
 
 // ---------- API (dev server only, see apps/web/vite.config.ts) ----------

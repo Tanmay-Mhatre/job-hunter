@@ -34,7 +34,7 @@ const WORKERS = 8;
 const MAX_CANDIDATES = 3;
 const SYSTEMS = ["greenhouse", "lever", "ashby", "smartrecruiters"] as const;
 // ≤ 4 requests/s per API host; Workday tenants are separate hosts.
-const http = new HttpClient({ retries: 1, hostDelayMs: 250, timeoutMs: 20_000, backoffMs: 3_000, userAgent: "JobHunter-catalog/0.1 (open-source job radar; low-rate board validation)" });
+const http = new HttpClient({ retries: 1, hostDelayMs: 250, timeoutMs: 20_000, backoffMs: 3_000, userAgent: "RawJobs-catalog/0.1 (open-source job radar; low-rate board validation)" });
 
 type Attempt = { key: string; company: string; result: "found" | "no board" | "empty" | "other company" | "error"; board?: Omit<Board, "key">; board_name?: string; jobs?: number | null; why?: string; tried_at: string };
 type Merged = { key: string; ats: string; slug: string; shard?: string; site?: string; name?: string };

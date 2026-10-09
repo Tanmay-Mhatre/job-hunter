@@ -1,5 +1,5 @@
-import { INDUSTRIES } from "@jobhunter/core/catalog/industries";
-import { isPlaceholderBoard } from "@jobhunter/core/text";
+import { INDUSTRIES } from "@rawjobs/core/catalog/industries";
+import { isPlaceholderBoard } from "@rawjobs/core/text";
 import { ChevronDown, CloudDownload, ExternalLink, Link2, LoaderCircle, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ATS_LABEL, groupBoards, SUPPORTED, type CompanyRef } from "../lib/companies";

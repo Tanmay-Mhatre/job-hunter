@@ -22,7 +22,7 @@ in that folder.
 - Add or update tests. Connector tests use saved responses in `packages/core/test/fixtures`, so
   tests never hit live sites.
 - Write user-facing text in plain English: short sentences, no jargon, no marketing tone.
-- Never commit a personal config, resume or token. `jobhunter.config.local.yaml`, `profile/` and
+- Never commit a personal config, resume or token. `rawjobs.config.local.yaml`, `profile/` and
   `data/` are gitignored for this reason.
 
 ## Rules that keep the project safe to run

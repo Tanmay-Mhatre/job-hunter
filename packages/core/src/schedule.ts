@@ -6,7 +6,7 @@ import type { ScanScope } from "./scope";
 
 /**
  * Scheduled scans on this computer: the operating system's own scheduler runs
- * `jobhunter scan --scope <type> --notify --scheduled` at the times you pick, even with the
+ * `rawjobs scan --scope <type> --notify --scheduled` at the times you pick, even with the
  * dashboard closed. It only runs while the computer is on (or asleep: Windows wakes it); a scan
  * missed while it was off runs as soon as it's back on.
  */
@@ -36,9 +36,11 @@ export type ScheduleStatus = {
   problem?: string;
 };
 
-export const TASK_NAME = "JobHunter Scan";
-const LAUNCHD_LABEL = "com.jobhunter.scan";
-const SYSTEMD_UNIT = "jobhunter-scan";
+/** What the scheduled scan is called in each operating system's scheduler. */
+export type SchedulerNames = { task: string; label: string; unit: string };
+export const SCHEDULER_NAMES: SchedulerNames = { task: "RawJobs Scan", label: "com.rawjobs.scan", unit: "rawjobs-scan" };
+/** The names from before the rename to RawJobs: still found by status and "run now", removed on save or turn off. */
+export const LEGACY_SCHEDULER_NAMES: SchedulerNames = { task: "JobHunter Scan", label: "com.jobhunter.scan", unit: "jobhunter-scan" };
 const SETTINGS_FILE = "schedule.json";
 const RUNS_FILE = "schedule-runs.json";
 const KEEP_RUNS = 30;
@@ -114,7 +116,7 @@ function powershell(ctx: ScheduleContext, script: string) {
   return (ctx.exec ?? defaultExec)("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script]);
 }
 
-function installWindows(ctx: ScheduleContext, s: ScheduleSettings): void {
+function installWindows(ctx: ScheduleContext, s: ScheduleSettings, n: SchedulerNames): void {
   const [exe, ...args] = scanCommand(ctx, s.scope);
   // conhost --headless: run without flashing a console window on the desktop.
   const argument = ["--headless", exe!, ...args].map(winArg).join(" ");
@@ -124,20 +126,20 @@ function installWindows(ctx: ScheduleContext, s: ScheduleSettings): void {
     `$t = @(${triggers})`,
     // StartWhenAvailable: a scan missed while the PC was off runs once it's back on. WakeToRun: wake from sleep.
     `$s = New-ScheduledTaskSettingsSet -StartWhenAvailable -WakeToRun -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Hours ${timeLimitHours(s.scope)})`,
-    `Register-ScheduledTask -TaskName ${psq(TASK_NAME)} -Action $a -Trigger $t -Settings $s -Description 'Job Hunter: sync the company directory, scan, and send new jobs to Telegram.' -Force | Out-Null`,
+    `Register-ScheduledTask -TaskName ${psq(n.task)} -Action $a -Trigger $t -Settings $s -Description 'RawJobs: sync the company directory, scan, and send new jobs to Telegram.' -Force | Out-Null`,
   ].join("; ");
   const r = powershell(ctx, script);
   if (r.status !== 0) throw new Error(`Windows Task Scheduler refused the schedule: ${(r.stderr || r.stdout).trim().slice(0, 500)}`);
 }
 
-function removeWindows(ctx: ScheduleContext): void {
-  powershell(ctx, `Unregister-ScheduledTask -TaskName ${psq(TASK_NAME)} -Confirm:$false -ErrorAction SilentlyContinue`);
+function removeWindows(ctx: ScheduleContext, n: SchedulerNames): void {
+  powershell(ctx, `Unregister-ScheduledTask -TaskName ${psq(n.task)} -Confirm:$false -ErrorAction SilentlyContinue`);
 }
 
-function statusWindows(ctx: ScheduleContext): { installed: boolean; nextRun?: string } {
+function statusWindows(ctx: ScheduleContext, n: SchedulerNames): { installed: boolean; nextRun?: string } {
   const r = powershell(
     ctx,
-    `$t = Get-ScheduledTask -TaskName ${psq(TASK_NAME)} -ErrorAction SilentlyContinue; if ($t) { $i = $t | Get-ScheduledTaskInfo; @{ next = if ($i.NextRunTime) { $i.NextRunTime.ToUniversalTime().ToString('o') } else { $null } } | ConvertTo-Json -Compress }`,
+    `$t = Get-ScheduledTask -TaskName ${psq(n.task)} -ErrorAction SilentlyContinue; if ($t) { $i = $t | Get-ScheduledTaskInfo; @{ next = if ($i.NextRunTime) { $i.NextRunTime.ToUniversalTime().ToString('o') } else { $null } } | ConvertTo-Json -Compress }`,
   );
   const out = r.stdout.trim();
   if (!out) return { installed: false };
@@ -151,10 +153,10 @@ function statusWindows(ctx: ScheduleContext): { installed: boolean; nextRun?: st
 
 // ---------- macOS: launchd ----------
 
-const plistPath = (ctx: ScheduleContext) => join(ctx.home ?? homedir(), "Library/LaunchAgents", `${LAUNCHD_LABEL}.plist`);
+const plistPath = (ctx: ScheduleContext, n: SchedulerNames) => join(ctx.home ?? homedir(), "Library/LaunchAgents", `${n.label}.plist`);
 const xml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-function installMac(ctx: ScheduleContext, s: ScheduleSettings): void {
+function installMac(ctx: ScheduleContext, s: ScheduleSettings, n: SchedulerNames): void {
   const args = scanCommand(ctx, s.scope).map((a) => `    <string>${xml(a)}</string>`).join("\n");
   const times = s.times
     .map((t) => {
@@ -167,7 +169,7 @@ function installMac(ctx: ScheduleContext, s: ScheduleSettings): void {
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>Label</key><string>${LAUNCHD_LABEL}</string>
+  <key>Label</key><string>${n.label}</string>
   <key>ProgramArguments</key>
   <array>
 ${args}
@@ -182,7 +184,7 @@ ${times}
 </dict>
 </plist>
 `;
-  const path = plistPath(ctx);
+  const path = plistPath(ctx, n);
   mkdirSync(dirname(path), { recursive: true });
   const exec = ctx.exec ?? defaultExec;
   exec("launchctl", ["unload", path]);
@@ -191,8 +193,8 @@ ${times}
   if (r.status !== 0) throw new Error(`launchd refused the schedule: ${(r.stderr || r.stdout).trim().slice(0, 500)}`);
 }
 
-function removeMac(ctx: ScheduleContext): void {
-  const path = plistPath(ctx);
+function removeMac(ctx: ScheduleContext, n: SchedulerNames): void {
+  const path = plistPath(ctx, n);
   if (!existsSync(path)) return;
   (ctx.exec ?? defaultExec)("launchctl", ["unload", path]);
   rmSync(path, { force: true });
@@ -202,7 +204,7 @@ function removeMac(ctx: ScheduleContext): void {
 
 const unitDir = (ctx: ScheduleContext) => join(ctx.home ?? homedir(), ".config/systemd/user");
 
-function installLinux(ctx: ScheduleContext, s: ScheduleSettings): void {
+function installLinux(ctx: ScheduleContext, s: ScheduleSettings, n: SchedulerNames): void {
   const exec = ctx.exec ?? defaultExec;
   if (exec("systemctl", ["--user", "--version"]).status !== 0) throw new Error("This system has no systemd user session. Add a cron line instead: see the README.");
   const dir = unitDir(ctx);
@@ -211,20 +213,20 @@ function installLinux(ctx: ScheduleContext, s: ScheduleSettings): void {
     .map((a) => (/\s/.test(a) ? `"${a}"` : a))
     .join(" ");
   writeFileSync(
-    join(dir, `${SYSTEMD_UNIT}.service`),
-    `[Unit]\nDescription=Job Hunter scan\n\n[Service]\nType=oneshot\nWorkingDirectory=${resolve(ctx.repoRoot)}\nExecStart=${cmd}\nTimeoutStartSec=${timeLimitHours(s.scope)}h\n`,
+    join(dir, `${n.unit}.service`),
+    `[Unit]\nDescription=RawJobs scan\n\n[Service]\nType=oneshot\nWorkingDirectory=${resolve(ctx.repoRoot)}\nExecStart=${cmd}\nTimeoutStartSec=${timeLimitHours(s.scope)}h\n`,
   );
   // Persistent: a run missed while the computer was off happens at the next boot.
-  writeFileSync(join(dir, `${SYSTEMD_UNIT}.timer`), `[Unit]\nDescription=Job Hunter scan\n\n[Timer]\n${s.times.map((t) => `OnCalendar=*-*-* ${t}:00`).join("\n")}\nPersistent=true\n\n[Install]\nWantedBy=timers.target\n`);
+  writeFileSync(join(dir, `${n.unit}.timer`), `[Unit]\nDescription=RawJobs scan\n\n[Timer]\n${s.times.map((t) => `OnCalendar=*-*-* ${t}:00`).join("\n")}\nPersistent=true\n\n[Install]\nWantedBy=timers.target\n`);
   exec("systemctl", ["--user", "daemon-reload"]);
-  const r = exec("systemctl", ["--user", "enable", "--now", `${SYSTEMD_UNIT}.timer`]);
+  const r = exec("systemctl", ["--user", "enable", "--now", `${n.unit}.timer`]);
   if (r.status !== 0) throw new Error(`systemd refused the schedule: ${(r.stderr || r.stdout).trim().slice(0, 500)}`);
 }
 
-function removeLinux(ctx: ScheduleContext): void {
+function removeLinux(ctx: ScheduleContext, n: SchedulerNames): void {
   const exec = ctx.exec ?? defaultExec;
-  exec("systemctl", ["--user", "disable", "--now", `${SYSTEMD_UNIT}.timer`]);
-  for (const ext of ["service", "timer"]) rmSync(join(unitDir(ctx), `${SYSTEMD_UNIT}.${ext}`), { force: true });
+  exec("systemctl", ["--user", "disable", "--now", `${n.unit}.timer`]);
+  for (const ext of ["service", "timer"]) rmSync(join(unitDir(ctx), `${n.unit}.${ext}`), { force: true });
   exec("systemctl", ["--user", "daemon-reload"]);
 }
 
@@ -242,13 +244,37 @@ export function nextRunAt(times: readonly string[], now = new Date()): string | 
   return candidates.sort((a, b) => a.getTime() - b.getTime())[0]?.toISOString();
 }
 
+function removeFrom(ctx: ScheduleContext, platform: NodeJS.Platform, n: SchedulerNames): void {
+  if (platform === "win32") removeWindows(ctx, n);
+  else if (platform === "darwin") removeMac(ctx, n);
+  else if (platform === "linux") removeLinux(ctx, n);
+}
+
+/** Whether the scheduler has an entry under these names (and, on Windows, its next run). */
+function installedAs(ctx: ScheduleContext, platform: NodeJS.Platform, n: SchedulerNames): { installed: boolean; nextRun?: string } {
+  if (platform === "win32") return statusWindows(ctx, n);
+  if (platform === "darwin") return { installed: existsSync(plistPath(ctx, n)) };
+  if (platform === "linux") return { installed: existsSync(join(unitDir(ctx), `${n.unit}.timer`)) };
+  return { installed: false };
+}
+
+/** The names the schedule is installed under: the current ones, or the pre-rename ones until it's saved again. */
+function activeNames(ctx: ScheduleContext, platform: NodeJS.Platform): { names: SchedulerNames; installed: boolean; nextRun?: string } {
+  const current = installedAs(ctx, platform, SCHEDULER_NAMES);
+  if (current.installed) return { names: SCHEDULER_NAMES, ...current };
+  const legacy = installedAs(ctx, platform, LEGACY_SCHEDULER_NAMES);
+  return legacy.installed ? { names: LEGACY_SCHEDULER_NAMES, ...legacy } : { names: SCHEDULER_NAMES, ...current };
+}
+
 export function installSchedule(ctx: ScheduleContext, input: Partial<ScheduleSettings>): ScheduleSettings {
   const s = validateSchedule(input);
   const platform = ctx.platform ?? process.platform;
-  if (platform === "win32") installWindows(ctx, s);
-  else if (platform === "darwin") installMac(ctx, s);
-  else if (platform === "linux") installLinux(ctx, s);
+  if (platform === "win32") installWindows(ctx, s, SCHEDULER_NAMES);
+  else if (platform === "darwin") installMac(ctx, s, SCHEDULER_NAMES);
+  else if (platform === "linux") installLinux(ctx, s, SCHEDULER_NAMES);
   else throw new Error(`Scheduled scans aren't supported on ${platform} yet.`);
+  // A schedule saved before the rename would otherwise scan twice.
+  removeFrom(ctx, platform, LEGACY_SCHEDULER_NAMES);
   mkdirSync(ctx.dataDir, { recursive: true });
   writeFileSync(join(ctx.dataDir, SETTINGS_FILE), JSON.stringify(s, null, 1));
   return s;
@@ -256,9 +282,8 @@ export function installSchedule(ctx: ScheduleContext, input: Partial<ScheduleSet
 
 export function removeSchedule(ctx: ScheduleContext): void {
   const platform = ctx.platform ?? process.platform;
-  if (platform === "win32") removeWindows(ctx);
-  else if (platform === "darwin") removeMac(ctx);
-  else if (platform === "linux") removeLinux(ctx);
+  removeFrom(ctx, platform, SCHEDULER_NAMES);
+  removeFrom(ctx, platform, LEGACY_SCHEDULER_NAMES);
   rmSync(join(ctx.dataDir, SETTINGS_FILE), { force: true });
 }
 
@@ -266,12 +291,13 @@ export function removeSchedule(ctx: ScheduleContext): void {
 export function runScheduleNow(ctx: ScheduleContext): void {
   const platform = ctx.platform ?? process.platform;
   const exec = ctx.exec ?? defaultExec;
+  const n = activeNames(ctx, platform).names;
   const r =
     platform === "win32"
-      ? powershell(ctx, `Start-ScheduledTask -TaskName ${psq(TASK_NAME)}`)
+      ? powershell(ctx, `Start-ScheduledTask -TaskName ${psq(n.task)}`)
       : platform === "darwin"
-        ? exec("launchctl", ["start", LAUNCHD_LABEL])
-        : exec("systemctl", ["--user", "start", "--no-block", `${SYSTEMD_UNIT}.service`]);
+        ? exec("launchctl", ["start", n.label])
+        : exec("systemctl", ["--user", "start", "--no-block", `${n.unit}.service`]);
   if (r.status !== 0) throw new Error(`Couldn't start the scheduled scan: ${(r.stderr || r.stdout).trim().slice(0, 500)}`);
 }
 
@@ -288,12 +314,11 @@ export function scheduleStatus(ctx: ScheduleContext, now = new Date()): Schedule
   let installed = !!settings;
   let nextRun = settings ? nextRunAt(settings.times, now) : undefined;
   let problem: string | undefined;
-  if (platform === "win32" && settings) {
-    const w = statusWindows(ctx);
-    installed = w.installed;
-    nextRun = w.nextRun ?? nextRun;
-    if (!w.installed) problem = "The scheduled task is missing from Windows Task Scheduler. Save the schedule again to recreate it.";
-  } else if (platform === "darwin" && settings) installed = existsSync(plistPath(ctx));
-  else if (platform === "linux" && settings) installed = existsSync(join(unitDir(ctx), `${SYSTEMD_UNIT}.timer`));
+  if (supported && settings) {
+    const a = activeNames(ctx, platform);
+    installed = a.installed;
+    nextRun = a.nextRun ?? nextRun;
+    if (platform === "win32" && !a.installed) problem = "The scheduled task is missing from Windows Task Scheduler. Save the schedule again to recreate it.";
+  }
   return { installed, supported, platform, settings, nextRun: installed ? nextRun : undefined, lastRun: runs[0], runs, ...(problem ? { problem } : {}) };
 }

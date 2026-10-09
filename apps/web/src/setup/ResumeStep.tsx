@@ -1,4 +1,4 @@
-import { parseAiAnswer, type AiProfile, type ParsedAnswer } from "@jobhunter/core/resume-parse";
+import { parseAiAnswer, type AiProfile, type ParsedAnswer } from "@rawjobs/core/resume-parse";
 import { ArrowRight, Check, ClipboardCopy, ExternalLink, FileText, Files, LoaderCircle, SkipForward, Sparkles, Upload, Wand2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button, Chip, cx } from "../components/ui";

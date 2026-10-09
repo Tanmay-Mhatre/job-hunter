@@ -1,12 +1,12 @@
 {
-  "name": "@jobhunter/cli",
+  "name": "@rawjobs/cli",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "bin": {
-    "jobhunter": "./src/index.ts"
+    "rawjobs": "./src/index.ts"
   },
   "dependencies": {
-    "@jobhunter/core": "workspace:*"
+    "@rawjobs/core": "workspace:*"
   }
 }

@@ -1,5 +1,5 @@
-import type { CompanySuggestion } from "@jobhunter/core/suggest";
-import { isPlaceholderBoard } from "@jobhunter/core/text";
+import type { CompanySuggestion } from "@rawjobs/core/suggest";
+import { isPlaceholderBoard } from "@rawjobs/core/text";
 import { useEffect, useMemo, useState } from "react";
 import { keyOf, type CompanyRef } from "./companies";
 import { canRunLocally } from "./data";
@@ -8,7 +8,7 @@ import { draftToConfig, type Draft } from "./setup";
 export type { CompanySuggestion };
 export type Lookalike = CompanySuggestion & { similarity: number; like: string };
 
-/** What `jobhunter companies suggest --json --stdin` answers (see packages/cli). */
+/** What `rawjobs companies suggest --json --stdin` answers (see packages/cli). */
 export type CompanySuggestions = {
   hiringNow: CompanySuggestion[];
   worthWatching: CompanySuggestion[];

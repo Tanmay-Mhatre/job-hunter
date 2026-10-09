@@ -1,7 +1,7 @@
-import { matchesTerm } from "@jobhunter/core/text";
-import { COUNTRIES, countryTerms, groupPlaces, REGIONS, searchPlaces } from "@jobhunter/core/catalog/places";
-import { INDUSTRY_BY_ID } from "@jobhunter/core/catalog/industries";
-import { allTitles, COMMON_EXCLUDES, ROLE_FAMILIES, SENIORITY, type RoleFamily } from "@jobhunter/core/catalog/roles";
+import { matchesTerm } from "@rawjobs/core/text";
+import { COUNTRIES, countryTerms, groupPlaces, REGIONS, searchPlaces } from "@rawjobs/core/catalog/places";
+import { INDUSTRY_BY_ID } from "@rawjobs/core/catalog/industries";
+import { allTitles, COMMON_EXCLUDES, ROLE_FAMILIES, SENIORITY, type RoleFamily } from "@rawjobs/core/catalog/roles";
 import { Check, ChevronDown, Plus, Search, X } from "lucide-react";
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Combobox, type ComboItem } from "../components/Combobox";

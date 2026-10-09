@@ -1,6 +1,6 @@
-import { INDUSTRY_BY_ID } from "@jobhunter/core/catalog/industries";
-import { citiesIn, placeOwner } from "@jobhunter/core/catalog/places";
-import { SENIORITY_LEVELS, type Seniority } from "@jobhunter/core/catalog/seniority";
+import { INDUSTRY_BY_ID } from "@rawjobs/core/catalog/industries";
+import { citiesIn, placeOwner } from "@rawjobs/core/catalog/places";
+import { SENIORITY_LEVELS, type Seniority } from "@rawjobs/core/catalog/seniority";
 import { ATS_LABEL } from "./companies";
 import type { Job, Profile } from "./data";
 import { ageDays, postedOrSeen } from "./format";

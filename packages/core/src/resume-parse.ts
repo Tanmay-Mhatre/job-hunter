@@ -24,7 +24,9 @@ export type ParsedAnswer = {
   warnings: string[];
 };
 
-const PROFILE_KEY = "jobhunter_profile";
+/** The profile block's key; answers made before the rename to RawJobs use jobhunter_profile. */
+const PROFILE_KEYS = ["rawjobs_profile", "jobhunter_profile"];
+const profileKeyIn = (text: string) => PROFILE_KEYS.find((k) => text.includes(k));
 
 const strList = (v: unknown, max = 40): string[] =>
   Array.isArray(v)
@@ -64,19 +66,20 @@ function normalizeProfile(raw: unknown): AiProfile | undefined {
   return empty ? undefined : profile;
 }
 
-/** Find the JSON object that holds jobhunter_profile: a ```json fence first, then any balanced {...}. */
+/** Find the JSON object that holds the profile: a ```json fence first, then any balanced {...}. */
 function findProfileJson(text: string): { start: number; end: number; value: unknown } | undefined {
   const fence = /```(?:json)?\s*\n([\s\S]*?)```/gi;
   for (let m; (m = fence.exec(text)); ) {
-    if (!m[1]!.includes(PROFILE_KEY)) continue;
+    if (!profileKeyIn(m[1]!)) continue;
     try {
       return { start: m.index, end: m.index + m[0].length, value: JSON.parse(m[1]!) };
     } catch {
       // fall through to the brace scan
     }
   }
-  const at = text.indexOf(PROFILE_KEY);
-  if (at < 0) return undefined;
+  const key = profileKeyIn(text);
+  if (!key) return undefined;
+  const at = text.indexOf(key);
   const open = text.lastIndexOf("{", at);
   if (open < 0) return undefined;
   let depth = 0;
@@ -111,11 +114,12 @@ export function parseAiAnswer(text: string): ParsedAnswer {
   const found = findProfileJson(body);
   if (found) {
     const v = found.value as Record<string, unknown>;
-    profile = normalizeProfile(v[PROFILE_KEY] ?? v);
+    const key = PROFILE_KEYS.find((k) => k in v);
+    profile = normalizeProfile(key ? v[key] : v);
     if (!profile) warnings.push("The profile block was empty, so we'll suggest details from the resume text instead.");
     // Everything after the block is chat filler ("Let me know if…").
     body = body.slice(0, found.start);
-  } else if (body.includes(PROFILE_KEY)) {
+  } else if (profileKeyIn(body)) {
     warnings.push("Couldn't read the profile block (the JSON looks broken). We'll suggest details from the resume text instead.");
   }
 

@@ -16,7 +16,7 @@ import type { Seed } from "./resolve";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const OUT = join(here, "raw", "wikidata", "companies.json");
-const http = new HttpClient({ retries: 3, hostDelayMs: 5_000, timeoutMs: 120_000, backoffMs: 30_000, userAgent: "JobHunter-catalog/0.1 (open-source job radar; https://github.com/Tanmay-Mhatre)" });
+const http = new HttpClient({ retries: 3, hostDelayMs: 5_000, timeoutMs: 120_000, backoffMs: 30_000, userAgent: "RawJobs-catalog/0.1 (open-source job radar; https://github.com/Tanmay-Mhatre)" });
 
 /** Company-like classes (business, enterprise, public company, company, software company, corporation, organization-as-firm, startup). */
 const TYPES = "wd:Q4830453 wd:Q6881511 wd:Q891723 wd:Q783794 wd:Q1058914 wd:Q167037 wd:Q210167 wd:Q18388277";

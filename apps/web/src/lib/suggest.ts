@@ -1,7 +1,7 @@
-import { COUNTRIES } from "@jobhunter/core/catalog/places";
-import { allTitles } from "@jobhunter/core/catalog/roles";
-import { employersFromResume } from "@jobhunter/core/employers";
-import { detectFromResume, type AiProfile } from "@jobhunter/core/resume-parse";
+import { COUNTRIES } from "@rawjobs/core/catalog/places";
+import { allTitles } from "@rawjobs/core/catalog/roles";
+import { employersFromResume } from "@rawjobs/core/employers";
+import { detectFromResume, type AiProfile } from "@rawjobs/core/resume-parse";
 import { CV_DICTIONARY } from "../setup/presets";
 import { inferFamily, type Draft } from "./setup";
 

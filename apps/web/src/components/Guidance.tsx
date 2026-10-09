@@ -1,8 +1,8 @@
-import { diagnoseNoMatches } from "@jobhunter/core/diagnose";
+import { diagnoseNoMatches } from "@rawjobs/core/diagnose";
 import { ArrowRight, Bell, Check, ChevronRight, LoaderCircle, Radar as RadarIcon, RefreshCw, SearchX, TriangleAlert, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { scheduleStatus } from "../lib/automation";
-import type { Config } from "@jobhunter/core/schema";
+import type { Config } from "@rawjobs/core/schema";
 import { keyOf } from "../lib/companies";
 import { canRunLocally, type DataMeta, type Job } from "../lib/data";
 import { scanLine, type ScanState } from "../lib/scan";
@@ -53,7 +53,7 @@ export function checklistItems(config: Config | undefined, meta: DataMeta | unde
   ];
 }
 
-const DISMISS_KEY = "jobhunter.checklist.dismissed";
+const DISMISS_KEY = "rawjobs.checklist.dismissed";
 
 function ChecklistRows({ items, onStep, onScan, onCompanies }: { items: Item[]; onStep: (n: number) => void; onScan: () => void; onCompanies: () => void }) {
   return (
@@ -180,7 +180,7 @@ export function SetupChecklist({
   );
 }
 
-/** Not set up yet: what Job Hunter does, how far they got, and one clear next step. */
+/** Not set up yet: what RawJobs does, how far they got, and one clear next step. */
 export function SetupHero({
   items,
   started,

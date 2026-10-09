@@ -1,12 +1,12 @@
-import { citiesIn } from "@jobhunter/core/catalog/places";
-import { toDashboardJob } from "@jobhunter/core/dashboard";
-import type { DashboardJob, DashboardJobsFile, DataMeta, Job as FullJob, JobsFile } from "@jobhunter/core/schema";
+import { citiesIn } from "@rawjobs/core/catalog/places";
+import { toDashboardJob } from "@rawjobs/core/dashboard";
+import type { DashboardJob, DashboardJobsFile, DataMeta, Job as FullJob, JobsFile } from "@rawjobs/core/schema";
 
 /** data/discover.json (see core discover.ts); declared here so the browser bundle needs no Node code. */
 type DiscoverFile = { version: 1; generatedAt: string; indexGeneratedAt: string; jobs: DashboardJob[] };
 import { useCallback, useEffect, useState } from "react";
 
-export type { CompanyHealth, DataMeta, Profile, RunSummary } from "@jobhunter/core/schema";
+export type { CompanyHealth, DataMeta, Profile, RunSummary } from "@rawjobs/core/schema";
 /** A job as the dashboard has it (no description; see useDescription). */
 export type Job = DashboardJob;
 
@@ -49,7 +49,7 @@ function fromFile(file: DashboardJobsFile | JobsFile): Job[] {
   return all.filter((x) => !x.job.why.gate).map((x) => x.job);
 }
 
-/** Loads jobs.json (jobs that pass your filters) and meta.json, written by `jobhunter run`. */
+/** Loads jobs.json (jobs that pass your filters) and meta.json, written by `rawjobs run`. */
 export function useData() {
   const [state, setState] = useState<DataState>({ kind: "loading" });
 

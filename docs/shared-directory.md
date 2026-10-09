@@ -31,14 +31,14 @@ user is ever uploaded.
 | Piece | Where | What it does |
 |---|---|---|
 | Outbox and sharing | `packages/core/src/directory.ts`, CLI `setup check` | Boards found by Add by link (and not in the directory) are queued in `data/catalog/outbox.json` and sent to the inbox. Kept until sent. Off with `directory.share_additions: false`. |
-| Directory download | `packages/core/src/directory.ts`, `jobhunter directory update` | Reads `manifest.json`, downloads newer files, checks SHA-256, swaps them in. The dev server runs it weekly in the background (`directory.auto_update`). |
+| Directory download | `packages/core/src/directory.ts`, `rawjobs directory update` | Reads `manifest.json`, downloads newer files, checks SHA-256, swaps them in. The dev server runs it weekly in the background (`directory.auto_update`). |
 | Contribution inbox | `services/contribute` | Cloudflare Worker. `POST /v1/contributions` (public, rate-limited, shape-checked, capped at `DAILY_CAP` boards a day for everyone, repeats within 7 days skipped); `GET /v1/pending` and `POST /v1/ack` for the workflow (token). |
 | Contributions workflow | `.github/workflows/directory-contributions.yml` | Every 3 hours: accept, publish incrementally, commit `contributions.json`, acknowledge. |
 | Weekly rebuild | `.github/workflows/directory-rebuild.yml` | Full rebuild and a dated release; saves its working state as the `state` release so the next run skips recently checked boards. |
 | Finding more companies | `scripts/catalog/` | See [Coverage](#coverage) below. |
 | Public directory repo | `Tanmay-Mhatre/job-hunter-directory` | Releases (the files apps download), `contributions.json`, `coverage.md`, attribution. |
 
-Overrides: `JOBHUNTER_DIRECTORY_URL` (download base) and `JOBHUNTER_CONTRIBUTE_URL` (inbox) point an install at your own copies. See [self-hosting.md](self-hosting.md).
+Overrides: `RAWJOBS_DIRECTORY_URL` (download base) and `RAWJOBS_CONTRIBUTE_URL` (inbox) point an install at your own copies (the older `JOBHUNTER_` names still work). See [self-hosting.md](self-hosting.md).
 
 ## Coverage
 
@@ -64,7 +64,7 @@ Restricted lists (share-alike or no licence) are only counted, never published. 
 
 Shared (on by default, off with `directory.share_additions: false` or Settings → Sharing): hiring
 system, board slug (plus Workday shard/site, EU region), company name, and the app name
-(`job-hunter`, optionally `/version`; any other value is dropped).
+(`rawjobs`, optionally `/version`; older apps send `job-hunter`; any other value is dropped).
 Never shared: profile, resume, searches, statuses, which jobs you open. The inbox uses the IP
 address only for rate limiting and stores none. Full details for users: [PRIVACY.md](../PRIVACY.md).
 
@@ -116,7 +116,7 @@ as one gzipped shard per hiring system on the `jobs` release of the directory re
 - **How apps use it** (`packages/core/src/job-feed.ts`): every scan downloads the shards that changed,
   then fetches live only the directory companies whose jobs could pass the user's filters, plus any
   the feed doesn't cover or that are more than 3 days old. Every job shown is still checked live;
-  the feed only decides which companies are worth a request. `jobhunter scan --full` skips the feed.
+  the feed only decides which companies are worth a request. `rawjobs scan --full` skips the feed.
 - **Watching it:** the workflow opens an issue when a run fails, or when jobs or companies move more
   than 20% from the day before. It also re-enables itself each run, so GitHub doesn't switch the
   schedule off after 60 quiet days.

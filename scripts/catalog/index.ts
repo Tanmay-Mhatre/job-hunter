@@ -25,7 +25,7 @@ const OUT = join(OUT_DIR, `index-${[...ONLY].sort().join("-")}.jsonl`);
 const MAX_ROWS = 300;
 const WORKERS: Record<string, number> = { greenhouse: 2, lever: 2, ashby: 2, smartrecruiters: 2 };
 
-const http = new HttpClient({ retries: 2, hostDelayMs: 250, timeoutMs: 30_000, backoffMs: 3_000, userAgent: "JobHunter-catalog/0.1 (open-source job radar; low-rate board index)" });
+const http = new HttpClient({ retries: 2, hostDelayMs: 250, timeoutMs: 30_000, backoffMs: 3_000, userAgent: "RawJobs-catalog/0.1 (open-source job radar; low-rate board index)" });
 
 type Entry = { key: string; ats: string; slug: string; region?: string; name: string; status: string };
 /** [title, location, workplace, ageDays, count] */

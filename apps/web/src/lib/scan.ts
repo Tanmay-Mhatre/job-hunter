@@ -34,8 +34,8 @@ export type ScanState = {
 };
 
 const IDLE: ScanState = { phase: "idle", companies: [], total: 0, done: 0, resumed: 0, results: {} };
-const SCOPE_KEY = "jobhunter.scanScope";
-const ASK_KEY = "jobhunter.scanAsk";
+const SCOPE_KEY = "rawjobs.scanScope";
+const ASK_KEY = "rawjobs.scanAsk";
 
 /** Your default scan type (preselected in the "which scan?" pop-up, or run straight away). */
 export const lastScope = (): ScanScope => (load<string>(SCOPE_KEY, "mine") === "all" ? "all" : "mine");
@@ -46,7 +46,7 @@ export const scanPrefs = (): ScanPrefs => ({ scope: lastScope(), ask: load<boole
 export function setScanPrefs(p: Partial<ScanPrefs>): void {
   if (p.scope) save(SCOPE_KEY, p.scope);
   if (p.ask !== undefined) save(ASK_KEY, p.ask);
-  window.dispatchEvent(new Event("jobhunter:scan-prefs"));
+  window.dispatchEvent(new Event("rawjobs:scan-prefs"));
 }
 
 /** One scan at a time, shared by the header button, the wizard and Radar cards. */
@@ -151,8 +151,8 @@ export function useScanPrefs(): ScanPrefs {
   const [prefs, setPrefs] = useState(scanPrefs);
   useEffect(() => {
     const changed = () => setPrefs(scanPrefs());
-    window.addEventListener("jobhunter:scan-prefs", changed);
-    return () => window.removeEventListener("jobhunter:scan-prefs", changed);
+    window.addEventListener("rawjobs:scan-prefs", changed);
+    return () => window.removeEventListener("rawjobs:scan-prefs", changed);
   }, []);
   return prefs;
 }

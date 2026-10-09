@@ -78,7 +78,7 @@ export function ScanProgress({ scan, onRetry }: { scan: ScanState; onRetry?: () 
       {scan.error && (
         <div className="rounded-xl bg-bad-soft/50 p-3 text-sm" role="alert">
           <p className="font-medium text-bad">The scan stopped before it finished.</p>
-          <p className="mt-0.5 text-muted">Check your internet connection and try again. If it keeps happening, restart Job Hunter and scan again.</p>
+          <p className="mt-0.5 text-muted">Check your internet connection and try again. If it keeps happening, restart RawJobs and scan again.</p>
           {onRetry && (
             <Button size="sm" className="mt-2" onClick={onRetry}>
               <RefreshCw className="size-3.5" /> Try again

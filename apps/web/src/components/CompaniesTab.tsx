@@ -114,7 +114,7 @@ function SaveStatus({ state, retry, onScan, scanning }: { state: SaveState; retr
 }
 
 type Tab = "mine" | "suggestions" | "browse";
-const TAB_KEY = "jobhunter.companiesTab";
+const TAB_KEY = "rawjobs.companiesTab";
 const TABS: Tab[] = ["mine", "suggestions", "browse"];
 
 /**

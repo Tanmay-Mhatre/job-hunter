@@ -1,7 +1,7 @@
-# Example Job Hunter config. Setup writes your own to jobhunter.config.local.yaml (gitignored);
+# Example RawJobs config. Setup writes your own to rawjobs.config.local.yaml (gitignored);
 # or copy this file there and edit it. Your config is personal: it never goes in git.
 # Secrets (Telegram token, etc.) never go in any config file.
-# Check it with:  pnpm jobhunter validate
+# Check it with:  pnpm rawjobs validate
 
 profile:
   name: "Product manager, London + remote"
@@ -41,7 +41,7 @@ profile:
   min_score: 70
 
 # One line per company. Get these lines from careers URLs with:
-#   pnpm jobhunter detect https://jobs.lever.co/somecompany
+#   pnpm rawjobs detect https://jobs.lever.co/somecompany
 companies:
   - { name: "Stripe", ats: greenhouse, slug: "stripe" }
   - { name: "Palantir", ats: lever, slug: "palantir" }

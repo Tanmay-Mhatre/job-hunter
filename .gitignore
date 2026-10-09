@@ -6,7 +6,10 @@ coverage/
 .env
 .env.*
 
-# Your config is personal and stays on your computer (the repo ships jobhunter.config.example.yaml)
+# Your config is personal and stays on your computer (the repo ships rawjobs.config.example.yaml)
+rawjobs.config.local.yaml
+rawjobs.config.yaml
+# The same, under the names from before the rename to RawJobs
 jobhunter.config.local.yaml
 jobhunter.config.yaml
 # Your master resume (saved by setup). Personal: never commit it.
@@ -15,7 +18,7 @@ profile/
 # Local run output
 out/
 
-# Run history written by `jobhunter run` (published on the data branch in phase 1)
+# Run history written by `rawjobs run` (published on the data branch in phase 1)
 data/
 
 # Downloaded source datasets for the company catalogue (large; rebuilt by scripts)

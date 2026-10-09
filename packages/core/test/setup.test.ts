@@ -1,8 +1,8 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { parseConfig } from "../src/config";
+import { findConfigPath, isLegacyConfig, parseConfig } from "../src/config";
 import { detectCompany } from "../src/connectors";
 import { diagnoseNoMatches } from "../src/diagnose";
 import type { Job } from "../src/schema";
@@ -10,7 +10,7 @@ import { checkCompanies, saveConfig, setupStatus } from "../src/setup";
 import { configToYaml } from "../src/yaml-writer";
 import { profile, fakeHttp, fixture, json } from "./helpers";
 
-const example = parseConfig(readFileSync(new URL("../../../jobhunter.config.example.yaml", import.meta.url), "utf8"));
+const example = parseConfig(readFileSync(new URL("../../../rawjobs.config.example.yaml", import.meta.url), "utf8"));
 
 describe("configToYaml", () => {
   it("writes an empty company list that reads back as empty, not null", () => {
@@ -131,8 +131,8 @@ describe("saveConfig / setupStatus", () => {
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
   it("only counts the .local file as personal, and writes a valid one", () => {
-    dir = mkdtempSync(join(tmpdir(), "jobhunter-setup-"));
-    writeFileSync(join(dir, "jobhunter.config.yaml"), configToYaml(example));
+    dir = mkdtempSync(join(tmpdir(), "rawjobs-setup-"));
+    writeFileSync(join(dir, "rawjobs.config.yaml"), configToYaml(example));
     expect(setupStatus(dir)).toMatchObject({ isPersonal: false, valid: false, hasData: false });
 
     const res = saveConfig(example, dir);
@@ -143,16 +143,38 @@ describe("saveConfig / setupStatus", () => {
   });
 
   it("rejects an invalid config with readable issues, and reports a broken file", () => {
-    dir = mkdtempSync(join(tmpdir(), "jobhunter-setup-"));
+    dir = mkdtempSync(join(tmpdir(), "rawjobs-setup-"));
     const res = saveConfig({ ...example, profile: { ...example.profile, titles: { include: [], exclude: [] } } }, dir);
     expect(res).toMatchObject({ ok: false, issues: [{ path: "profile.titles.include", message: "add at least one title to titles.include" }] });
     expect(saveConfig({ ...example, companies: [] }, dir)).toMatchObject({ ok: true });
 
-    writeFileSync(join(dir, "jobhunter.config.local.yaml"), "profile: { titles: { include: [] } }\n");
+    writeFileSync(join(dir, "rawjobs.config.local.yaml"), "profile: { titles: { include: [] } }\n");
     const status = setupStatus(dir);
     expect(status).toMatchObject({ isPersonal: true, valid: false });
     expect(status.errors).toMatch(/titles\.include/);
     expect(status.raw).toBeTruthy();
+  });
+
+  it("keeps reading and saving a config under its pre-rename name until a rawjobs one exists", () => {
+    dir = mkdtempSync(join(tmpdir(), "rawjobs-setup-"));
+    const legacy = join(dir, "jobhunter.config.local.yaml");
+    writeFileSync(legacy, configToYaml(example));
+    expect(setupStatus(dir)).toMatchObject({ configPath: legacy, isPersonal: true, valid: true });
+    expect(saveConfig(example, dir)).toMatchObject({ ok: true, path: legacy });
+    expect(existsSync(join(dir, "rawjobs.config.local.yaml"))).toBe(false);
+
+    writeFileSync(join(dir, "rawjobs.config.local.yaml"), configToYaml(example));
+    expect(setupStatus(dir).configPath).toBe(join(dir, "rawjobs.config.local.yaml"));
+  });
+
+  it("finds a config under the new names first, then the pre-rename ones", () => {
+    dir = mkdtempSync(join(tmpdir(), "rawjobs-setup-"));
+    writeFileSync(join(dir, "jobhunter.config.yaml"), "");
+    expect(findConfigPath(dir)).toBe(join(dir, "jobhunter.config.yaml"));
+    expect(isLegacyConfig(findConfigPath(dir))).toBe(true);
+    writeFileSync(join(dir, "rawjobs.config.yaml"), "");
+    expect(findConfigPath(dir)).toBe(join(dir, "rawjobs.config.yaml"));
+    expect(isLegacyConfig(findConfigPath(dir))).toBe(false);
   });
 });
 

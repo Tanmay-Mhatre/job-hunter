@@ -31,7 +31,7 @@ const MAX_PAGES = 8;
 const WORKERS = BULK ? 16 : 6;
 const REUSE_DAYS = BULK ? 90 : 30;
 // Some sites only serve a full page to browser-like clients; say who we are anyway.
-const UA = "Mozilla/5.0 (compatible; JobHunter-resolver/0.1; open-source job radar; reads public careers pages)";
+const UA = "Mozilla/5.0 (compatible; RawJobs-resolver/0.1; open-source job radar; reads public careers pages)";
 const http = new HttpClient({ retries: 1, hostDelayMs: 1_000, timeoutMs: 15_000, backoffMs: 2_000, userAgent: UA });
 
 export type Seed = { name: string; website: string; industries: string[]; careers_url?: string; region?: string };

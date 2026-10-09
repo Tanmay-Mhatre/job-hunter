@@ -2,18 +2,20 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
+import { envSetting } from "./env";
 
 /**
  * The shared company directory lives online (built weekly from public lists plus what users add)
  * and every install keeps a copy in data/catalog. These defaults point at the project's own
- * directory and inbox; set JOBHUNTER_DIRECTORY_URL / JOBHUNTER_CONTRIBUTE_URL to use your own.
+ * directory and inbox; set RAWJOBS_DIRECTORY_URL / RAWJOBS_CONTRIBUTE_URL to use your own
+ * (the older JOBHUNTER_ names still work).
  */
 export const DEFAULT_DIRECTORY_URL = "https://github.com/Tanmay-Mhatre/job-hunter-directory/releases/latest/download";
 /** The contribution inbox (services/contribute); empty turns sharing off. */
 export const DEFAULT_CONTRIBUTE_URL = "https://job-hunter-contribute.tanmay-jobhunter.workers.dev";
 
-export const directoryUrl = () => (process.env.JOBHUNTER_DIRECTORY_URL ?? DEFAULT_DIRECTORY_URL).replace(/\/$/, "");
-export const contributeUrl = () => (process.env.JOBHUNTER_CONTRIBUTE_URL ?? DEFAULT_CONTRIBUTE_URL).replace(/\/$/, "");
+export const directoryUrl = () => (envSetting("DIRECTORY_URL") ?? DEFAULT_DIRECTORY_URL).replace(/\/$/, "");
+export const contributeUrl = () => (envSetting("CONTRIBUTE_URL") ?? DEFAULT_CONTRIBUTE_URL).replace(/\/$/, "");
 
 export type DirectoryManifest = {
   version: string;
@@ -143,7 +145,7 @@ export async function sendContributions(dataDir: string, opts: { fetchImpl?: typ
       const res = await (opts.fetchImpl ?? fetch)(`${url}/v1/contributions`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ client: opts.client ?? "job-hunter", boards: batch }),
+        body: JSON.stringify({ client: opts.client ?? "rawjobs", boards: batch }),
         signal: AbortSignal.timeout(10_000),
       });
       if (!res.ok && res.status !== 400) throw new Error(`HTTP ${res.status}`);

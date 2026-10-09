@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
+import { envSetting } from "./env";
 import { gateOf } from "./score";
 import type { Profile, Workplace } from "./schema";
 
@@ -13,7 +14,7 @@ import type { Profile, Workplace } from "./schema";
  * shown is still checked live. Nothing about the user is sent anywhere; filtering happens here.
  */
 export const DEFAULT_JOB_FEED_URL = "https://github.com/Tanmay-Mhatre/job-hunter-directory/releases/download/jobs";
-export const jobFeedUrl = () => (process.env.JOBHUNTER_JOBS_URL ?? DEFAULT_JOB_FEED_URL).replace(/\/$/, "");
+export const jobFeedUrl = () => (envSetting("JOBS_URL") ?? DEFAULT_JOB_FEED_URL).replace(/\/$/, "");
 
 /** Format version: clients ignore a feed whose schema they don't know. */
 export const JOB_FEED_SCHEMA = 1;
