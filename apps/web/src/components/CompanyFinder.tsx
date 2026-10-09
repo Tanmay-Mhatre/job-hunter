@@ -3,6 +3,7 @@ import { isPlaceholderBoard } from "@jobhunter/core/text";
 import { ChevronDown, CloudDownload, ExternalLink, Link2, LoaderCircle, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ATS_LABEL, groupBoards, SUPPORTED, type CompanyRef } from "../lib/companies";
+import { companyIndex, companyMatches, type CompanyIndex } from "../lib/companySearch";
 import { canRunLocally } from "../lib/data";
 import { DirectoryBar, updateDirectory } from "./DirectoryBar";
 import { AddButton } from "./CompanyButtons";
@@ -75,9 +76,10 @@ export function CompanyFinder({ watched, forYou, directory, directoryError, onAd
 
 /**
  * Directory search, one row per company (its other careers pages fold under it). Browsing lists companies
- * with open jobs; a search finds any, and yours always show. Name matches first, then companies
- * hiring for you now, then the best fit for your profile, then the biggest. Sandbox and test boards
- * never show (unless one is already in My companies).
+ * with open jobs; a search finds any, and yours always show. The search forgives typos (companyMatches):
+ * exact and starts-with names first, then close spellings; within each, companies hiring for you now,
+ * then the best fit for your profile, then the biggest. Sandbox and test boards never show (unless one
+ * is already in My companies).
  */
 export function searchDirectory(
   all: readonly DirCompany[],
@@ -89,9 +91,13 @@ export function searchDirectory(
     system?: "all" | "supported" | "soon";
     onlyForYou?: boolean;
     industry?: string;
+    /** The directory's search index (companyIndex); built here when not given. */
+    index?: CompanyIndex<DirCompany>;
   },
 ) {
   const s = o.q.trim().toLowerCase();
+  const matches = s ? companyMatches(o.index ?? companyIndex(all), s) : undefined;
+  const rank = (c: DirCompany) => matches?.get(c) ?? 0;
   const jobsFor = (c: DirCompany) => o.forYou.get(c.key) ?? 0;
   const system = o.system ?? "all";
   const sorted = all
@@ -100,10 +106,10 @@ export function searchDirectory(
     .filter((c) => system === "all" || (system === "supported") === SUPPORTED.has(c.ats))
     .filter((c) => !o.onlyForYou || jobsFor(c) > 0)
     .filter((c) => !o.industry || !!c.tags?.includes(o.industry) || !!c.title_tags?.includes(o.industry))
-    .filter((c) => !s || c.name.toLowerCase().includes(s) || c.slug.toLowerCase().includes(s))
+    .filter((c) => !matches || matches.has(c))
     .sort(
       (a, b) =>
-        Number(b.name.toLowerCase().startsWith(s)) - Number(a.name.toLowerCase().startsWith(s)) ||
+        rank(a) - rank(b) ||
         jobsFor(b) - jobsFor(a) ||
         (o.fit?.get(b.key) ?? 0) - (o.fit?.get(a.key) ?? 0) ||
         (b.open_jobs ?? 0) - (a.open_jobs ?? 0),
@@ -180,9 +186,10 @@ function Browse({
   const top = useRef<HTMLDivElement>(null);
   const jobsFor = (c: DirCompany) => forYou.get(c.key) ?? 0;
 
+  const index = useMemo(() => (all ? companyIndex(all) : undefined), [all]);
   const results = useMemo(
-    () => (all ? searchDirectory(all, { q, watched, forYou, fit, system, onlyForYou, industry }) : []),
-    [all, q, onlyForYou, system, industry, watched, forYou, fit],
+    () => (all ? searchDirectory(all, { q, watched, forYou, fit, system, onlyForYou, industry, index }) : []),
+    [all, index, q, onlyForYou, system, industry, watched, forYou, fit],
   );
 
   // Back to page 1 whenever the search or filters change.

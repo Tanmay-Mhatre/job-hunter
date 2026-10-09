@@ -1,3 +1,5 @@
+import { BROAD_TITLE_SYNONYMS, TITLE_ABBREVIATIONS, TITLE_HEADS, TITLE_SPELLINGS, TITLE_SYNONYMS } from "./catalog/titles";
+
 const NAMED_ENTITIES: Record<string, string> = {
   amp: "&",
   lt: "<",
@@ -92,6 +94,130 @@ export function matchesAny(text: string, terms: readonly string[]): boolean {
 
 export function matchingTerms(text: string, terms: readonly string[]): string[] {
   return terms.filter((t) => matchesTerm(text, t));
+}
+
+// ---------- job titles ----------
+
+/** Plural to singular, the same way for titles and terms: "designers" -> "designer", "companies" -> "company". */
+function stem(word: string): string {
+  if (word.length <= 3 || !word.endsWith("s") || /(?:ss|us|is)$/.test(word)) return word;
+  return word.endsWith("ies") ? `${word.slice(0, -3)}y` : word.slice(0, -1);
+}
+
+const stemAll = (s: string) => s.split(" ").map(stem).join(" ");
+const SPELLING = new Map(Object.entries(TITLE_SPELLINGS).flatMap(([to, from]) => from.map((f) => [stemAll(f), to] as const)));
+const SPELLING_RE = new RegExp(`(?<![\\p{L}\\p{N}])(?:${[...SPELLING.keys()].join("|")})(?![\\p{L}\\p{N}])`, "gu");
+/** "eng" is "engineering" in "eng manager", "head of eng", "vp eng"; otherwise "engineer". */
+const ENG_TEAM_NEXT = new Set(["manager", "mgr", "lead", "director", "dir", "team", "leader"]);
+const ENG_TEAM_PREV = new Set(["of", "vp", "president", "head"]);
+/** Trailing level marks that sit after the job noun: "Engineer II, Backend". */
+const LEVEL = /^(?:i{1,3}|iv|v|vi|\d+|l\d)$/;
+
+/** One piece of a title as matching words: short forms spelled out, one spelling per word, plurals singular. */
+function titleWords(words: string[]): string {
+  const out = words.map((w, i) => {
+    if (w === "eng") return ENG_TEAM_NEXT.has(words[i + 1] ?? "") || ENG_TEAM_PREV.has(words[i - 1] ?? "") ? "engineering" : "engineer";
+    return TITLE_ABBREVIATIONS[w] ?? TITLE_ABBREVIATIONS[stem(w)] ?? w;
+  });
+  return stemAll(stemAll(out.join(" ")).replace(SPELLING_RE, (m) => SPELLING.get(m)!));
+}
+
+/** "UX/UI Designer" -> "ux ui designer", "ux designer", "ui designer" (the first two slashed words only). */
+function slashVariants(words: string[]): string[][] {
+  const out: string[][] = [words.flatMap((w) => w.split("/").filter(Boolean))];
+  const slashed = words.flatMap((w, i) => (w.includes("/") ? [i] : [])).slice(0, 2);
+  let lists: string[][] = [words];
+  for (const i of slashed) lists = lists.flatMap((l) => l[i]!.split("/").filter(Boolean).map((alt) => l.map((w, j) => (j === i ? alt : w))));
+  if (slashed.length) out.push(...lists);
+  return out;
+}
+
+function wordsOf(text: string): string[] {
+  const lower = text.toLowerCase();
+  return (/[^\x00-\x7f]/.test(lower) ? lower.normalize("NFKD") : lower)
+    .replace(/[\u0300-\u036f'’.]/g, "")
+    .replace(/&/g, " and ")
+    .split(/[^\p{L}\p{N}+#/]+/u)
+    .filter((w) => w && w !== "/");
+}
+
+const formsCache = new Map<string, string>();
+
+/**
+ * A job title in matching form: every reading of it, joined by " | " so no term matches across two.
+ * "Sr. Manager, Product" -> "senior manager | product | senior product manager | senior manager of product".
+ * The part before a comma or dash is turned around only when it ends in a job noun (TITLE_HEADS).
+ */
+export function titleForms(title: string): string {
+  let forms = formsCache.get(title);
+  if (forms !== undefined) return forms;
+  const segments = title
+    .split(/\s+[-–—/|:]\s+|[,;()[\]–—|:]/)
+    .map((s) => slashVariants(wordsOf(s)).map(titleWords).filter(Boolean))
+    .filter((v) => v.length);
+  const out = segments.flat();
+  for (let i = 0; i + 1 < segments.length; i++) {
+    const words = segments[i]![0]!.split(" ");
+    let h = words.length - 1;
+    while (h > 0 && LEVEL.test(words[h]!)) h--;
+    if (!TITLE_HEADS.has(words[h]!)) continue;
+    for (const next of segments[i + 1]!) {
+      out.push([...words.slice(0, h), next, ...words.slice(h)].join(" "), `${words.join(" ")} of ${next}`);
+    }
+  }
+  forms = [...new Set(out)].join(" | ");
+  if (formsCache.size > 20_000) formsCache.clear();
+  formsCache.set(title, forms);
+  return forms;
+}
+
+const canonical = (term: string) => titleWords(slashVariants(wordsOf(term))[0]!);
+const synonymGroups = (groups: string[][]) => groups.map((g) => g.map(canonical));
+const SYNONYMS = synonymGroups(TITLE_SYNONYMS);
+const BROAD = synonymGroups(BROAD_TITLE_SYNONYMS);
+
+/** Your terms in matching form, plus the same term with each equivalent title swapped in. */
+export function expandTitleTerms(terms: readonly string[], o: { broad?: boolean } = {}): string[] {
+  const groups = o.broad ? [...SYNONYMS, ...BROAD] : SYNONYMS;
+  const out = new Set<string>();
+  for (const term of terms) {
+    const t = canonical(term);
+    if (!t) continue;
+    out.add(t);
+    for (const g of groups)
+      for (const p of g) {
+        if (!` ${t} `.includes(` ${p} `)) continue;
+        for (const q of g) if (q !== p) out.add(` ${t} `.replace(` ${p} `, ` ${q} `).trim());
+      }
+  }
+  return [...out];
+}
+
+const titleCache = new Map<string, RegExp | null>();
+
+/** One pattern for a list of title terms, compiled once per list. "of" may sit between words ("vp product" ~ "vp of product"). */
+export function titleTermsPattern(terms: readonly string[], o: { broad?: boolean } = {}): RegExp | null {
+  const key = `${o.broad ? 1 : 0}\u0000${terms.join("\u0000")}`;
+  let re = titleCache.get(key);
+  if (re === undefined) {
+    const esc = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const parts = expandTitleTerms(terms, o).map((t) => t.split(" ").map(esc).join(" (?:of )?"));
+    re = parts.length ? new RegExp(`(?<![\\p{L}\\p{N}+#])(?:${parts.join("|")})(?![\\p{L}\\p{N}+#])`, "u") : null;
+    titleCache.set(key, re);
+  }
+  return re;
+}
+
+/**
+ * Does a job title name one of these terms? Like matchesAny, and also after reading both the same
+ * way: plurals ("Designers"), short forms ("Sr. PM"), word order ("Manager, Product"), slashes
+ * ("UX/UI Designer") and equivalent titles ("Software Developer" for "software engineer").
+ * Whole words still: "production manager" never matches "product manager".
+ */
+export function matchesTitle(title: string, terms: readonly string[], forms?: string): boolean {
+  if (!terms.length) return false;
+  if (matchesAny(title, terms)) return true;
+  return !!titleTermsPattern(terms)?.test(forms ?? titleForms(title));
 }
 
 /** Best-effort workplace from free-text location, for ATSs that don't send one. */
