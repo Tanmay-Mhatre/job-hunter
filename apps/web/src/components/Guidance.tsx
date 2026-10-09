@@ -255,7 +255,7 @@ export function FirstScanCard({ scan, onScan }: { scan: ScanState; onScan: () =>
     <Card className="p-6 text-center sm:p-8">
       <h2 className="text-lg font-semibold">{running ? "Finding jobs for you…" : "Ready for your first scan"}</h2>
       <p className="mx-auto mt-1 max-w-md text-sm text-muted">
-        We update the company directory, scan your companies and every company in your industries live, and score each job against your profile.
+        We check thousands of companies for jobs that match your roles and places. This usually takes a few minutes.
       </p>
       {running ? (
         <div className="mx-auto mt-5 max-w-md text-left">

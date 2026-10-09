@@ -203,6 +203,8 @@ export const ProfileSchema = z.object({
     remote_ok: terms.default([]),
     /** Remote regions you can't work from, e.g. "us", "canada". Blocks a remote match, never a city match. */
     remote_exclude: terms.default([]),
+    /** Office jobs (in `include` places) you'll take: "onsite", "hybrid". Empty = both. Remote jobs follow remote_ok. */
+    workplace: z.array(z.enum(["onsite", "hybrid"])).default([]),
   }),
   /** Industry ids you want to work in (see catalog/industries.ts); used to suggest companies. */
   industries: z.array(z.string().trim().toLowerCase().min(1)).default([]),

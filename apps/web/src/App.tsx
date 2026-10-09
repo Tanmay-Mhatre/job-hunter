@@ -11,7 +11,7 @@ import { RadarPage } from "./components/radar/RadarPage";
 import { NotifyWhenDone } from "./components/NotifyWhenDone";
 import { ScanButton, ScanChooser } from "./components/ScanButton";
 import { Settings } from "./components/Settings";
-import { Toaster } from "./components/Toast";
+import { toast, Toaster } from "./components/Toast";
 import { Button, Card, cx, IconButton, Kbd } from "./components/ui";
 import { jobCompanyKey, keyOf, refOfJob, toRow } from "./lib/companies";
 import { canRunLocally, useData, useOtherJobs, type Job } from "./lib/data";
@@ -114,6 +114,18 @@ export function App() {
   }, [startScan]);
   const closeChooser = useCallback(() => setChoosing(false), []);
   const scanning = scan.phase === "running";
+  /** Setup just saved and started the first scan: say how it went when it ends. */
+  const announceScan = useRef(false);
+  useEffect(() => {
+    if (!announceScan.current || (scan.phase !== "done" && scan.phase !== "error")) return;
+    announceScan.current = false;
+    const m = scan.summary?.matches ?? 0;
+    toast(
+      scan.phase === "error"
+        ? { message: "Your first scan didn't finish. Try Scan now.", tone: "bad" }
+        : { message: m ? <>Scan done: <b>{m.toLocaleString()}</b> matching {m === 1 ? "job" : "jobs"}.</> : "Scan done. No matches yet: see why below." },
+    );
+  }, [scan.phase, scan.summary]);
 
   /** Radar "Save to my profile": its place and industry picks become your profile, then a rescan. */
   const saveProfileFromRadar = useCallback(
@@ -329,14 +341,16 @@ export function App() {
             update={update}
             existing={personal}
             configErrors={status?.valid === false ? status.errors : undefined}
-            scan={scan}
             startScan={startScan}
             onSaved={async () => {
               await setup.refresh();
               save(DRAFT_KEY, null);
               save(WELCOME_SEEN_KEY, true);
             }}
-            onFinish={() => go({ tab: "radar" })}
+            onFinish={() => {
+              announceScan.current = true;
+              go({ tab: "radar" });
+            }}
             onExit={exitSetup}
             progress={progress}
             resumeText={resume.text}

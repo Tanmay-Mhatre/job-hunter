@@ -9,6 +9,8 @@ export type RoleFamily = {
   titles: string[];
   /** Titles that commonly sneak in when searching this family but are usually unwanted. */
   exclude: string[];
+  /** Topic words job descriptions in this family mention: suggested in setup's Topics step. */
+  topics: string[];
 };
 
 export const SENIORITY = [
@@ -24,10 +26,7 @@ export const SENIORITY = [
   "vice president",
   "svp",
   "chief",
-  "group",
-  "manager",
   "associate director",
-  "executive",
 ];
 
 /** Exclusions useful for almost any senior search. */
@@ -37,6 +36,7 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "product",
     label: "Product Management",
+    topics: ["roadmap", "discovery", "b2b", "saas", "platform", "api", "experimentation", "analytics", "user research", "go to market"],
     titles: [
       "product manager",
       "product lead",
@@ -60,6 +60,7 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "engineering",
     label: "Software Engineering",
+    topics: ["typescript", "python", "java", "golang", "react", "node", "microservices", "distributed systems", "api", "cloud"],
     titles: [
       "software engineer",
       "software developer",
@@ -90,6 +91,7 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "data-ai",
     label: "Data & AI",
+    topics: ["machine learning", "llm", "python", "sql", "data platform", "analytics", "nlp", "deep learning", "mlops", "generative ai"],
     titles: [
       "data scientist",
       "data analyst",
@@ -115,6 +117,7 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "design",
     label: "Design & UX",
+    topics: ["figma", "user research", "design systems", "prototyping", "interaction design", "accessibility", "usability", "mobile app", "visual design"],
     titles: [
       "product designer",
       "ux designer",
@@ -138,6 +141,7 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "devops",
     label: "DevOps, Cloud & SRE",
+    topics: ["kubernetes", "aws", "terraform", "docker", "ci/cd", "observability", "gcp", "azure", "linux", "infrastructure as code"],
     titles: [
       "devops engineer",
       "site reliability engineer",
@@ -157,6 +161,7 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "security",
     label: "Cybersecurity",
+    topics: ["cloud security", "siem", "incident response", "penetration testing", "iso 27001", "soc 2", "vulnerability management", "identity", "threat intelligence"],
     titles: [
       "security engineer",
       "application security",
@@ -178,6 +183,7 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "it",
     label: "IT & Enterprise Systems",
+    topics: ["erp", "sap", "salesforce", "servicenow", "microsoft 365", "itil", "networking", "active directory", "workday"],
     titles: [
       "it manager",
       "it support",
@@ -198,12 +204,14 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "qa",
     label: "Quality Assurance & Testing",
+    topics: ["test automation", "selenium", "cypress", "playwright", "api testing", "performance testing", "manual testing", "ci/cd"],
     titles: ["qa engineer", "quality assurance", "test engineer", "sdet", "automation engineer", "qa lead", "qa manager", "performance engineer"],
     exclude: [],
   },
   {
     id: "program",
     label: "Project & Program Management",
+    topics: ["agile", "scrum", "pmp", "stakeholder management", "delivery", "jira", "budget", "transformation", "risk management"],
     titles: [
       "project manager",
       "program manager",
@@ -222,6 +230,7 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "marketing",
     label: "Marketing",
+    topics: ["b2b", "demand generation", "seo", "content marketing", "brand", "marketing automation", "hubspot", "paid media", "product marketing", "events"],
     titles: [
       "marketing manager",
       "product marketing manager",
@@ -248,12 +257,14 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "growth",
     label: "Growth",
+    topics: ["experimentation", "acquisition", "retention", "activation", "funnel", "analytics", "paid media", "lifecycle", "monetization"],
     titles: ["growth manager", "head of growth", "growth lead", "growth analyst", "user acquisition", "monetization manager", "retention manager"],
     exclude: [],
   },
   {
     id: "content",
     label: "Content & Communications",
+    topics: ["copywriting", "seo", "social media", "communications", "public relations", "editorial", "storytelling", "video", "newsletter"],
     titles: [
       "content strategist",
       "copywriter",
@@ -272,6 +283,7 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "sales",
     label: "Sales",
+    topics: ["b2b", "saas", "enterprise", "pipeline", "quota", "salesforce", "new business", "account management", "negotiation", "partnerships"],
     titles: [
       "account executive",
       "enterprise account executive",
@@ -298,6 +310,7 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "bizdev",
     label: "Business Development & Partnerships",
+    topics: ["partnerships", "alliances", "channel", "go to market", "negotiation", "b2b", "enterprise", "ecosystem", "revenue"],
     titles: [
       "business development manager",
       "business development",
@@ -314,6 +327,7 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "customer",
     label: "Customer Success & Support",
+    topics: ["customer success", "onboarding", "retention", "churn", "zendesk", "saas", "enterprise", "renewals", "support"],
     titles: [
       "customer success manager",
       "head of customer success",
@@ -331,6 +345,7 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "operations",
     label: "Operations",
+    topics: ["process improvement", "operations", "automation", "kpi", "vendor management", "lean", "reporting", "scaling"],
     titles: [
       "operations manager",
       "business operations",
@@ -349,6 +364,7 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "strategy",
     label: "Strategy & Consulting",
+    topics: ["strategy", "consulting", "m&a", "business case", "market research", "transformation", "financial modelling", "corporate development"],
     titles: [
       "strategy manager",
       "head of strategy",
@@ -367,6 +383,7 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "finance",
     label: "Finance & Accounting",
+    topics: ["fp&a", "financial modelling", "ifrs", "gaap", "audit", "tax", "treasury", "budgeting", "netsuite", "reporting"],
     titles: [
       "financial analyst",
       "fp&a",
@@ -391,6 +408,7 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "banking",
     label: "Banking & Payments",
+    topics: ["payments", "cards", "acquiring", "issuing", "open banking", "lending", "fintech", "core banking", "swift"],
     titles: [
       "relationship manager",
       "credit analyst",
@@ -411,6 +429,7 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "investments",
     label: "Investments, Trading & Crypto",
+    topics: ["trading", "crypto", "derivatives", "portfolio", "asset management", "equities", "fixed income", "quant", "risk"],
     titles: [
       "investment analyst",
       "investment manager",
@@ -436,6 +455,7 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "risk",
     label: "Risk & Compliance",
+    topics: ["kyc", "aml", "compliance", "fraud", "regulatory", "risk management", "sanctions", "gdpr", "internal audit"],
     titles: [
       "compliance manager",
       "compliance officer",
@@ -460,6 +480,7 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "legal",
     label: "Legal",
+    topics: ["contracts", "commercial", "regulatory", "corporate", "privacy", "gdpr", "litigation", "employment law", "intellectual property"],
     titles: [
       "legal counsel",
       "general counsel",
@@ -478,6 +499,7 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "people",
     label: "HR & People",
+    topics: ["hr", "talent management", "compensation", "benefits", "employee relations", "performance", "learning and development", "culture", "hris"],
     titles: [
       "hr manager",
       "hr business partner",
@@ -499,12 +521,14 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "talent",
     label: "Recruiting & Talent",
+    topics: ["recruiting", "talent acquisition", "sourcing", "employer brand", "technical recruiting", "executive search", "hiring", "interviewing"],
     titles: ["recruiter", "technical recruiter", "talent acquisition", "talent partner", "head of talent", "sourcer", "recruitment manager", "employer branding"],
     exclude: [],
   },
   {
     id: "supply",
     label: "Supply Chain & Logistics",
+    topics: ["supply chain", "logistics", "procurement", "inventory", "warehouse", "sourcing", "planning", "freight", "last mile"],
     titles: [
       "supply chain manager",
       "logistics manager",
@@ -523,6 +547,7 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "engineering-other",
     label: "Engineering (non-software)",
+    topics: ["mechanical", "electrical", "civil", "autocad", "manufacturing", "hardware", "embedded", "robotics", "energy"],
     titles: [
       "mechanical engineer",
       "electrical engineer",
@@ -542,6 +567,7 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "healthcare",
     label: "Healthcare & Life Sciences",
+    topics: ["clinical", "patient", "healthcare", "pharma", "medical devices", "regulatory", "biotech", "nursing", "digital health"],
     titles: [
       "physician",
       "nurse",
@@ -560,36 +586,42 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   {
     id: "research",
     label: "Research & Science",
+    topics: ["research", "phd", "publications", "laboratory", "experimental", "data analysis", "scientific", "r&d"],
     titles: ["research scientist", "research engineer", "economist", "policy analyst", "lab manager", "scientist", "researcher"],
     exclude: [],
   },
   {
     id: "education",
     label: "Education",
+    topics: ["curriculum", "teaching", "edtech", "learning", "training", "instructional design", "students", "assessment"],
     titles: ["teacher", "lecturer", "professor", "instructional designer", "curriculum developer", "education manager", "academic director", "tutor"],
     exclude: [],
   },
   {
     id: "real-estate",
     label: "Real Estate & Construction",
+    topics: ["real estate", "construction", "property", "facilities", "leasing", "project management", "architecture", "development"],
     titles: ["property manager", "real estate agent", "leasing manager", "asset manager", "facilities manager", "construction manager", "quantity surveyor", "architect", "development manager"],
     exclude: [],
   },
   {
     id: "hospitality",
     label: "Hospitality, Travel & Retail",
+    topics: ["hospitality", "travel", "retail", "guest experience", "store", "merchandising", "e commerce", "food and beverage"],
     titles: ["hotel manager", "front office manager", "revenue manager", "restaurant manager", "store manager", "retail manager", "visual merchandiser", "e commerce manager", "travel consultant"],
     exclude: [],
   },
   {
     id: "executive",
     label: "Executive & Leadership",
+    topics: ["leadership", "strategy", "p&l", "transformation", "board", "scaling", "fundraising", "general management"],
     titles: ["ceo", "chief executive officer", "managing director", "general manager", "country manager", "founder", "co founder", "president", "chief of staff", "board member", "non executive director"],
     exclude: [],
   },
   {
     id: "admin",
     label: "Administrative & Office",
+    topics: ["office management", "scheduling", "executive support", "administration", "coordination", "calendar", "events", "microsoft office"],
     titles: ["executive assistant", "personal assistant", "office manager", "administrative assistant", "receptionist", "coordinator"],
     exclude: [],
   },

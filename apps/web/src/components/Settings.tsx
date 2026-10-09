@@ -1,9 +1,10 @@
 import { INDUSTRY_BY_ID } from "@jobhunter/core/catalog/industries";
+import { groupPlaces } from "@jobhunter/core/catalog/places";
 import { ArrowRight, Download, RefreshCw, Save, Upload, X } from "lucide-react";
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { canRunLocally, useDirectorySize } from "../lib/data";
 import { displayPlace, roughCount } from "../lib/format";
-import { draftToConfig, saveBlockers, saveConfig, type Draft } from "../lib/setup";
+import { draftToConfig, officePlaces, saveBlockers, saveConfig, type Draft } from "../lib/setup";
 import type { Suggestions } from "../lib/suggest";
 import { ResumeStep } from "../setup/ResumeStep";
 import type { Prefs } from "../lib/prefs";
@@ -60,7 +61,7 @@ export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanni
   const summaries: Record<string, string> = {
     resume: resumeText.trim() ? "Saved" : "",
     roles: list(draft.include),
-    locations: list([...draft.places.map(displayPlace), ...(draft.remote || draft.remoteOk.length ? ["Remote"] : [])]),
+    locations: list([...groupPlaces(officePlaces(draft)).map((g) => displayPlace(g.name)), ...(draft.remote ? ["Remote"] : [])]),
     industries: list(draft.industries.map((id) => INDUSTRY_BY_ID.get(id)?.label ?? id)),
     keywords: list(Object.keys(draft.keywords)),
   };
