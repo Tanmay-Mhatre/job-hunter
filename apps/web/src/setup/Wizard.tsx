@@ -304,7 +304,7 @@ function Review({
     const blob = new Blob([configToYaml(draftToConfig(draft))], { type: "text/yaml" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "jobhunter.config.yaml";
+    a.download = "jobhunter.config.local.yaml";
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -410,7 +410,7 @@ function Review({
 
       {!canRunLocally && (
         <p className="text-sm text-muted">
-          This dashboard is hosted, so it can't save files. Download the config and commit it as <code className="font-mono text-xs">jobhunter.config.yaml</code>.
+          This dashboard is hosted, so it can't save files. Download the config and save it in the app's folder as <code className="font-mono text-xs">jobhunter.config.local.yaml</code>. It stays on your computer; don't commit it.
         </p>
       )}
 

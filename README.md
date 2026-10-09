@@ -27,7 +27,7 @@ Saving runs your first scan: no company list needed. It finds every job in the c
 
 Setup writes `jobhunter.config.local.yaml` (gitignored, commented, safe to edit by hand). After that, the Radar shows a checklist of anything still missing, explains a scan with no matches (and what to change), and flags companies whose links broke. Change anything later in **Settings**.
 
-Prefer the terminal? Copy `jobhunter.config.yaml` to `jobhunter.config.local.yaml`, edit it, then `pnpm jobhunter validate` and `pnpm jobhunter run`.
+Prefer the terminal? Copy `jobhunter.config.example.yaml` to `jobhunter.config.local.yaml`, edit it, then `pnpm jobhunter validate` and `pnpm jobhunter run`.
 
 ## Dashboard
 

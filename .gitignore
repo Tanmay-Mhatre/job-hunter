@@ -6,8 +6,9 @@ coverage/
 .env
 .env.*
 
-# Your real config lives here when developing locally (the template ships jobhunter.config.yaml as an example)
+# Your config is personal and stays on your computer (the repo ships jobhunter.config.example.yaml)
 jobhunter.config.local.yaml
+jobhunter.config.yaml
 # Your master resume (saved by setup). Personal: never commit it.
 profile/
 
