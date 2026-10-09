@@ -47,7 +47,7 @@ export function Wizard(props: Props) {
   // Each step is a new "page": name it in the tab title and move focus to its heading.
   useEffect(() => {
     const label = STEPS.find((s) => s.id === step)?.label;
-    document.title = label ? `Setup · ${label} · RawJobs` : "Setup · RawJobs";
+    document.title = label ? `RawJobs · Setup · ${label}` : "RawJobs · Setup";
     heading.current?.focus();
   }, [step]);
 
