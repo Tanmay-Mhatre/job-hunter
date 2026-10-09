@@ -2,7 +2,7 @@
 
 This folder is the source of truth for how RawJobs looks and behaves. Read `README.md` (the brand book) first, then this file.
 
-> **In this repo** the kit is split in two. What the app ships lives in `apps/web/src/design/`: `tokens.json` (the source of truth), the generated `tokens.css` and `utilities.css`, `fonts/` and `logos/`. The references stay here in `/design`: this file, `README.md`, `components/` (previews, usage notes, `bundle.css`) and `screenshots/`. `pnpm design:build` regenerates the CSS from `tokens.json`; `pnpm check` fails if it is out of date.
+> **In this repo** the kit is split in two. What the app ships lives in `apps/web/src/design/`: `tokens.json` (the source of truth), the generated `tokens.css` and `utilities.css`, `fonts/` and `logos/`. The references stay here in `/design`: this file, `README.md`, `components/` (previews, usage notes, `bundle.css`) and `screenshots/`. `pnpm design:build` regenerates the CSS from `tokens.json`; `pnpm check` fails if it is out of date. The app imports `components/bundle.css` from here as-is (in Tailwind's components layer), so the component CSS has one copy; the React primitives in `apps/web/src/components/primitives/` use its `rj-` classes, and `apps/web/design.html` (dev only) shows them all for comparison with `screenshots/`.
 
 ## What is here
 

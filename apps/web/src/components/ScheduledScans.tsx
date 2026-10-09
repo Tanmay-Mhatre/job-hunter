@@ -69,7 +69,8 @@ export function ScheduledScans() {
             actionLabel: "Undo",
             onAction: () =>
               void saveSchedule(previous.times, previous.scope).then(async (r) => {
-                if (!r.ok) toast({ message: "Couldn't turn scheduled scans back on. Turn them on again below.", tone: "bad" });
+                // An error that needs action stays inline, next to the schedule, not in a toast.
+                if (!r.ok) setNote({ tone: "bad", text: "Couldn't turn scheduled scans back on. Save the schedule below to turn them on again.", detail: r.error });
                 else setNote({ tone: "ok", text: "Scheduled scans are back on." });
                 await refresh();
               }),

@@ -1,9 +1,10 @@
-import { Clock, ExternalLink, RefreshCw, TriangleAlert, X } from "lucide-react";
+import { Clock, ExternalLink, RefreshCw, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { ATS_LABEL, keyOf } from "../lib/companies";
 import type { CompanyHealth, DataMeta } from "../lib/data";
 import { formatDate, formatDateTime, timeAgo } from "../lib/format";
 import type { CompanyRow } from "../lib/setup";
+import { Status as BoardStatus } from "./primitives";
 import { Button, Card, Chip, cx, IconButton, Segmented } from "./ui";
 
 /** A company with no jobs for you in at least this many scans in a row, over at least QUIET_DAYS, gets a "remove?" flag. */
@@ -272,9 +273,7 @@ function Status({ row, onScan, scanning }: { row: Row; onScan?: () => void; scan
     return (
       <div className="space-y-1">
         <div className="flex flex-wrap items-center gap-2">
-          <Chip tone="bad">
-            <TriangleAlert className="size-3" /> Last scan failed
-          </Chip>
+          <BoardStatus state="broken" />
           {onScan && (
             <button type="button" className="inline-flex min-h-6 items-center gap-1 type-meta font-medium text-accent-text disabled:opacity-50" onClick={onScan} disabled={scanning}>
               <RefreshCw className="size-3" /> Retry
@@ -289,8 +288,15 @@ function Status({ row, onScan, scanning }: { row: Row; onScan?: () => void; scan
         )}
       </div>
     );
-  if (isQuiet(quiet) && !row.forYou) return <Chip tone="warn">Nothing for you since {formatDate(quiet.since)}</Chip>;
-  return <Chip tone="accent">Scanned {timeAgo(last.at)}</Chip>;
+  // Board status (Healthy or Dormant) as shape + color + word, then the facts in plain text.
+  return (
+    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <BoardStatus state={last.h.jobsFound > 0 ? "healthy" : "dormant"} />
+      <span className="type-meta text-muted">
+        {isQuiet(quiet) && !row.forYou ? `Nothing for you since ${formatDate(quiet.since)}` : `Scanned ${timeAgo(last.at)}`}
+      </span>
+    </span>
+  );
 }
 
 /** The latest scans: how many jobs, matches, and companies scanned beyond yours. Collapsed by default. */

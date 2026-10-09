@@ -2,8 +2,9 @@ import { Bookmark, CircleCheck, EyeOff, Star } from "lucide-react";
 import { forwardRef } from "react";
 import type { Job } from "../../lib/data";
 import type { JobGroup } from "../../lib/filters";
-import { ageDays, formatSalary, placeSummary, postedOrSeen, scoreBand, timeAgo } from "../../lib/format";
+import { ageDays, formatSalary, placeSummary, postedOrSeen, timeAgo } from "../../lib/format";
 import type { Entry, Status } from "../../lib/userState";
+import { ScoreBadge } from "../primitives";
 import { cx, IconButton } from "../ui";
 
 type Props = {
@@ -19,13 +20,6 @@ type Props = {
 };
 
 const SHORT_SENIORITY: Record<Job["seniority"], string> = { leadership: "Leadership", principal: "Principal/Lead", senior: "Senior", mid: "Mid-level", entry: "Entry" };
-
-const PILL: Record<ReturnType<typeof scoreBand>, string> = {
-  top: "bg-accent text-on-accent",
-  mid: "bg-warning-subtle text-warning-text",
-  low: "bg-inset text-ink",
-  none: "bg-inset text-muted",
-};
 
 /** Where the role is, across all its postings: "Berlin +3" (cities when we recognised them, else the raw location). */
 function placeLine(group: JobGroup): string {
@@ -90,17 +84,9 @@ export const JobCard = forwardRef<HTMLLIElement, Props>(function JobCard({ group
           <span className="font-medium text-ink">{job.company}</span> · {placeLine(group)}
         </p>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 type-meta">
-          {job.estimated ? (
-            <span className="tabular rounded-md border border-dashed border-line px-1.5 py-0.5 font-semibold text-muted" title={`Estimated match score ${job.score}/100: not scanned yet, so no topic points`}>
-              ~{job.score}
-              <span className="font-normal"> match</span>
-            </span>
-          ) : (
-            <span className={cx("tabular rounded-md px-1.5 py-0.5 font-semibold", PILL[scoreBand(job.score, min)])} title={`Match score ${job.score}/100`}>
-              {job.score}
-              <span className="font-normal opacity-80"> match</span>
-            </span>
-          )}
+          <span title={job.estimated ? "Estimated: scored on title, place and date only, until the full posting is fetched" : undefined}>
+            <ScoreBadge score={job.score} threshold={min} estimated={job.estimated} />
+          </span>
           <span className={cx(fresh ? "font-medium text-success-text" : "text-muted")}>{job.postedAt ? timeAgo(job.postedAt) : `seen ${timeAgo(job.firstSeen)}`}</span>
           {job.workplace !== "unknown" && <span className="capitalize text-muted">· {job.workplace}</span>}
           {salary && <span className="font-medium text-ink">· {salary}</span>}

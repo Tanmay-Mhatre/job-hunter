@@ -39,15 +39,6 @@ export function formatSalary(s: Job["salary"]): string | null {
   return `${s.currency ? `${s.currency} ` : ""}${range}${s.period ? ` / ${s.period}` : ""}`;
 }
 
-export type Band = "top" | "mid" | "low" | "none";
-
-export function scoreBand(score: number, min: number): Band {
-  if (score <= 0) return "none";
-  if (score >= min) return "top";
-  if (score >= min - 20) return "mid";
-  return "low";
-}
-
 /** The date a job counts from: ATS posting date, else when we first saw it. */
 export const postedOrSeen = (j: Job) => j.postedAt ?? j.firstSeen;
 

@@ -124,12 +124,10 @@ export function App() {
   useEffect(() => {
     if (!announceScan.current || (scan.phase !== "done" && scan.phase !== "error")) return;
     announceScan.current = false;
+    // A failed scan is explained inline by the scan progress bar; a toast only confirms what worked.
+    if (scan.phase === "error") return;
     const m = scan.summary?.matches ?? 0;
-    toast(
-      scan.phase === "error"
-        ? { message: "Your first scan didn't finish. Try Scan now.", tone: "bad" }
-        : { message: m ? <>Scan done: <b>{m.toLocaleString()}</b> matching {m === 1 ? "job" : "jobs"}.</> : "Scan done. No matches yet: see why below." },
-    );
+    toast({ message: m ? <>Scan done: <b>{m.toLocaleString()}</b> matching {m === 1 ? "job" : "jobs"}.</> : "Scan done. No matches yet: see why below." });
   }, [scan.phase, scan.summary]);
 
   /** Radar "Save to my profile": its place and industry picks become your profile, then a rescan. */
