@@ -7,7 +7,8 @@ import { useDescription, type Job, type Profile } from "../lib/data";
 import { formatDate, formatSalary, placeSummary, postedOrSeen, timeAgo } from "../lib/format";
 import { atsLabel, INDEX_MAX_AGE_DAYS } from "../lib/filters";
 import { PIPELINE, STATUS_LABEL, type Entry, type Status } from "../lib/userState";
-import { Button, Chip, cx, IconButton, ScoreBadge } from "./ui";
+import { ScoreBadge, ScoreBreakdown, scoreParts } from "./primitives";
+import { Button, Chip, cx, IconButton } from "./ui";
 
 export type JobDetailProps = {
   job: Job;
@@ -77,16 +78,7 @@ export function JobDetail(p: JobDetailProps) {
             </IconButton>
           )}
           <button type="button" onClick={showWhy} className="shrink-0 rounded-md" aria-label={`${job.estimated ? "Estimated match score" : "Match score"} ${job.score} out of 100. Show why it matches`}>
-            {job.estimated ? (
-              <span
-                className="tabular flex size-12 shrink-0 items-center justify-center rounded-md border border-dashed border-line type-subheading font-semibold text-muted"
-                title="Estimated match score: not scanned yet, so no topic points"
-              >
-                ~{job.score}
-              </span>
-            ) : (
-              <ScoreBadge score={job.score} min={profile.min_score} size="lg" />
-            )}
+            <ScoreBadge score={job.score} threshold={profile.min_score} estimated={job.estimated} size="lg" />
           </button>
           <div className="min-w-0 flex-1">
             <h2 className="type-subheading font-semibold leading-6">{job.title}</h2>
@@ -333,13 +325,6 @@ function WhyItMatches({ job, profile, headingRef }: { job: Job; profile: Profile
     ...(w.scale ? [] : [{ ok: w.keywords.length > 0, text: w.keywords.length ? <>Mentions your topics: <b>{w.keywords.join(", ")}</b></> : "Doesn't mention your topics" }]),
     { ok: w.freshness >= 6, text: w.freshness === 10 ? "Posted in the last 3 days" : w.freshness === 6 ? "Posted this week" : "Posted more than a week ago" },
   ];
-  const rows: [string, number, number][] = [
-    ["Title", w.title, 30],
-    ["Location", w.location, 20],
-    // No topics set (scaled score): there's no topic part to show.
-    ...(w.scale ? [] : [["Topics", w.keywordPoints, 40] as [string, number, number]]),
-    ["Freshness", w.freshness, 10],
-  ];
   return (
     <section>
       <h3 ref={headingRef} tabIndex={-1} className="mb-2 flex scroll-mt-4 items-baseline justify-between type-meta font-semibold uppercase tracking-wide text-muted outline-none">
@@ -355,18 +340,7 @@ function WhyItMatches({ job, profile, headingRef }: { job: Job; profile: Profile
         ))}
       </ul>
       {w.scale && <p className="mt-2 type-meta text-muted">No topics set: title, place and freshness make up the whole score.</p>}
-      <div className={cx("mt-3 grid gap-2", w.scale ? "grid-cols-3" : "grid-cols-4")}>
-        {rows.map(([label, pts, max]) => (
-          <div key={label}>
-            <div className="h-1.5 overflow-hidden rounded-0 bg-inset">
-              <div className="h-full rounded-0 bg-accent" style={{ width: `${(pts / max) * 100}%` }} />
-            </div>
-            <p className="tabular mt-1 type-meta text-muted">
-              {label} {pts}/{max}
-            </p>
-          </div>
-        ))}
-      </div>
+      <ScoreBreakdown className="mt-3" score={job.score} parts={scoreParts(w)} />
     </section>
   );
 }

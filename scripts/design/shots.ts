@@ -70,6 +70,8 @@ type Screen = {
   id: string;
   what: string;
   scenario: Scenario;
+  /** A page other than the app (e.g. "design.html", the component gallery). */
+  path?: string;
   hash: string;
   /** localStorage on top of the scenario's (values are JSON-encoded, like the app's own save()). */
   storage?: Record<string, unknown>;
@@ -145,6 +147,7 @@ const SCREENS: Screen[] = [
       await page.getByRole("dialog").waitFor();
     },
   },
+  { id: "components", what: "Component gallery (design.html, dev only)", scenario: "demo", path: "design.html", hash: "", ready: "Score breakdown" },
   { id: "radar-empty", what: "Radar before the first scan (set up, no jobs.json)", scenario: "empty", hash: "#radar" },
   { id: "radar-not-set-up", what: "Radar with no config yet (Welcome already seen)", scenario: "fresh", hash: "#radar", storage: { [WELCOME_KEY]: true } },
   { id: "setup-0-welcome", what: "Setup wizard: Welcome (first visit)", scenario: "fresh", hash: "#setup" },
@@ -321,7 +324,7 @@ async function capture(browser: Browser, baseUrl: string, screen: Screen, theme:
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
 
-    await page.goto(`${baseUrl}${screen.hash}`, { waitUntil: "networkidle" });
+    await page.goto(`${baseUrl}${screen.path ?? ""}${screen.hash}`, { waitUntil: "networkidle" });
     await page.addStyleTag({ content: NO_MOTION });
     await page.getByText("Loading…", { exact: true }).waitFor({ state: "detached", timeout: 15_000 }).catch(() => {});
     if (screen.ready) await page.getByText(screen.ready).filter({ visible: true }).first().waitFor({ timeout: 15_000 });

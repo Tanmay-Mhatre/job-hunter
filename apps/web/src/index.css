@@ -2,6 +2,11 @@
 /* The RawJobs design tokens (generated from design/tokens.json by `pnpm design:build`). */
 @import "./design/tokens.css";
 @import "./design/utilities.css";
+/*
+ * The component CSS (rj-btn, rj-score, rj-tabs...), straight from the design reference so it can't drift.
+ * In the components layer, so utilities on a component (margins, widths) still win.
+ */
+@import "../../../design/components/bundle.css" layer(components);
 
 /* data-theme is set before first paint by index.html (see lib/theme.ts). */
 @custom-variant dark (&:where([data-theme^="dark"], [data-theme^="dark"] *));
@@ -124,18 +129,29 @@ h3 {
   font-variant-numeric: tabular-nums;
 }
 
-:focus-visible {
+/* In the base layer, so a component's own focus style (design/components/bundle.css) can refine it. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  /* Headings and regions we move focus to (tabindex="-1") for screen readers aren't controls: no ring. */
+  [tabindex="-1"]:focus {
+    outline: none;
+  }
+}
+
+/* bundle.css marks a focused menu item with its hover fill only; design/README.md (Interaction) asks for the
+   2px ring on every interactive element, so the ring stays, inset to fit the menu. */
+.rj-menu__item:focus-visible {
   outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
 
-/* Headings and regions we move focus to (tabindex="-1") for screen readers aren't controls: no ring. */
-[tabindex="-1"]:focus {
-  outline: none;
-}
-
-/* Form controls need a 3:1 border (WCAG 1.4.11). Unlayered, so it beats `border-line`; focused fields keep their accent border. */
-input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]):not(:focus),
+/* Form controls need a 3:1 border (WCAG 1.4.11). Unlayered, so it beats `border-line`; focused fields keep their accent border.
+   rj-input brings its own (input-border, and danger-text when invalid). */
+input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], .rj-input):not(:focus),
 select:not(:focus),
 textarea:not(:focus) {
   border-color: var(--border-control);

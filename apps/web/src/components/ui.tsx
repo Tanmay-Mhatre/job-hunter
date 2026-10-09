@@ -1,44 +1,26 @@
 import type { ButtonHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
-import { scoreBand, type Band } from "../lib/format";
 import { STATUS_LABEL, type Status } from "../lib/userState";
+import { Button as RjButton, IconButton as RjIconButton, Kbd as RjKbd, type ButtonVariant } from "./primitives";
 
 export function cx(...parts: (string | false | null | undefined)[]): string {
   return parts.filter(Boolean).join(" ");
 }
 
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "ghost" | "outline"; size?: "sm" | "md" };
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "ghost" | "outline" | "danger"; size?: "sm" | "md" };
 
-export function Button({ variant = "outline", size = "md", className, ...rest }: ButtonProps) {
-  return (
-    <button
-      type="button"
-      className={cx(
-        "inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-        size === "sm" ? "h-8 px-2.5 type-meta" : "h-9 px-3 type-small",
-        variant === "primary" && "bg-accent text-on-accent hover:opacity-90",
-        variant === "outline" && "border border-line bg-raised hover:bg-inset",
-        variant === "ghost" && "hover:bg-inset",
-        className,
-      )}
-      {...rest}
-    />
-  );
+/** The app's older names for the design system's button variants (design/components/Button). */
+const VARIANT: Record<NonNullable<ButtonProps["variant"]>, ButtonVariant> = { primary: "primary", outline: "secondary", ghost: "quiet", danger: "danger" };
+
+export function Button({ variant = "outline", size = "md", ...rest }: ButtonProps) {
+  return <RjButton variant={VARIANT[variant]} size={size} {...rest} />;
 }
 
-export function IconButton({ label, active, className, ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string; active?: boolean }) {
+/** Icon-only button; `active` marks a toggled-on state (aria-pressed). */
+export function IconButton({ label, active, className, children, ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string; active?: boolean }) {
   return (
-    <button
-      type="button"
-      aria-label={label}
-      aria-pressed={active}
-      title={label}
-      className={cx(
-        "inline-flex size-8 items-center justify-center rounded-md transition-colors",
-        active ? "bg-accent-subtle text-accent-text" : "text-muted hover:bg-inset hover:text-ink",
-        className,
-      )}
-      {...rest}
-    />
+    <RjIconButton label={label} aria-pressed={active} className={cx(active && "bg-active text-ink", className)} {...rest}>
+      {children}
+    </RjIconButton>
   );
 }
 
@@ -55,30 +37,6 @@ export function Chip({ children, tone = "plain", className }: { children: ReactN
       )}
     >
       {children}
-    </span>
-  );
-}
-
-const BAND_STYLE: Record<Band, string> = {
-  top: "border-accent text-accent-text bg-accent-subtle",
-  mid: "border-warning/60 text-warning-text bg-warning-subtle",
-  low: "border-line text-ink bg-inset",
-  none: "border-line text-muted bg-transparent",
-};
-
-export function ScoreBadge({ score, min, size = "md" }: { score: number; min: number; size?: "md" | "lg" }) {
-  const band = scoreBand(score, min);
-  return (
-    <span
-      className={cx(
-        "tabular flex shrink-0 items-center justify-center rounded-md border font-semibold",
-        size === "lg" ? "size-14 type-heading" : "size-11 type-body",
-        BAND_STYLE[band],
-      )}
-      title={band === "top" ? `Match score ${score}/100 · strong match (${min}+)` : `Match score ${score}/100`}
-    >
-      <span className="sr-only">Match score </span>
-      {score}
     </span>
   );
 }
@@ -157,11 +115,7 @@ export function Card({ children, className, id }: { children: ReactNode; classNa
 }
 
 export function Kbd({ children }: { children: ReactNode }) {
-  return (
-    <kbd className="inline-flex min-w-5 items-center justify-center rounded-md border border-line bg-inset px-1 font-mono type-meta text-muted">
-      {children}
-    </kbd>
-  );
+  return <RjKbd>{children}</RjKbd>;
 }
 
 /** Page numbers to show: first, last, and the current page's neighbours, with gaps as null. */

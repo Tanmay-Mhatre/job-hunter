@@ -1,0 +1,68 @@
+import { useRef, type KeyboardEvent } from "react";
+import { cx } from "../ui";
+
+export type TabItem<T extends string> = { id: T; label: string; count?: number };
+
+/**
+ * design/components/Tabs: views of one list. Roving tabindex (only the selected tab is in the tab
+ * order); arrow keys, Home and End move between tabs and select them. The 1-6 shortcuts are the app's.
+ */
+export function Tabs<T extends string>({
+  label,
+  items,
+  value,
+  onChange,
+  idPrefix = "tab",
+  panelId,
+  className,
+}: {
+  label: string;
+  items: TabItem<T>[];
+  value: T;
+  onChange: (id: T) => void;
+  /** Tab ids are `${idPrefix}-${id}`, so a panel can point back with aria-labelledby. */
+  idPrefix?: string;
+  /** The panel these tabs control. */
+  panelId?: string;
+  className?: string;
+}) {
+  const refs = useRef(new Map<T, HTMLButtonElement>());
+
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    const i = items.findIndex((t) => t.id === value);
+    const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: items.length - 1 }[e.key];
+    if (next === undefined || !items.length) return;
+    e.preventDefault();
+    const target = items[(next + items.length) % items.length]!;
+    onChange(target.id);
+    refs.current.get(target.id)?.focus();
+  };
+
+  return (
+    <div className={cx("rj-tabs", className)} role="tablist" aria-label={label} onKeyDown={onKeyDown}>
+      {items.map((t) => {
+        const selected = t.id === value;
+        return (
+          <button
+            key={t.id}
+            ref={(el) => {
+              if (el) refs.current.set(t.id, el);
+              else refs.current.delete(t.id);
+            }}
+            id={`${idPrefix}-${t.id}`}
+            type="button"
+            role="tab"
+            className="rj-tab"
+            aria-selected={selected}
+            aria-controls={panelId}
+            tabIndex={selected ? 0 : -1}
+            onClick={() => onChange(t.id)}
+          >
+            {t.label}
+            {t.count != null && <span className="rj-tab__count">{t.count}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
