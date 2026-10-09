@@ -10,6 +10,10 @@ for company suggestions and browsing.
   (every live or dormant company), `index.json.gz` (open job titles and locations per company).
 - `contributions.json`: companies users added by link, each live-checked before it was accepted.
 - `coverage.md`: how many must-have companies per industry can be tracked, and which hiring systems to support next.
+- **Releases → jobs**: the daily job feed. `jobs-manifest.json` (schema version, SHA-256 of each shard)
+  and one `jobs-<system>-<stamp>.json.gz` per hiring system: every live board's open jobs as job id,
+  title, location, workplace and posted date. No descriptions. Apps use it to decide which companies
+  to check live.
 - `denylist.json`: companies removed on request. They are left out of every release.
 - `LICENSE-DATA`: the data is CC BY 4.0. `NOTICE.md`: sources, credits and how to ask for a takedown.
 
@@ -18,12 +22,13 @@ for company suggestions and browsing.
 Every Monday: public company-board lists (see NOTICE.md), the project's industry seed list and the
 contributions are merged, every board is live-checked with the cheapest call its hiring system
 offers, open roles are indexed, industries are tagged, and a new release is published. Contributions
-arrive between rebuilds every 3 hours.
+arrive between rebuilds every 3 hours. The job feed is rebuilt every day; boards that haven't changed
+cost one empty request.
 
 No personal data is stored here: a contribution is a hiring system, a board name and a company name.
 
 ## Licence and takedowns
 
-The data is licensed under [CC BY 4.0](LICENSE-DATA). Data from third-party job APIs (Remotive,
-The Muse, Jobicy, RemoteOK, Hacker News) is never included. To have a company removed, see
+The data is licensed under [CC BY 4.0](LICENSE-DATA). Jobs from the public job boards an app user
+can add (Hacker News, Remotive, Arbeitnow, Remote OK) are never included. To have a company removed, see
 [Takedown and opt-out](NOTICE.md#takedown-and-opt-out); we reply within 7 days.

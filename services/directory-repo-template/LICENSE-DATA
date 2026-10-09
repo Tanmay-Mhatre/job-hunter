@@ -1,7 +1,8 @@
 Job Hunter company directory: data licence
 
 The compiled data in this repository and its releases (directory.json.gz, index.json.gz,
-manifest.json, contributions.json, coverage.md and denylist.json) is licensed under the
+manifest.json, the job feed's jobs-manifest.json and jobs-*.json.gz, contributions.json, coverage.md
+and denylist.json) is licensed under the
 Creative Commons Attribution 4.0 International licence (CC BY 4.0):
 https://creativecommons.org/licenses/by/4.0/legalcode
 
@@ -14,7 +15,7 @@ What this covers. The individual facts (that a company has a public job board on
 system, and the titles and locations of jobs it posts there) come from the companies' own public
 job boards. The licence covers our selection, checking and arrangement of those facts. It does not
 claim rights in the job postings themselves, which belong to the companies that published them.
-The index holds titles, locations and dates only, never full job descriptions.
+The index and the job feed hold titles, locations and dates only, never full job descriptions.
 
 Some of the data comes from other sources under their own terms. NOTICE.md lists them and the
 credit they ask for. Those credits travel with the data.
