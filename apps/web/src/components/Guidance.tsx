@@ -137,6 +137,11 @@ export function SetupChecklist({
   useEffect(() => {
     if (complete && !dismissed && canRunLocally) void scheduleStatus().then((s) => setScheduled(!!s.installed), () => {});
   }, [complete, dismissed]);
+  // "Setup complete" shows on one visit only: it stays up now, and is remembered as seen for next time,
+  // so it doesn't take room above the jobs every day.
+  useEffect(() => {
+    if (complete && !dismissed) save(DISMISS_KEY, true);
+  }, [complete, dismissed]);
   if (complete && dismissed) return null;
   if (complete) {
     const daily = items.find((i) => i.key === "daily");
@@ -386,12 +391,12 @@ export function NoMatches({ jobs, onStep, onCompanies }: { jobs: Job[]; onStep: 
   );
 }
 
-export function FailingBanner({ count, onOpen }: { count: number; onOpen: () => void }) {
+export function FailingBanner({ count, onOpen, className }: { count: number; onOpen: () => void; className?: string }) {
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full flex-wrap items-center gap-x-2.5 gap-y-1 rounded-md border border-warning/40 bg-warning-subtle/40 px-4 py-2.5 text-left type-small hover:bg-warning-subtle/60"
+      className={cx(className, "flex w-full flex-wrap items-center gap-x-2.5 gap-y-1 rounded-md border border-warning/40 bg-warning-subtle/40 px-4 py-2.5 text-left type-small hover:bg-warning-subtle/60")}
     >
       <TriangleAlert className="size-4 shrink-0 text-warning-text" />
       <span className="min-w-48 flex-1">

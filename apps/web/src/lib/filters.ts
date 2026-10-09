@@ -213,7 +213,8 @@ const salaryOf = (j: Job) => j.salary?.max ?? j.salary?.min ?? -1;
 /** Sort the list; with `isYours`, jobs at your companies come first whatever the order. */
 export function sortJobs(jobs: Job[], sort: Sort, isYours?: (j: Job) => boolean): Job[] {
   const by: Record<Sort, (a: Job, b: Job) => number> = {
-    best: (a, b) => b.score - a.score || postedOrSeen(b).localeCompare(postedOrSeen(a)),
+    // Equal scores (several jobs max out at 100) go to the one mentioning more of your topics, then the newer.
+    best: (a, b) => b.score - a.score || b.why.keywords.length - a.why.keywords.length || postedOrSeen(b).localeCompare(postedOrSeen(a)),
     newest: (a, b) => postedOrSeen(b).localeCompare(postedOrSeen(a)) || b.score - a.score,
     // Only compares like with like loosely: listed salaries first, highest first.
     salary: (a, b) => salaryOf(b) - salaryOf(a) || b.score - a.score,

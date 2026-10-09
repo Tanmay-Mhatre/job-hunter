@@ -98,6 +98,15 @@ describe("sorting, grouping, chips, suggestions, URL", () => {
     expect(sortJobs(jobs.slice(0, 3), "company").map((j) => j.company)).toEqual(["Kraken", "OKX", "Rain"]);
   });
 
+  it("breaks a tie on best match by topics mentioned, then by date", () => {
+    const tied = [
+      job({ id: "few-new", score: 100, postedAt: daysAgo(0), why: { title: 30, location: 20, keywords: ["api"], keywordPoints: 40, freshness: 10 } }),
+      job({ id: "many-old", score: 100, postedAt: daysAgo(2), why: { title: 30, location: 20, keywords: ["api", "payments", "b2b"], keywordPoints: 40, freshness: 10 } }),
+      job({ id: "many-new", score: 100, postedAt: daysAgo(1), why: { title: 30, location: 20, keywords: ["api", "payments", "b2b"], keywordPoints: 40, freshness: 10 } }),
+    ];
+    expect(sortJobs(tied, "best").map((j) => j.id)).toEqual(["many-new", "many-old", "few-new"]);
+  });
+
   it("groups one role posted in several places, best posting first", () => {
     const g = groupJobs([job({ id: "1", group: "K|pm", location: "Dubai" }), job({ id: "2", group: "K|pm", location: "London" }), job({ id: "3", group: "R|pm" })]);
     expect(g.map((x) => [x.lead.id, x.jobs.length])).toEqual([

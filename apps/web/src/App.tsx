@@ -1,4 +1,4 @@
-import { ArrowRight, Building2, Keyboard, KanbanSquare, LoaderCircle, Radar as RadarIcon, RefreshCw, Settings as SettingsIcon, X } from "lucide-react";
+import { ArrowRight, Building2, Keyboard, KanbanSquare, LoaderCircle, Radar as RadarIcon, RefreshCw, Settings as SettingsIcon, TriangleAlert, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CompaniesTab } from "./components/CompaniesTab";
 import { Dialog } from "./components/Dialog";
@@ -267,6 +267,8 @@ export function App() {
   // Only your companies: the extra ones a scan checks aren't yours to fix.
   const failing = lastRun?.health.filter((h) => !h.ok && !h.unsupported && yourKeys.has(keyOf(h))).length ?? 0;
   const matched = jobs.filter((j) => !j.why.gate && j.status === "open").length;
+  /** The Radar list is showing: on laptops and up the page then fits the window (no page scroll). */
+  const radarFits = !inSetup && tab === "radar" && state.kind === "ready" && (matched > 0 || !lastRun);
   // "Why no matches?" needs the jobs that failed the filters too; fetched only then.
   const otherJobs = useOtherJobs(state.kind === "ready" && !!lastRun && matched === 0);
   const items = checklistItems(notSetUp ? draftToConfig(draft) : status?.config, meta, !!resume.text);
@@ -305,6 +307,17 @@ export function App() {
                     Last scan {timeAgo(lastRun.startedAt)}
                   </span>
                 )}
+                {state.kind === "ready" && failing > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => go({ tab: "companies" })}
+                    title="Review failing companies: usually the careers page moved"
+                    className="hidden h-7 items-center gap-1.5 rounded-md border border-warning/40 bg-warning-subtle/40 px-2 type-label text-warning-text hover:bg-warning-subtle/60 lg:inline-flex"
+                  >
+                    <TriangleAlert className="size-3.5" aria-hidden />
+                    {failing} failing<span className="sr-only">: {failing === 1 ? "1 company" : `${failing} companies`} couldn't be scanned last time. Review failing companies</span>
+                  </button>
+                )}
                 {canRunLocally && (setupState === "none" || setupState === "invalid") && (
                   <Button size="sm" variant="primary" onClick={toSetup}>
                     {setupState === "invalid" ? "Fix setup" : progress.started ? "Finish setup" : "Set up radar"} <ArrowRight className="size-3.5" />
@@ -322,7 +335,17 @@ export function App() {
         </div>
       </header>
 
-      <main id="main" tabIndex={-1} className={cx("mx-auto max-w-6xl px-4 pt-5 outline-none", inSetup ? "pb-10" : "pb-24 md:pb-10")}>
+      <main
+        id="main"
+        tabIndex={-1}
+        className={cx(
+          "mx-auto max-w-6xl px-4 pt-5 outline-none",
+          inSetup ? "pb-10" : "pb-24 md:pb-10",
+          // The Radar fits the window on laptops and up: the feed and the job scroll inside their panels,
+          // the page itself never does, and Apply stays in view.
+          radarFits && "lg:flex lg:h-[calc(100dvh-3.5rem)] lg:flex-col lg:pb-4",
+        )}
+      >
         {status === undefined || state.kind === "loading" ? (
           <FeedSkeleton />
         ) : inSetup ? (
@@ -358,7 +381,7 @@ export function App() {
             }}
           />
         ) : (
-          <div className="space-y-4">
+          <div className={cx("flex flex-col gap-4", radarFits && "lg:min-h-0 lg:flex-1 lg:gap-3")}>
             {viewLabel && (
               <h1 ref={headingRef} tabIndex={-1} className="sr-only">
                 {viewLabel}
@@ -377,7 +400,8 @@ export function App() {
                   <SetupChecklist items={items} onStep={goStep} onScan={requestScan} onCompanies={goCompanies} />
                 )}
                 {setupState === "configured" && personal && state.kind === "empty" && <FirstScanCard scan={scan} onScan={requestScan} />}
-                {state.kind === "ready" && failing > 0 && <FailingBanner count={failing} onOpen={() => go({ tab: "companies" })} />}
+                {/* Laptops show this as a chip next to "Last scan" in the header, so the jobs start higher. */}
+                {state.kind === "ready" && failing > 0 && <FailingBanner className="lg:hidden" count={failing} onOpen={() => go({ tab: "companies" })} />}
                 {state.kind === "ready" && lastRun && matched === 0 && <NoMatches jobs={otherJobs ? [...jobs, ...otherJobs] : jobs} onStep={goStep} onCompanies={goCompanies} />}
                 {state.kind === "ready" && (matched > 0 || !lastRun) && (
                   <RadarPage

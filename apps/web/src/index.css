@@ -179,15 +179,26 @@ h3 {
   }
 }
 
-/* The kit's phone footer is two 1fr columns, but a button won't shrink below its label, so a long one
-   ("In My companies") pushed the footer past the screen edge. Let the columns and buttons shrink. */
+/* The kit's phone footer: Apply on its own row, then two 1fr columns. A button won't shrink below its
+   label, so the columns may shrink (nothing pushes past the screen edge), and under 480px the company
+   button says "Add company" (JobDetail), which fits half of a 375px screen. Copy description, the
+   quiet extra, takes a full row so it never sits alone in half of one. */
 @media (max-width: 720px) {
   .rj-drawer__foot {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .rj-drawer__foot > .rj-btn {
-    min-width: 0;
-    overflow: hidden;
+  .rj-drawer__foot > .rj-btn--quiet {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Touch screens have no keyboard to press: hide the shortcut hints on controls (buttons, menu items,
+   the search field). Keys written into a sentence stay. */
+@media (hover: none) {
+  .rj-btn .rj-kbd,
+  .rj-menu__item .rj-kbd,
+  .rj-search > .rj-kbd {
+    display: none;
   }
 }
 
@@ -231,10 +242,13 @@ textarea:not(:focus) {
   white-space: nowrap;
 }
 
-/* Thin scrollbars that follow the theme */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-default) transparent;
+/* Thin scrollbars that follow the theme. In the base layer, so a component that hides its scrollbar
+   (the kit's .rj-tabs: scrollbar-width none, with the edge fade) still can. */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-default) transparent;
+  }
 }
 
 /* The header wordmark: ink on the light themes, paper on the dark ones. */
