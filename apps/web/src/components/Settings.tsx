@@ -184,13 +184,16 @@ export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanni
 
         <Group id="data" label="Your data">
           <TrackingData user={user} prefs={prefs} onImport={onImport} />
-          <Section id="sharing" title="Sharing" hint="Help everyone find more companies. Off by default.">
+          <Section id="sharing" title="Sharing" hint="Help everyone find more companies. On by default; turn it off here.">
             <div className="space-y-2">
               <Toggle checked={draft.directory.share_additions} onChange={(v) => update({ directory: { ...draft.directory, share_additions: v } })}>
                 Share companies I add by link with everyone
               </Toggle>
               <p className="text-xs text-muted">
-                Sharing sends only the company's name, its hiring system and its careers page link. Never your profile, resume, searches or which jobs you look at.
+                Only the careers link is shared: the company's name, its hiring system and its board name. Never your profile, resume, searches or which jobs you look at.{" "}
+                <a href="https://github.com/Tanmay-Mhatre/job-hunter/blob/main/PRIVACY.md" target="_blank" rel="noreferrer" className="font-medium text-accent">
+                  What is sent, and where
+                </a>
               </p>
             </div>
           </Section>
