@@ -83,10 +83,10 @@ function useAutoSave(draft: Draft, saved: Draft, onSaved: () => Promise<void>, e
 
 /** "Saving…", "Saved · used in your next scan", or what went wrong (with the reason and Retry, inline). */
 function SaveStatus({ state, retry, onScan, scanning }: { state: SaveState; retry: () => void; onScan: () => void; scanning: boolean }) {
-  if (!canRunLocally) return <span className="text-xs text-muted">Changes stay in this browser.</span>;
+  if (!canRunLocally) return <span className="type-meta text-muted">Changes stay in this browser.</span>;
   if (state.kind === "error")
     return (
-      <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-bad">
+      <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 type-meta text-danger-text">
         <CircleAlert className="size-3.5 shrink-0" /> Couldn't save your changes{state.message ? `: ${state.message}` : "."}
         <button type="button" className="min-h-6 font-medium underline" onClick={retry}>
           Retry
@@ -95,17 +95,17 @@ function SaveStatus({ state, retry, onScan, scanning }: { state: SaveState; retr
     );
   if (state.kind === "saving")
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-muted">
+      <span className="inline-flex items-center gap-1.5 type-meta text-muted">
         <LoaderCircle className="size-3.5 animate-spin" /> Saving…
       </span>
     );
   return (
-    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 type-meta text-muted">
       <span className="inline-flex items-center gap-1">
-        <Check className="size-3.5 text-good" /> {state.kind === "saved" ? "Saved. Used in your next scan." : "Changes save automatically."}
+        <Check className="size-3.5 text-success-text" /> {state.kind === "saved" ? "Saved. Used in your next scan." : "Changes save automatically."}
       </span>
       {state.kind === "saved" && (
-        <button type="button" className="inline-flex min-h-6 items-center gap-1 font-medium text-accent disabled:opacity-50" onClick={onScan} disabled={scanning}>
+        <button type="button" className="inline-flex min-h-6 items-center gap-1 font-medium text-accent-text disabled:opacity-50" onClick={onScan} disabled={scanning}>
           <RefreshCw className="size-3" /> Scan now
         </button>
       )}
@@ -253,7 +253,7 @@ export function CompaniesTab({ configured, meta, jobs, draft, saved, update, onS
       {linkOpen && (
         <Card className="p-4 sm:p-5" id={linkPanelId}>
           <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="text-base font-semibold">Add by link</h2>
+            <h2 className="type-body font-semibold">Add by link</h2>
             <IconButton label="Close" onClick={() => setLinkOpen(false)}>
               <X className="size-4" />
             </IconButton>
@@ -297,17 +297,17 @@ export function CompaniesTab({ configured, meta, jobs, draft, saved, update, onS
 
           {hidden.length > 0 && (
             <Card className="p-5 sm:p-6">
-              <h2 className="flex items-center gap-2 text-base font-semibold">
+              <h2 className="flex items-center gap-2 type-body font-semibold">
                 <EyeOff className="size-4 text-muted" /> Hidden companies <span className="tabular font-normal text-muted">({hidden.length})</span>
               </h2>
-              <p className="mt-0.5 text-sm text-muted">Their jobs don't show on your Radar, and scans skip them.</p>
+              <p className="mt-0.5 type-small text-muted">Their jobs don't show on your Radar, and scans skip them.</p>
               <ul className="mt-3 flex flex-wrap gap-1.5">
                 {hidden.map((h) => (
-                  <li key={h.key ?? h.name} className="inline-flex h-8 items-center gap-2 rounded-lg border border-line pl-2.5 pr-1.5 text-sm">
+                  <li key={h.key ?? h.name} className="inline-flex h-8 items-center gap-2 rounded-md border border-line pl-2.5 pr-1.5 type-small">
                     <span className="font-medium">{h.name ?? h.key}</span>
                     <button
                       type="button"
-                      className="min-h-6 text-xs font-medium text-accent"
+                      className="min-h-6 type-meta font-medium text-accent-text"
                       aria-label={`Show ${h.name ?? h.key} again`}
                       onClick={() => {
                         if (h.key) update({ muted: draft.muted.filter((k) => k !== h.key) });

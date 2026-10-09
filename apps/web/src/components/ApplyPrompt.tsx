@@ -28,9 +28,9 @@ export function ApplyPrompt({ job, onAnswer }: { job: Job | null; onAnswer: (app
   return (
     // A non-modal prompt: announced politely, never steals focus; its buttons are reachable with Tab.
     <div className="pointer-events-none fixed inset-x-0 bottom-20 z-50 flex justify-center px-4 md:bottom-6" role="status" aria-label="Did you apply?">
-      <div className="pointer-events-auto flex max-w-xl flex-wrap items-center gap-3 rounded-2xl border border-line bg-surface p-3 pl-4 shadow-2xl">
-        <CircleCheck className="size-5 shrink-0 text-accent" />
-        <p className="min-w-0 flex-1 text-sm">
+      <div className="pointer-events-auto flex max-w-xl flex-wrap items-center gap-3 rounded-md border border-line bg-raised p-3 pl-4 shadow-l3">
+        <CircleCheck className="size-5 shrink-0 text-accent-text" />
+        <p className="min-w-0 flex-1 type-small">
           Did you apply to <b>{job.title}</b> at <b>{job.company}</b>?
         </p>
         <div className="flex gap-2">

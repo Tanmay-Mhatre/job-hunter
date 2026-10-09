@@ -25,7 +25,7 @@ export function QuickAdd({ q, onQ, count, linkOpen, onToggleLink, linkPanelId, s
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <p className="text-sm text-muted">Companies you add are scanned every time and their jobs come first on your Radar.</p>
+        <p className="type-small text-muted">Companies you add are scanned every time and their jobs come first on your Radar.</p>
         {status}
       </div>
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -38,21 +38,21 @@ export function QuickAdd({ q, onQ, count, linkOpen, onToggleLink, linkPanelId, s
             onKeyDown={(e) => e.key === "Escape" && q && (e.preventDefault(), onQ(""))}
             placeholder={count ? `Search ${roughCount(count)} companies…` : "Search companies…"}
             aria-label="Search companies"
-            className="h-11 w-full rounded-xl border border-line bg-surface pl-9 pr-10 text-sm outline-none placeholder:text-muted focus:border-accent [&::-webkit-search-cancel-button]:hidden"
+            className="h-11 w-full rounded-md border border-line bg-raised pl-9 pr-10 type-small outline-none placeholder:text-muted focus:border-accent [&::-webkit-search-cancel-button]:hidden"
           />
           {q && (
             <button
               type="button"
               aria-label="Clear search"
               title="Clear search"
-              className="absolute right-1.5 top-1.5 inline-flex size-8 items-center justify-center rounded-lg text-muted hover:bg-surface-2 hover:text-fg"
+              className="absolute right-1.5 top-1.5 inline-flex size-8 items-center justify-center rounded-md text-muted hover:bg-inset hover:text-ink"
               onClick={() => onQ("")}
             >
               <X className="size-4" />
             </button>
           )}
         </div>
-        <Button className={cx("h-11 shrink-0", linkOpen && "border-accent text-accent")} onClick={onToggleLink} aria-expanded={linkOpen} aria-controls={linkPanelId}>
+        <Button className={cx("h-11 shrink-0", linkOpen && "border-accent text-accent-text")} onClick={onToggleLink} aria-expanded={linkOpen} aria-controls={linkPanelId}>
           <Link2 className="size-4" /> Add by link
         </Button>
       </div>

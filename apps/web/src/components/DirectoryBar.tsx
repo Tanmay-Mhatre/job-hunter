@@ -69,7 +69,7 @@ export function DirectoryBar({ onUpdated, companies }: { onUpdated: () => void; 
       : "Not downloaded yet";
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-surface-2/60 px-3 py-2 text-sm">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-md bg-inset/60 px-3 py-2 type-small">
       <Database className="size-4 shrink-0 text-muted" />
       <p className="min-w-0 flex-1">
         <span className="font-medium">Company directory:</span> <span className="text-muted">{text}</span>
@@ -79,7 +79,7 @@ export function DirectoryBar({ onUpdated, companies }: { onUpdated: () => void; 
         {busy ? <LoaderCircle className="size-3.5 animate-spin" /> : <CloudDownload className="size-3.5" />}
         {busy ? "Updating…" : status.present ? "Update directory" : "Download directory"}
       </Button>
-      <p role="status" className={cx("w-full text-xs empty:hidden", message?.tone === "bad" ? "text-bad" : "text-muted")}>
+      <p role="status" className={cx("w-full type-meta empty:hidden", message?.tone === "bad" ? "text-danger-text" : "text-muted")}>
         {message?.text}
       </p>
     </div>

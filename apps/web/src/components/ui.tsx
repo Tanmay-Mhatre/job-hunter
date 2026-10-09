@@ -13,11 +13,11 @@ export function Button({ variant = "outline", size = "md", className, ...rest }:
     <button
       type="button"
       className={cx(
-        "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-        size === "sm" ? "h-8 px-2.5 text-xs" : "h-9 px-3 text-sm",
-        variant === "primary" && "bg-accent text-accent-fg hover:opacity-90",
-        variant === "outline" && "border border-line bg-surface hover:bg-surface-2",
-        variant === "ghost" && "hover:bg-surface-2",
+        "inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+        size === "sm" ? "h-8 px-2.5 type-meta" : "h-9 px-3 type-small",
+        variant === "primary" && "bg-accent text-on-accent hover:opacity-90",
+        variant === "outline" && "border border-line bg-raised hover:bg-inset",
+        variant === "ghost" && "hover:bg-inset",
         className,
       )}
       {...rest}
@@ -33,8 +33,8 @@ export function IconButton({ label, active, className, ...rest }: ButtonHTMLAttr
       aria-pressed={active}
       title={label}
       className={cx(
-        "inline-flex size-8 items-center justify-center rounded-lg transition-colors",
-        active ? "bg-accent-soft text-accent" : "text-muted hover:bg-surface-2 hover:text-fg",
+        "inline-flex size-8 items-center justify-center rounded-md transition-colors",
+        active ? "bg-accent-subtle text-accent-text" : "text-muted hover:bg-inset hover:text-ink",
         className,
       )}
       {...rest}
@@ -46,11 +46,11 @@ export function Chip({ children, tone = "plain", className }: { children: ReactN
   return (
     <span
       className={cx(
-        "inline-flex items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] font-medium leading-4",
-        tone === "plain" && "bg-surface-2 text-muted",
-        tone === "accent" && "bg-accent-soft text-accent",
-        tone === "warn" && "bg-warn-soft text-warn",
-        tone === "bad" && "bg-bad-soft text-bad",
+        "inline-flex items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 type-meta font-medium leading-4",
+        tone === "plain" && "bg-inset text-muted",
+        tone === "accent" && "bg-accent-subtle text-accent-text",
+        tone === "warn" && "bg-warning-subtle text-warning-text",
+        tone === "bad" && "bg-danger-subtle text-danger-text",
         className,
       )}
     >
@@ -60,9 +60,9 @@ export function Chip({ children, tone = "plain", className }: { children: ReactN
 }
 
 const BAND_STYLE: Record<Band, string> = {
-  top: "border-accent text-accent bg-accent-soft",
-  mid: "border-warn/60 text-warn bg-warn-soft",
-  low: "border-line text-fg bg-surface-2",
+  top: "border-accent text-accent-text bg-accent-subtle",
+  mid: "border-warning/60 text-warning-text bg-warning-subtle",
+  low: "border-line text-ink bg-inset",
   none: "border-line text-muted bg-transparent",
 };
 
@@ -71,8 +71,8 @@ export function ScoreBadge({ score, min, size = "md" }: { score: number; min: nu
   return (
     <span
       className={cx(
-        "tabular flex shrink-0 items-center justify-center rounded-xl border font-semibold",
-        size === "lg" ? "size-14 text-xl" : "size-11 text-base",
+        "tabular flex shrink-0 items-center justify-center rounded-md border font-semibold",
+        size === "lg" ? "size-14 type-heading" : "size-11 type-body",
         BAND_STYLE[band],
       )}
       title={band === "top" ? `Match score ${score}/100 · strong match (${min}+)` : `Match score ${score}/100`}
@@ -99,7 +99,7 @@ export function StatusChip({ status }: { status: Status }) {
 export function Select({ className, children, ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
-      className={cx("h-9 rounded-lg border border-line bg-surface px-2.5 text-sm text-fg outline-none focus:border-accent", className)}
+      className={cx("h-9 rounded-md border border-line bg-raised px-2.5 type-small text-ink outline-none focus:border-accent", className)}
       {...rest}
     >
       {children}
@@ -119,7 +119,7 @@ export function Segmented<T extends string | number>({
   label: string;
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex h-9 rounded-lg border border-line bg-surface p-0.5">
+    <div role="radiogroup" aria-label={label} className="inline-flex h-9 rounded-md border border-line bg-raised p-0.5">
       {options.map((o) => (
         <button
           key={String(o.value)}
@@ -128,8 +128,8 @@ export function Segmented<T extends string | number>({
           aria-checked={o.value === value}
           onClick={() => onChange(o.value)}
           className={cx(
-            "rounded-md px-2.5 text-xs font-medium transition-colors",
-            o.value === value ? "bg-surface-2 text-fg shadow-sm" : "text-muted hover:text-fg",
+            "rounded-md px-2.5 type-meta font-medium transition-colors",
+            o.value === value ? "bg-inset text-ink shadow-l1" : "text-muted hover:text-ink",
           )}
         >
           {o.label}
@@ -141,8 +141,8 @@ export function Segmented<T extends string | number>({
 
 export function Toggle({ checked, onChange, children }: { checked: boolean; onChange: (v: boolean) => void; children: ReactNode }) {
   return (
-    <label className="inline-flex cursor-pointer select-none items-center gap-2 text-sm text-muted hover:text-fg">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="size-4 accent-[var(--accent)]" />
+    <label className="inline-flex cursor-pointer select-none items-center gap-2 type-small text-muted hover:text-ink">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="size-4 accent-accent" />
       {children}
     </label>
   );
@@ -150,7 +150,7 @@ export function Toggle({ checked, onChange, children }: { checked: boolean; onCh
 
 export function Card({ children, className, id }: { children: ReactNode; className?: string; id?: string }) {
   return (
-    <section id={id} className={cx("rounded-2xl border border-line bg-surface", className)}>
+    <section id={id} className={cx("rounded-md border border-line bg-raised", className)}>
       {children}
     </section>
   );
@@ -158,7 +158,7 @@ export function Card({ children, className, id }: { children: ReactNode; classNa
 
 export function Kbd({ children }: { children: ReactNode }) {
   return (
-    <kbd className="inline-flex min-w-5 items-center justify-center rounded border border-line bg-surface-2 px-1 font-mono text-[11px] text-muted">
+    <kbd className="inline-flex min-w-5 items-center justify-center rounded-md border border-line bg-inset px-1 font-mono type-meta text-muted">
       {children}
     </kbd>
   );
@@ -185,7 +185,7 @@ export function Pagination({ page, pageSize, total, onPage }: { page: number; pa
   const to = Math.min(total, page * pageSize);
   return (
     <nav aria-label="Pages" className="flex flex-wrap items-center justify-between gap-2">
-      <p className="tabular text-xs text-muted">
+      <p className="tabular type-meta text-muted">
         Showing {from.toLocaleString()}–{to.toLocaleString()} of {total.toLocaleString()}
       </p>
       {pages > 1 && (
@@ -193,12 +193,12 @@ export function Pagination({ page, pageSize, total, onPage }: { page: number; pa
           <Button size="sm" variant="ghost" onClick={() => onPage(page - 1)} disabled={page === 1} aria-label="Previous page">
             ‹ Prev
           </Button>
-          <span className="tabular px-1 text-xs text-muted sm:hidden">
+          <span className="tabular px-1 type-meta text-muted sm:hidden">
             Page {page} of {pages.toLocaleString()}
           </span>
           {pageList(page, pages).map((p, i) =>
             p === null ? (
-              <span key={`gap${i}`} className="hidden px-1 text-xs text-muted sm:inline">
+              <span key={`gap${i}`} className="hidden px-1 type-meta text-muted sm:inline">
                 …
               </span>
             ) : (
@@ -208,8 +208,8 @@ export function Pagination({ page, pageSize, total, onPage }: { page: number; pa
                 onClick={() => onPage(p)}
                 aria-current={p === page ? "page" : undefined}
                 className={cx(
-                  "tabular hidden h-8 min-w-8 rounded-lg px-2 text-xs sm:inline-block",
-                  p === page ? "bg-accent text-accent-fg" : "text-muted hover:bg-surface-2 hover:text-fg",
+                  "tabular hidden h-8 min-w-8 rounded-md px-2 type-meta sm:inline-block",
+                  p === page ? "bg-accent text-on-accent" : "text-muted hover:bg-inset hover:text-ink",
                 )}
               >
                 {p.toLocaleString()}

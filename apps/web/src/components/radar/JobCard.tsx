@@ -21,10 +21,10 @@ type Props = {
 const SHORT_SENIORITY: Record<Job["seniority"], string> = { leadership: "Leadership", principal: "Principal/Lead", senior: "Senior", mid: "Mid-level", entry: "Entry" };
 
 const PILL: Record<ReturnType<typeof scoreBand>, string> = {
-  top: "bg-accent text-accent-fg",
-  mid: "bg-warn-soft text-warn",
-  low: "bg-surface-2 text-fg",
-  none: "bg-surface-2 text-muted",
+  top: "bg-accent text-on-accent",
+  mid: "bg-warning-subtle text-warning-text",
+  low: "bg-inset text-ink",
+  none: "bg-inset text-muted",
 };
 
 /** Where the role is, across all its postings: "Berlin +3" (cities when we recognised them, else the raw location). */
@@ -35,12 +35,10 @@ function placeLine(group: JobGroup): string {
   return group.jobs.length > 1 ? `${lead} +${group.jobs.length - 1}` : lead;
 }
 
-/** Initial-letter avatar with a stable colour per company. */
+/** Initial-letter avatar: neutral, so the score stays the loudest thing on the row. */
 function Avatar({ name }: { name: string }) {
-  let h = 0;
-  for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) % 360;
   return (
-    <span className="flex size-10 shrink-0 items-center justify-center rounded-lg text-sm font-semibold text-white" style={{ background: `hsl(${h} 45% 45%)` }} aria-hidden>
+    <span className="flex size-10 shrink-0 items-center justify-center rounded-sm border border-hairline bg-inset type-label text-muted" aria-hidden>
       {name.replace(/[^\p{L}\p{N}]/gu, "").slice(0, 1).toUpperCase() || "?"}
     </span>
   );
@@ -62,8 +60,8 @@ export const JobCard = forwardRef<HTMLLIElement, Props>(function JobCard({ group
     <li
       ref={ref}
       className={cx(
-        "group relative flex gap-3 border-b border-line px-3 py-3 transition-colors last:border-b-0 has-[.jc-open:focus-visible]:ring-2 has-[.jc-open:focus-visible]:ring-inset has-[.jc-open:focus-visible]:ring-accent",
-        selected ? "bg-accent-soft/40" : "hover:bg-surface-2/60",
+        "group relative flex gap-3 border-b border-line px-3 py-3 transition-colors last:border-b-0 has-[.jc-open:focus-visible]:ring-2 has-[.jc-open:focus-visible]:ring-inset has-[.jc-open:focus-visible]:ring-focus",
+        selected ? "bg-accent-subtle/40" : "hover:bg-inset/60",
         (job.status === "closed" || status === "dismissed" || job.why.gate) && "opacity-60",
       )}
     >
@@ -71,7 +69,7 @@ export const JobCard = forwardRef<HTMLLIElement, Props>(function JobCard({ group
       <Avatar name={job.company} />
       <div className="min-w-0 flex-1">
         <div className="flex items-start gap-2">
-          <h3 className="line-clamp-2 min-w-0 flex-1 text-[15px] font-semibold leading-5">
+          <h3 className="line-clamp-2 min-w-0 flex-1 type-body font-semibold leading-5">
             <button
               type="button"
               onClick={onSelect}
@@ -82,16 +80,16 @@ export const JobCard = forwardRef<HTMLLIElement, Props>(function JobCard({ group
             </button>
           </h3>
           {isNew && (
-            <span className="mt-0.5 shrink-0 rounded-md bg-accent px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-3 tracking-wide text-accent-fg" title="New to you since your last scan">
+            <span className="mt-0.5 shrink-0 rounded-md bg-accent px-1.5 py-0.5 type-meta font-semibold uppercase leading-3 tracking-wide text-on-accent" title="New to you since your last scan">
               New<span className="sr-only"> to you since your last scan</span>
             </span>
           )}
         </div>
-        <p className="mt-0.5 truncate text-sm text-muted">
-          {yours && <Star className="mr-1 inline size-3.5 fill-accent text-accent" role="img" aria-label="Your company" />}
-          <span className="font-medium text-fg">{job.company}</span> · {placeLine(group)}
+        <p className="mt-0.5 truncate type-small text-muted">
+          {yours && <Star className="mr-1 inline size-3.5 fill-accent text-accent-text" role="img" aria-label="Your company" />}
+          <span className="font-medium text-ink">{job.company}</span> · {placeLine(group)}
         </p>
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 type-meta">
           {job.estimated ? (
             <span className="tabular rounded-md border border-dashed border-line px-1.5 py-0.5 font-semibold text-muted" title={`Estimated match score ${job.score}/100: not scanned yet, so no topic points`}>
               ~{job.score}
@@ -103,14 +101,14 @@ export const JobCard = forwardRef<HTMLLIElement, Props>(function JobCard({ group
               <span className="font-normal opacity-80"> match</span>
             </span>
           )}
-          <span className={cx(fresh ? "font-medium text-good" : "text-muted")}>{job.postedAt ? timeAgo(job.postedAt) : `seen ${timeAgo(job.firstSeen)}`}</span>
+          <span className={cx(fresh ? "font-medium text-success-text" : "text-muted")}>{job.postedAt ? timeAgo(job.postedAt) : `seen ${timeAgo(job.firstSeen)}`}</span>
           {job.workplace !== "unknown" && <span className="capitalize text-muted">· {job.workplace}</span>}
-          {salary && <span className="font-medium text-fg">· {salary}</span>}
-          {job.status === "closed" && <span className="font-medium text-bad">· Closed</span>}
-          {job.why.gate && <span className="font-medium text-warn">· Failed your {job.why.gate} filter</span>}
+          {salary && <span className="font-medium text-ink">· {salary}</span>}
+          {job.status === "closed" && <span className="font-medium text-danger-text">· Closed</span>}
+          {job.why.gate && <span className="font-medium text-warning-text">· Failed your {job.why.gate} filter</span>}
           {job.estimated && <span className="text-muted">· Not scanned yet</span>}
         </div>
-        {reasons.length > 0 && !job.why.gate && <p className="mt-1 truncate text-xs text-muted">Matches: {reasons.join(" · ")}</p>}
+        {reasons.length > 0 && !job.why.gate && <p className="mt-1 truncate type-meta text-muted">Matches: {reasons.join(" · ")}</p>}
       </div>
       {/* Above the title's stretched click area. Dimmed at rest on desktop, full on hover, focus or when selected. */}
       <div

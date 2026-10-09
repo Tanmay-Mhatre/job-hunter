@@ -14,9 +14,9 @@ type Props = {
 export function EmptyState({ icon, title, children, actions, className }: Props) {
   return (
     <Card className={cx("px-6 py-12 text-center sm:py-14", className)}>
-      <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-accent-soft text-accent">{icon}</span>
-      <h2 className="mt-4 text-lg font-semibold">{title}</h2>
-      <div className="mx-auto mt-1 max-w-md text-sm text-muted">{children}</div>
+      <span className="mx-auto flex size-12 items-center justify-center rounded-md bg-accent-subtle text-accent-text">{icon}</span>
+      <h2 className="mt-4 type-subheading font-semibold">{title}</h2>
+      <div className="mx-auto mt-1 max-w-md type-small text-muted">{children}</div>
       {actions && <div className="mt-5 flex flex-wrap justify-center gap-2">{actions}</div>}
     </Card>
   );
@@ -25,7 +25,7 @@ export function EmptyState({ icon, title, children, actions, className }: Props)
 /** Slim inline prompt for pages that still work without setup (e.g. Settings). */
 export function SetupBanner({ children, action }: { children: ReactNode; action: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-accent/40 bg-accent-soft/40 px-4 py-3 text-sm">
+    <div className="flex flex-wrap items-center gap-3 rounded-md border border-accent/40 bg-accent-subtle/40 px-4 py-3 type-small">
       <span className="min-w-0 flex-1">{children}</span>
       {action}
     </div>

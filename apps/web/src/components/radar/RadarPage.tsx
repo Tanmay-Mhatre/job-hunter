@@ -355,7 +355,7 @@ export function RadarPage(p: Props) {
               onKeyDown={(e) => e.key === "Escape" && (e.currentTarget.blur(), setFilters({ q: "" }))}
               placeholder="Search title, company, location, topic…  ( / )"
               aria-label="Search jobs"
-              className="h-9 w-full rounded-lg border border-line bg-surface pl-8 pr-3 text-sm outline-none placeholder:text-muted focus:border-accent"
+              className="h-9 w-full rounded-md border border-line bg-raised pl-8 pr-3 type-small outline-none placeholder:text-muted focus:border-accent"
             />
           </div>
           <label className="relative inline-flex items-center">
@@ -364,7 +364,7 @@ export function RadarPage(p: Props) {
               value={sort}
               onChange={(e) => setSort(e.target.value as Sort)}
               aria-label="Sort"
-              className="h-9 appearance-none rounded-lg border border-line bg-surface pl-8 pr-3 text-sm outline-none focus:border-accent"
+              className="h-9 appearance-none rounded-md border border-line bg-raised pl-8 pr-3 type-small outline-none focus:border-accent"
             >
               {SORTS.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -417,14 +417,14 @@ export function RadarPage(p: Props) {
                 key={c.key}
                 type="button"
                 onClick={() => setFilters(c.remove)}
-                className="inline-flex h-7 items-center gap-1 rounded-full bg-accent-soft px-2.5 text-xs font-medium text-accent hover:opacity-80"
+                className="inline-flex h-7 items-center gap-1 rounded-sm bg-accent-subtle px-2.5 type-meta font-medium text-accent-text hover:opacity-80"
                 aria-label={`Remove filter: ${c.label}`}
               >
                 {c.label} <X className="size-3" />
               </button>
             ))}
             {chips.length > 0 && (
-              <button type="button" onClick={() => replace(base, sort)} className="ml-1 h-7 rounded-md px-1.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-fg">
+              <button type="button" onClick={() => replace(base, sort)} className="ml-1 h-7 rounded-md px-1.5 type-meta font-medium text-muted hover:bg-inset hover:text-ink">
                 Clear all
               </button>
             )}
@@ -432,13 +432,13 @@ export function RadarPage(p: Props) {
               <button
                 type="button"
                 onClick={() => setFilters({ showOld: true })}
-                className="h-7 rounded-md px-1.5 text-xs font-medium text-accent hover:bg-surface-2"
+                className="h-7 rounded-md px-1.5 type-meta font-medium text-accent-text hover:bg-inset"
                 title={`Postings older than ${OLD_POSTING_DAYS / 30} months are hidden: they're usually filled`}
               >
                 Show older jobs ({olderCount})
               </button>
             )}
-            <span className="tabular ml-auto text-xs text-muted">
+            <span className="tabular ml-auto type-meta text-muted">
               {groups.length} {groups.length === 1 ? "role" : "roles"}
               {visible.length !== groups.length && ` (${visible.length} postings)`}
             </span>
@@ -450,7 +450,7 @@ export function RadarPage(p: Props) {
         <Card className="px-6 py-14 text-center">
           <Building2 className="mx-auto size-6 text-muted" />
           <p className="mt-2 font-medium">You haven't picked any companies yet.</p>
-          <p className="mx-auto mt-1 max-w-md text-sm text-muted">Add the companies you'd love to work at: we check them every scan, and their jobs always come first here.</p>
+          <p className="mx-auto mt-1 max-w-md type-small text-muted">Add the companies you'd love to work at: we check them every scan, and their jobs always come first here.</p>
           <Button variant="primary" className="mt-4" onClick={p.onCompanies}>
             Pick my companies <ArrowRight className="size-4" />
           </Button>
@@ -459,9 +459,9 @@ export function RadarPage(p: Props) {
         <Card className="px-6 py-14 text-center">
           <p className="font-medium">{filters.match === "strong" ? "No strong matches yet." : "No jobs match these filters."}</p>
           {filters.match === "strong" && (
-            <p className="mx-auto mt-1 max-w-md text-sm text-muted">
+            <p className="mx-auto mt-1 max-w-md type-small text-muted">
               Strong matches need the right title and place, and a description that mentions your topics.{" "}
-              <button type="button" className="font-medium text-accent hover:underline" onClick={() => (location.hash = "settings?section=keywords")}>
+              <button type="button" className="font-medium text-accent-text hover:underline" onClick={() => (location.hash = "settings?section=keywords")}>
                 {Object.keys(p.profile?.keywords ?? {}).length ? "Add more topics" : "Add topics"}
               </button>{" "}
               to find more.
@@ -476,7 +476,7 @@ export function RadarPage(p: Props) {
               ))}
             </div>
           ) : filters.mine ? (
-            <p className="mt-1 text-sm text-muted">None of your companies has a matching job right now. We'll keep scanning them.</p>
+            <p className="mt-1 type-small text-muted">None of your companies has a matching job right now. We'll keep scanning them.</p>
           ) : (
             <div className="mt-3 flex flex-wrap justify-center gap-2">
               <Button size="sm" variant="primary" onClick={() => replace(base, sort)}>
@@ -517,7 +517,7 @@ export function RadarPage(p: Props) {
                   </Fragment>
                 ))}
                 {limit < groups.length && (
-                  <li ref={sentinel} className="flex items-center justify-center gap-2 py-4 text-xs text-muted">
+                  <li ref={sentinel} className="flex items-center justify-center gap-2 py-4 type-meta text-muted">
                     <LoaderCircle className="size-3.5 animate-spin" /> Loading more…
                   </li>
                 )}
@@ -526,7 +526,7 @@ export function RadarPage(p: Props) {
           </Card>
           {wide && (
             <Card className="hidden overflow-hidden lg:sticky lg:top-[4.5rem] lg:block lg:h-[calc(100dvh-5.5rem)]">
-              {detailProps ? <JobDetail {...detailProps} /> : <p className="p-6 text-sm text-muted">Pick a job to see the details.</p>}
+              {detailProps ? <JobDetail {...detailProps} /> : <p className="p-6 type-small text-muted">Pick a job to see the details.</p>}
             </Card>
           )}
         </div>
@@ -577,7 +577,12 @@ export function RadarPage(p: Props) {
 
 /** A section title inside the job list ("Your companies", "All jobs for you"). */
 function ListHeading({ children }: { children: ReactNode }) {
-  return <li className="sticky top-0 z-10 border-b border-line bg-surface-2/95 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted backdrop-blur">{children}</li>;
+  return (
+    <li className="sticky top-0 z-10 border-b border-line bg-inset/95 px-3 py-1.5 backdrop-blur">
+      {/* A real heading, so the job titles (h3) sit under it. */}
+      <h2 className="type-meta font-semibold uppercase tracking-wide text-muted">{children}</h2>
+    </li>
+  );
 }
 
 // ---------- views ----------
@@ -628,10 +633,10 @@ function ViewsBar(props: {
             onClick={() => props.onPick({ ...props.base, ...b.filters }, props.sort)}
             aria-pressed={on}
             title={b.id === "new" ? "New to you since your last scan" : undefined}
-            className={cx("inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium", on ? "bg-fg text-surface" : "text-muted hover:bg-surface-2 hover:text-fg")}
+            className={cx("inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 type-label", on ? "bg-ink text-raised" : "text-muted hover:bg-inset hover:text-ink")}
           >
             {b.label}
-            {b.id !== "applied" && <span className={cx("tabular text-xs", on ? "opacity-70" : "opacity-60", b.id === "new" && props.counts.new > 0 && !on && "text-accent opacity-100")}>{props.counts[b.count]}</span>}
+            {b.id !== "applied" && <span className={cx("tabular type-meta", !on && (b.id === "new" && props.counts.new > 0 ? "text-accent-text" : "text-muted"))}>{props.counts[b.count]}</span>}
           </button>
         );
       })}
@@ -640,7 +645,7 @@ function ViewsBar(props: {
         naming?.id === v.id ? (
           <NameInput key={v.id} value={naming.value} onChange={(value) => setNaming({ id: v.id, value })} onSubmit={submit} onCancel={() => setNaming(null)} />
         ) : (
-          <span key={v.id} className={cx("group inline-flex h-8 shrink-0 items-center rounded-lg text-sm font-medium", customActive?.id === v.id ? "bg-fg text-surface" : "text-muted hover:bg-surface-2 hover:text-fg")}>
+          <span key={v.id} className={cx("group inline-flex h-8 shrink-0 items-center rounded-md type-label", customActive?.id === v.id ? "bg-ink text-raised" : "text-muted hover:bg-inset hover:text-ink")}>
             <button
               type="button"
               className="inline-flex h-full items-center gap-1 pl-2.5 pr-1"
@@ -651,10 +656,10 @@ function ViewsBar(props: {
               <Star className="size-3.5" /> {v.name}
             </button>
             {/* Rename and delete: 24px targets that work with keyboard and touch, not only double-click. */}
-            <button type="button" className="inline-flex size-6 items-center justify-center rounded opacity-60 hover:opacity-100 focus-visible:opacity-100" onClick={() => setNaming({ id: v.id, value: v.name })} aria-label={`Rename view ${v.name}`} title="Rename">
+            <button type="button" className="inline-flex size-6 items-center justify-center rounded-md opacity-60 hover:opacity-100 focus-visible:opacity-100" onClick={() => setNaming({ id: v.id, value: v.name })} aria-label={`Rename view ${v.name}`} title="Rename">
               <Pencil className="size-3.5" />
             </button>
-            <button type="button" className="mr-1 inline-flex size-6 items-center justify-center rounded opacity-60 hover:opacity-100 focus-visible:opacity-100" onClick={() => props.onDelete(v)} aria-label={`Delete view ${v.name}`} title="Delete">
+            <button type="button" className="mr-1 inline-flex size-6 items-center justify-center rounded-md opacity-60 hover:opacity-100 focus-visible:opacity-100" onClick={() => props.onDelete(v)} aria-label={`Delete view ${v.name}`} title="Delete">
               <X className="size-3.5" />
             </button>
           </span>
@@ -665,7 +670,7 @@ function ViewsBar(props: {
       ) : (
         !customActive &&
         (!builtInActive || props.sort !== "best") && (
-          <button type="button" onClick={() => setNaming({ value: "" })} className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-2.5 text-sm font-medium text-accent hover:bg-surface-2">
+          <button type="button" onClick={() => setNaming({ value: "" })} className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md px-2.5 type-label text-accent-text hover:bg-inset">
             <Plus className="size-3.5" /> Save view
           </button>
         )
@@ -684,9 +689,9 @@ function NameInput({ value, onChange, onSubmit, onCancel }: { value: string; onC
         onKeyDown={(e) => (e.key === "Enter" ? onSubmit() : e.key === "Escape" && onCancel())}
         placeholder="Name this view"
         aria-label="View name"
-        className="h-8 w-40 rounded-lg border border-accent bg-surface px-2 text-sm outline-none"
+        className="h-8 w-40 rounded-md border border-accent bg-raised px-2 type-small outline-none"
       />
-      <button type="button" onClick={onSubmit} className="inline-flex size-8 items-center justify-center rounded text-accent" aria-label="Save view name">
+      <button type="button" onClick={onSubmit} className="inline-flex size-8 items-center justify-center rounded-md text-accent-text" aria-label="Save view name">
         <Check className="size-4" />
       </button>
     </span>
@@ -707,8 +712,8 @@ function MoreToggles({ filters, setFilters, olderCount }: { filters: Filters; se
   return (
     <div className="space-y-0.5">
       {rows.map(([k, label]) => (
-        <label key={k} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-surface-2">
-          <input type="checkbox" checked={filters[k] as boolean} onChange={(e) => setFilters({ [k]: e.target.checked })} className="size-4 accent-[var(--accent)]" />
+        <label key={k} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 type-small hover:bg-inset">
+          <input type="checkbox" checked={filters[k] as boolean} onChange={(e) => setFilters({ [k]: e.target.checked })} className="size-4 accent-accent" />
           {label}
         </label>
       ))}
@@ -744,12 +749,12 @@ function MoreMenu({
           <MoreToggles filters={filters} setFilters={setFilters} olderCount={olderCount} />
           {hiddenCompanies.length > 0 && (
             <div className="mt-1 border-t border-line px-2 pt-2">
-              <p className="mb-1 text-xs font-semibold text-muted">Hidden companies</p>
+              <p className="mb-1 type-meta font-semibold text-muted">Hidden companies</p>
               <ul className="space-y-0.5">
                 {hiddenCompanies.map((c) => (
-                  <li key={c} className="flex items-center justify-between text-sm">
+                  <li key={c} className="flex items-center justify-between type-small">
                     <span className="truncate">{c}</span>
-                    <button type="button" className="h-7 rounded-md px-1.5 text-xs font-medium text-accent hover:bg-surface-2" onClick={() => onUnhide(c)} aria-label={`Show ${c} again`}>
+                    <button type="button" className="h-7 rounded-md px-1.5 type-meta font-medium text-accent-text hover:bg-inset" onClick={() => onUnhide(c)} aria-label={`Show ${c} again`}>
                       Show
                     </button>
                   </li>
@@ -768,9 +773,9 @@ function MoreMenu({
 function FilterSheet({ children, count, onClose, onClear }: { children: ReactNode; count: number; onClose: () => void; onClear: () => void }) {
   return (
     <Dialog open onClose={onClose} labelledBy="filter-sheet-title" placement="bottom">
-      <div className="flex max-h-[85dvh] flex-col rounded-t-2xl border border-line bg-surface shadow-2xl sm:rounded-2xl">
+      <div className="flex max-h-[85dvh] flex-col rounded-t-md border border-line bg-raised shadow-l3 sm:rounded-md">
         <header className="flex items-center justify-between border-b border-line px-4 py-3">
-          <h2 id="filter-sheet-title" className="text-base font-semibold">
+          <h2 id="filter-sheet-title" className="type-body font-semibold">
             Filters
           </h2>
           <div className="flex items-center gap-1">
@@ -796,7 +801,7 @@ function FilterSheet({ children, count, onClose, onClear }: { children: ReactNod
 function SheetSection({ label, children }: { label: string; children: ReactNode }) {
   return (
     <section>
-      <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">{label}</h3>
+      <h3 className="mb-1 type-meta font-semibold uppercase tracking-wide text-muted">{label}</h3>
       {children}
     </section>
   );
@@ -851,7 +856,7 @@ function ProfileBar({
   };
 
   return (
-    <div className={cx("rounded-2xl border px-3 py-2.5 text-sm", changed ? "border-warn/50 bg-warn-soft/30" : "border-line bg-surface")}>
+    <div className={cx("rounded-md border px-3 py-2.5 type-small", changed ? "border-warning/50 bg-warning-subtle/30" : "border-line bg-raised")}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
         <UserRound className="size-4 shrink-0 text-muted" />
         <p className="min-w-0 flex-1">
@@ -862,18 +867,18 @@ function ProfileBar({
         </Button>
       </div>
       {placeFilter.length > 0 && !changed && (
-        <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 pl-7 text-xs text-muted">
+        <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 pl-7 type-meta text-muted">
           {everywhere ? (
             <>
               <Globe className="size-3.5 shrink-0" /> Showing jobs everywhere.
-              <button type="button" className="h-7 rounded-md px-1.5 font-medium text-accent hover:bg-surface-2" onClick={() => onEverywhere(false)}>
+              <button type="button" className="h-7 rounded-md px-1.5 font-medium text-accent-text hover:bg-inset" onClick={() => onEverywhere(false)}>
                 Show only my places
               </button>
             </>
           ) : (
             <>
               <MapPin className="size-3.5 shrink-0" /> Showing your places: {placeFilter.map((c) => (c === REMOTE ? "Remote" : displayPlace(c))).join(", ")}.
-              <button type="button" className="h-7 rounded-md px-1.5 font-medium text-accent hover:bg-surface-2" onClick={() => onEverywhere(true)}>
+              <button type="button" className="h-7 rounded-md px-1.5 font-medium text-accent-text hover:bg-inset" onClick={() => onEverywhere(true)}>
                 Show everywhere
               </button>
             </>
@@ -881,8 +886,8 @@ function ProfileBar({
         </p>
       )}
       {changed && (
-        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-warn/30 pt-2">
-          <p className="min-w-0 flex-1 text-xs text-warn">
+        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-warning/30 pt-2">
+          <p className="min-w-0 flex-1 type-meta text-warning-text">
             Your place filters differ from your profile. This only changes what you see here; your scans and alerts still use your profile.
           </p>
           <Button size="sm" variant="ghost" onClick={onReset} disabled={saving}>
@@ -896,7 +901,7 @@ function ProfileBar({
           )}
         </div>
       )}
-      {error && <p className="mt-1.5 text-xs text-bad">{error}</p>}
+      {error && <p className="mt-1.5 type-meta text-danger-text">{error}</p>}
     </div>
   );
 }

@@ -69,15 +69,15 @@ export function TelegramAlerts({
     }
   };
 
-  if (!status) return <p className="flex items-center gap-2 text-sm text-muted"><LoaderCircle className="size-4 animate-spin" /> Checking…</p>;
+  if (!status) return <p className="flex items-center gap-2 type-small text-muted"><LoaderCircle className="size-4 animate-spin" /> Checking…</p>;
   if (status.error)
     return (
-      <div className="text-sm" role="alert">
-        <p className="text-bad">Couldn't check your Telegram alerts. Make sure RawJobs is running on this computer, then try again.</p>
+      <div className="type-small" role="alert">
+        <p className="text-danger-text">Couldn't check your Telegram alerts. Make sure RawJobs is running on this computer, then try again.</p>
         <Button size="sm" variant="ghost" className="mt-1" onClick={() => void refresh()}>
           <RefreshCw className="size-3.5" /> Try again
         </Button>
-        <details className="mt-1 text-xs text-muted">
+        <details className="mt-1 type-meta text-muted">
           <summary className="cursor-pointer">Technical details</summary>
           <p className="mt-1 whitespace-pre-wrap font-mono">{status.error}</p>
         </details>
@@ -96,12 +96,12 @@ export function TelegramAlerts({
           <Step n={1} done={step > 1} title="Make your own bot">
             {step === 1 ? (
               <>
-                <p className="text-sm text-muted">
+                <p className="type-small text-muted">
                   In Telegram, open{" "}
-                  <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="font-medium text-accent">
+                  <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="font-medium text-accent-text">
                     @BotFather <ExternalLink className="inline size-3" />
                   </a>
-                  , send <code className="rounded bg-surface-2 px-1">/newbot</code>, pick any name, and copy the token it gives you.
+                  , send <code className="rounded-md bg-inset px-1">/newbot</code>, pick any name, and copy the token it gives you.
                 </p>
                 <form
                   className="mt-2 flex flex-col gap-2 sm:flex-row"
@@ -118,7 +118,7 @@ export function TelegramAlerts({
                     spellCheck={false}
                     placeholder="123456789:AAF…"
                     aria-label="Bot token from BotFather"
-                    className="h-9 min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 font-mono text-sm outline-none focus:border-accent"
+                    className="h-9 min-w-0 flex-1 rounded-md border border-line bg-raised px-3 font-mono type-small outline-none focus:border-accent"
                   />
                   <Button type="submit" variant="primary" disabled={!token.trim() || !!busy}>
                     {spin("token")} Check token
@@ -126,9 +126,9 @@ export function TelegramAlerts({
                 </form>
               </>
             ) : (
-              <p className="text-sm text-muted">
+              <p className="type-small text-muted">
                 Bot {status.bot ?? status.token} ·{" "}
-                <button type="button" className="min-h-6 font-medium text-accent hover:underline" onClick={() => setConfirmForget(true)} disabled={!!busy}>
+                <button type="button" className="min-h-6 font-medium text-accent-text hover:underline" onClick={() => setConfirmForget(true)} disabled={!!busy}>
                   use another bot
                 </button>
               </p>
@@ -137,10 +137,10 @@ export function TelegramAlerts({
           <Step n={2} done={false} title="Say hi to it" muted={step < 2}>
             {step === 2 && (
               <>
-                <p className="text-sm text-muted">
+                <p className="type-small text-muted">
                   Open{" "}
                   {botLink ? (
-                    <a href={botLink} target="_blank" rel="noreferrer" className="font-medium text-accent">
+                    <a href={botLink} target="_blank" rel="noreferrer" className="font-medium text-accent-text">
                       {status.bot} <ExternalLink className="inline size-3" />
                     </a>
                   ) : (
@@ -157,8 +157,8 @@ export function TelegramAlerts({
         </ol>
       ) : (
         <div className="space-y-3">
-          <p className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent">
+          <p className="flex flex-wrap items-center gap-2 type-small">
+            <span className="inline-flex items-center gap-1.5 rounded-sm bg-accent-subtle px-2.5 py-0.5 type-meta font-medium text-accent-text">
               <Check className="size-3.5" /> Connected
             </span>
             New jobs go to {botName} on Telegram.
@@ -177,36 +177,36 @@ export function TelegramAlerts({
         </div>
       )}
       {note && (
-        <div role={note.tone === "bad" ? "alert" : "status"} className="text-sm">
-          <p className={note.tone === "bad" ? "text-bad" : "text-good"}>{note.text}</p>
+        <div role={note.tone === "bad" ? "alert" : "status"} className="type-small">
+          <p className={note.tone === "bad" ? "text-danger-text" : "text-success-text"}>{note.text}</p>
           {note.retry && (
             <Button size="sm" variant="ghost" className="mt-1" onClick={note.retry} disabled={!!busy}>
               <RefreshCw className="size-3.5" /> Try again
             </Button>
           )}
           {note.detail && (
-            <details className="mt-1 text-xs text-muted">
+            <details className="mt-1 type-meta text-muted">
               <summary className="cursor-pointer">Technical details</summary>
               <p className="mt-1 whitespace-pre-wrap font-mono">{note.detail}</p>
             </details>
           )}
         </div>
       )}
-      <p className="text-xs text-muted">
+      <p className="type-meta text-muted">
         {footnote ?? "One message per scheduled scan, only when there are new jobs for you (best first, up to 10). Scans you start yourself don't send one."} Your bot token is kept on this computer only.
       </p>
 
       <Dialog open={confirmForget} onClose={() => setConfirmForget(false)} labelledBy="tg-forget-title" initialFocus="[data-autofocus]">
-        <Card className="p-5 shadow-2xl sm:p-6">
+        <Card className="p-5 shadow-l3 sm:p-6">
           <div className="flex items-start gap-3">
-            <h2 id="tg-forget-title" className="min-w-0 flex-1 text-lg font-semibold">
+            <h2 id="tg-forget-title" className="min-w-0 flex-1 type-subheading font-semibold">
               {step === 3 ? "Disconnect Telegram?" : "Use another bot?"}
             </h2>
             <IconButton label="Close" className="-mr-2 -mt-1" onClick={() => setConfirmForget(false)}>
               <X className="size-4" />
             </IconButton>
           </div>
-          <p className="mt-1 text-sm text-muted">
+          <p className="mt-1 type-small text-muted">
             {step === 3 ? "Alerts stop, and " : ""}
             {botName}'s token is removed from this computer. To use it again, you'll paste its token from @BotFather again.
           </p>
@@ -233,11 +233,11 @@ export function TelegramAlerts({
 function Step({ n, title, done, muted, children }: { n: number; title: string; done: boolean; muted?: boolean; children?: ReactNode }) {
   return (
     <li className={cx("flex gap-3", muted && "opacity-50")}>
-      <span className={cx("flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold", done ? "border-accent bg-accent text-accent-fg" : "border-line")}>
+      <span className={cx("flex size-6 shrink-0 items-center justify-center rounded-sm border type-meta font-semibold", done ? "border-accent bg-accent text-on-accent" : "border-line")}>
         {done ? <Check className="size-3.5" /> : n}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium">{title}</p>
+        <p className="type-label">{title}</p>
         {children && <div className="mt-1">{children}</div>}
       </div>
     </li>

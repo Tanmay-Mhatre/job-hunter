@@ -32,9 +32,9 @@ export function ToggleChips({ options, selected, onChange, label, tone = "accent
     setText("");
   };
   const on = {
-    accent: "border-accent bg-accent-soft text-accent",
-    bad: "border-bad/50 bg-bad-soft text-bad",
-    plain: "border-fg/30 bg-surface-2 text-fg",
+    accent: "border-accent bg-accent-subtle text-accent-text",
+    bad: "border-danger/50 bg-danger-subtle text-danger-text",
+    plain: "border-ink/30 bg-inset text-ink",
   }[tone];
 
   return (
@@ -48,9 +48,9 @@ export function ToggleChips({ options, selected, onChange, label, tone = "accent
             aria-pressed={active}
             onClick={() => toggle(v)}
             className={cx(
-              "inline-flex items-center gap-1 rounded-lg border font-medium transition-colors",
-              size === "sm" ? "h-7 px-2 text-xs" : "h-8 px-2.5 text-sm",
-              active ? on : "border-dashed border-line text-muted hover:border-accent hover:text-fg",
+              "inline-flex items-center gap-1 rounded-md border font-medium transition-colors",
+              size === "sm" ? "h-7 px-2 type-meta" : "h-8 px-2.5 type-small",
+              active ? on : "border-dashed border-line text-muted hover:border-accent hover:text-ink",
             )}
           >
             {active ? <Check className="size-3.5" /> : <Plus className="size-3.5" />}
@@ -72,7 +72,7 @@ export function ToggleChips({ options, selected, onChange, label, tone = "accent
           placeholder={addPlaceholder}
           aria-label={`Add to ${label}`}
           className={cx(
-            "min-w-36 flex-1 rounded-lg border border-transparent bg-transparent px-2 text-sm outline-none placeholder:text-muted focus:border-line",
+            "min-w-36 flex-1 rounded-md border border-transparent bg-transparent px-2 type-small outline-none placeholder:text-muted focus:border-line",
             size === "sm" ? "h-7" : "h-8",
           )}
         />

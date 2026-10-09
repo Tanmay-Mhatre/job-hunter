@@ -1,74 +1,123 @@
 @import "tailwindcss";
+/* The RawJobs design tokens (generated from design/tokens.json by `pnpm design:build`). */
+@import "./design/tokens.css";
+@import "./design/utilities.css";
 
-@custom-variant dark (&:where(.dark, .dark *));
+/* data-theme is set before first paint by index.html (see lib/theme.ts). */
+@custom-variant dark (&:where([data-theme^="dark"], [data-theme^="dark"] *));
+
+/*
+ * Tailwind's own scales are switched off, so only the tokens can be used: a default palette color or
+ * font size renders nothing, and `pnpm design:lint` fails on it.
+ */
+@theme {
+  --color-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --font-*: initial;
+  --font-weight-*: initial;
+  --ease-*: initial;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+}
+
+/* Same names as the tokens: utilities point at them, and Tailwind doesn't emit its own copies. */
+@theme inline reference {
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --radius-0: var(--radius-0);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-dot: var(--radius-dot);
+  --shadow-l1: var(--shadow-l1);
+  --shadow-l2: var(--shadow-l2);
+  --shadow-l3: var(--shadow-l3);
+  --ease-enter: var(--ease-enter);
+  --ease-exit: var(--ease-exit);
+  --ease-standard: var(--ease-standard);
+}
+
+/* Semantic tokens only (design/README.md, "Using the semantic tokens"); never primitives. */
+@theme inline {
+  /* 8px layout grid in 4px steps: p-1 = space-1, p-2 = space-2, p-4 = space-4, p-8 = space-8. */
+  --spacing: var(--space-1);
+  --default-transition-duration: var(--duration-instant);
+  --default-transition-timing-function: var(--ease-standard);
+
+  /* Grounds */
+  --color-canvas: var(--bg-canvas);
+  --color-raised: var(--bg-raised);
+  --color-overlay: var(--bg-overlay);
+  --color-hover: var(--bg-hover);
+  --color-active: var(--bg-active);
+  --color-inset: var(--bg-inset);
+  --color-scrim: var(--scrim);
+  /* Text */
+  --color-ink: var(--text-primary);
+  --color-muted: var(--text-secondary);
+  --color-disabled: var(--text-disabled);
+  /* Borders */
+  --color-line: var(--border-default);
+  --color-hairline: var(--border-subtle);
+  --color-control: var(--border-control);
+  --color-control-hover: var(--border-control-hover);
+  --color-focus: var(--focus-ring);
+  /* Signal */
+  --color-accent: var(--accent-solid);
+  --color-accent-hover: var(--accent-solid-hover);
+  --color-accent-text: var(--accent-text);
+  --color-accent-mark: var(--accent-mark);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-border: var(--accent-border);
+  --color-on-accent: var(--on-accent);
+  /* Status */
+  --color-success: var(--success-solid);
+  --color-success-text: var(--success-text);
+  --color-success-subtle: var(--success-subtle);
+  --color-on-success: var(--on-success);
+  --color-warning: var(--warning-solid);
+  --color-warning-text: var(--warning-text);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-on-warning: var(--on-warning);
+  --color-danger: var(--danger-solid);
+  --color-danger-text: var(--danger-text);
+  --color-danger-subtle: var(--danger-subtle);
+}
 
 :root {
-  --bg: #f5f6f8;
-  --surface: #ffffff;
-  --surface-2: #f0f2f5;
-  --line: #e2e5ea;
-  /* Borders of form controls and other UI that must stand out (WCAG 1.4.11: 3:1). */
-  --line-strong: #848e9e;
-  --fg: #0f172a;
-  --muted: #5b6678;
-  --accent: #0f766e;
-  --accent-soft: #ccfbf1;
-  --accent-fg: #ffffff;
-  --warn: #b45309;
-  --warn-soft: #fef3c7;
-  --bad: #b91c1c;
-  --bad-soft: #fee2e2;
-  --good: #15803d;
   color-scheme: light;
 }
-
-.dark {
-  --bg: #0b0f14;
-  --surface: #11161d;
-  --surface-2: #19212b;
-  --line: #24303d;
-  --line-strong: #64748b;
-  --fg: #e6edf3;
-  --muted: #8b98a8;
-  --accent: #2dd4bf;
-  --accent-soft: #134e4a;
-  --accent-fg: #042f2e;
-  --warn: #fbbf24;
-  --warn-soft: #422006;
-  --bad: #f87171;
-  --bad-soft: #450a0a;
-  --good: #4ade80;
+[data-theme^="dark"] {
   color-scheme: dark;
-}
-
-@theme inline {
-  --color-bg: var(--bg);
-  --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
-  --color-line: var(--line);
-  --color-line-strong: var(--line-strong);
-  --color-fg: var(--fg);
-  --color-muted: var(--muted);
-  --color-accent: var(--accent);
-  --color-accent-soft: var(--accent-soft);
-  --color-accent-fg: var(--accent-fg);
-  --color-warn: var(--warn);
-  --color-warn-soft: var(--warn-soft);
-  --color-bad: var(--bad);
-  --color-bad-soft: var(--bad-soft);
-  --color-good: var(--good);
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 html,
 body {
-  background: var(--bg);
-  color: var(--fg);
+  background: var(--bg-canvas);
+  color: var(--text-primary);
 }
 
 body {
-  @apply font-sans antialiased;
-  font-feature-settings: "cv11", "ss01";
+  font: var(--text-small);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+code,
+kbd,
+samp,
+pre {
+  font-family: var(--font-mono);
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
 }
 
 .tabular {
@@ -76,7 +125,7 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -89,20 +138,23 @@ body {
 input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]):not(:focus),
 select:not(:focus),
 textarea:not(:focus) {
-  border-color: var(--line-strong);
+  border-color: var(--border-control);
 }
 
-/* Native <dialog> used by <Dialog>: no UA chrome, dimmed backdrop. */
-dialog.jh-dialog {
-  background: transparent;
-  color: inherit;
-  padding: 0;
-  border: 0;
-  max-width: none;
-  max-height: none;
-}
-dialog.jh-dialog::backdrop {
-  background: rgb(0 0 0 / 0.35);
+/* Native <dialog> used by <Dialog>: no UA chrome, the scrim behind it. In the base layer, so the
+   max-w-* and max-h-* utilities on a dialog still apply. */
+@layer base {
+  dialog.jh-dialog {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    border: 0;
+    max-width: none;
+    max-height: none;
+  }
+  dialog.jh-dialog::backdrop {
+    background: var(--scrim);
+  }
 }
 
 .sr-only-focusable:not(:focus) {
@@ -117,5 +169,26 @@ dialog.jh-dialog::backdrop {
 /* Thin scrollbars that follow the theme */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--line) transparent;
+  scrollbar-color: var(--border-default) transparent;
+}
+
+/* The header wordmark: ink on the light themes, paper on the dark ones. */
+.rj-wordmark-paper {
+  display: none;
+}
+[data-theme^="dark"] .rj-wordmark-ink {
+  display: none;
+}
+[data-theme^="dark"] .rj-wordmark-paper {
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
 }

@@ -85,8 +85,8 @@ export function ScheduledScans() {
     }
   };
 
-  if (!status) return <p className="flex items-center gap-2 text-sm text-muted"><LoaderCircle className="size-4 animate-spin" /> Checking…</p>;
-  if (!status.supported) return <p className="text-sm text-muted">Scheduled scans aren't supported on this system yet.</p>;
+  if (!status) return <p className="flex items-center gap-2 type-small text-muted"><LoaderCircle className="size-4 animate-spin" /> Checking…</p>;
+  if (!status.supported) return <p className="type-small text-muted">Scheduled scans aren't supported on this system yet.</p>;
 
   const saved = status.settings;
   const changed = !saved || saved.times.join() !== [...times].sort().join() || saved.scope !== scope;
@@ -96,8 +96,8 @@ export function ScheduledScans() {
   return (
     <div className="space-y-4">
       {status.installed && saved ? (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-accent-soft/50 p-3 text-sm">
-          <Clock className="size-4 text-accent" />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-accent-subtle/50 p-3 type-small">
+          <Clock className="size-4 text-accent-text" />
           <span>
             On: <b>{scopeLabel(saved.scope, hasIndustries)}</b>, daily at <b>{saved.times.join(" and ")}</b>.
             {status.nextRun && <> Next scan {formatDateTime(status.nextRun)}.</>}
@@ -105,7 +105,7 @@ export function ScheduledScans() {
         </div>
       ) : (
         status.problem && (
-          <p className="flex items-start gap-2 rounded-xl bg-warn-soft/50 p-3 text-sm text-warn">
+          <p className="flex items-start gap-2 rounded-md bg-warning-subtle/50 p-3 type-small text-warning-text">
             <CircleAlert className="mt-0.5 size-4 shrink-0" /> {status.problem}
           </p>
         )
@@ -113,7 +113,7 @@ export function ScheduledScans() {
 
       <div className="space-y-3">
         <fieldset>
-          <legend className="text-sm font-medium">When</legend>
+          <legend className="type-label">When</legend>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
             {times.map((t, i) => (
               <span key={i} className="inline-flex items-center gap-1">
@@ -122,14 +122,14 @@ export function ScheduledScans() {
                   value={t}
                   onChange={(e) => setTimes(times.map((x, j) => (j === i ? e.target.value : x)))}
                   aria-label={`Scan time ${i + 1}`}
-                  className="h-9 rounded-lg border border-line bg-surface px-2 text-sm outline-none focus:border-accent"
+                  className="h-9 rounded-md border border-line bg-raised px-2 type-small outline-none focus:border-accent"
                 />
                 {times.length > 1 && (
                   <button
                     type="button"
                     aria-label={`Remove ${t}`}
                     title="Remove this time"
-                    className="inline-flex size-8 items-center justify-center rounded-lg text-muted hover:bg-surface-2 hover:text-fg"
+                    className="inline-flex size-8 items-center justify-center rounded-md text-muted hover:bg-inset hover:text-ink"
                     onClick={() => setTimes(times.filter((_, j) => j !== i))}
                   >
                     <X className="size-4" />
@@ -145,17 +145,17 @@ export function ScheduledScans() {
           </div>
         </fieldset>
         <fieldset>
-          <legend className="text-sm font-medium">What to scan</legend>
+          <legend className="type-label">What to scan</legend>
           <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
             {(["mine", "all"] as const).map((s) => {
               const p = plan?.[s];
               const count = p ? p.yours + p.extra : 0;
               return (
-                <label key={s} className={cx("flex cursor-pointer gap-2.5 rounded-xl border p-3", scope === s ? "border-accent bg-accent-soft/30" : "border-line")}>
-                  <input type="radio" name="schedule-scope" checked={scope === s} onChange={() => setScope(s)} className="mt-0.5 accent-[var(--accent)]" />
-                  <span className="text-sm">
+                <label key={s} className={cx("flex cursor-pointer gap-2.5 rounded-md border p-3", scope === s ? "border-accent bg-accent-subtle/30" : "border-line")}>
+                  <input type="radio" name="schedule-scope" checked={scope === s} onChange={() => setScope(s)} className="mt-0.5 accent-accent" />
+                  <span className="type-small">
                     <b>{scopeLabel(s, hasIndustries)}</b>
-                    <span className="block text-xs text-muted">{p ? `${s === "all" ? roughCount(count) : count.toLocaleString()} companies · ${aboutTime(p.seconds)}` : "…"}</span>
+                    <span className="block type-meta text-muted">{p ? `${s === "all" ? roughCount(count) : count.toLocaleString()} companies · ${aboutTime(p.seconds)}` : "…"}</span>
                   </span>
                 </label>
               );
@@ -179,15 +179,15 @@ export function ScheduledScans() {
           )}
         </div>
         {note && (
-          <div role={note.tone === "bad" ? "alert" : "status"} className="text-sm">
-            <p className={note.tone === "bad" ? "text-bad" : "text-good"}>{note.text}</p>
+          <div role={note.tone === "bad" ? "alert" : "status"} className="type-small">
+            <p className={note.tone === "bad" ? "text-danger-text" : "text-success-text"}>{note.text}</p>
             {note.retry && (
               <Button size="sm" variant="ghost" className="mt-1" onClick={() => void run(note.retry!)} disabled={!!busy}>
                 <RefreshCw className="size-3.5" /> Try again
               </Button>
             )}
             {note.detail && (
-              <details className="mt-1 text-xs text-muted">
+              <details className="mt-1 type-meta text-muted">
                 <summary className="cursor-pointer">Technical details</summary>
                 <p className="mt-1 whitespace-pre-wrap font-mono">{note.detail}</p>
               </details>
@@ -196,30 +196,30 @@ export function ScheduledScans() {
         )}
       </div>
 
-      <p className="text-xs text-muted">
+      <p className="type-meta text-muted">
         Scans run on this computer, even with this page closed, but only while it's on or asleep (it wakes up for them). A scan missed while it was off runs as
         soon as it's back on. {scope === "all" && "All companies usually takes minutes with the daily job feed, up to 2 hours without it: keep the computer on until it's done."}
       </p>
 
       {status.runs.length > 0 && (
         <div>
-          <p className="text-sm font-medium">Recent scheduled scans</p>
-          <ul className="mt-1.5 divide-y divide-line rounded-xl border border-line text-sm">
+          <p className="type-label">Recent scheduled scans</p>
+          <ul className="mt-1.5 divide-y divide-line rounded-md border border-line type-small">
             {status.runs.slice(0, 5).map((r) => (
               <li key={r.startedAt} className="flex flex-wrap items-center gap-x-3 gap-y-0.5 px-3 py-2">
                 <span className="w-32 shrink-0 text-muted" title={formatDateTime(r.startedAt)}>
                   {timeAgo(r.startedAt)}
                 </span>
-                <span className={cx("min-w-0 flex-1", !r.ok && "text-bad")}>
+                <span className={cx("min-w-0 flex-1", !r.ok && "text-danger-text")}>
                   {runLine(r)}
                   {!r.ok && r.error && (
-                    <details className="text-xs text-muted">
+                    <details className="type-meta text-muted">
                       <summary className="cursor-pointer">Technical details</summary>
                       <span className="mt-1 block whitespace-pre-wrap font-mono">{r.error}</span>
                     </details>
                   )}
                 </span>
-                <span className="text-xs text-muted">{scopeLabel(r.scope, hasIndustries)}</span>
+                <span className="type-meta text-muted">{scopeLabel(r.scope, hasIndustries)}</span>
               </li>
             ))}
           </ul>

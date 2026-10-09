@@ -122,7 +122,7 @@ function DirectoryMissing({ onReload }: { onReload: () => void }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   return (
-    <div role="alert" className="space-y-2 rounded-xl bg-warn-soft/50 p-4 text-sm">
+    <div role="alert" className="space-y-2 rounded-md bg-warning-subtle/50 p-4 type-small">
       <p className="font-medium">The company directory isn't available yet.</p>
       <p className="text-muted">
         {canRunLocally ? "It hasn't been downloaded to this computer. Download it to browse and search every company." : "It couldn't be loaded. Check your connection and try again."}
@@ -149,7 +149,7 @@ function DirectoryMissing({ onReload }: { onReload: () => void }) {
           <RefreshCw className="size-3.5" /> Try again
         </Button>
       </div>
-      {note && <p className="text-xs text-bad">{note}</p>}
+      {note && <p className="type-meta text-danger-text">{note}</p>}
     </div>
   );
 }
@@ -202,7 +202,7 @@ function Browse({
   if (error) return <DirectoryMissing onReload={onReload} />;
   if (!all)
     return (
-      <p role="status" className="flex items-center gap-2 py-6 text-sm text-muted">
+      <p role="status" className="flex items-center gap-2 py-6 type-small text-muted">
         <LoaderCircle className="size-4 animate-spin" /> Loading the directory…
       </p>
     );
@@ -246,19 +246,19 @@ function Browse({
           </optgroup>
         </Select>
         {hiring > 0 && (
-          <label className="inline-flex items-center gap-2 text-sm text-muted">
-            <input type="checkbox" checked={onlyForYou} onChange={(e) => setOnlyForYou(e.target.checked)} className="size-4 accent-[var(--accent)]" />
+          <label className="inline-flex items-center gap-2 type-small text-muted">
+            <input type="checkbox" checked={onlyForYou} onChange={(e) => setOnlyForYou(e.target.checked)} className="size-4 accent-accent" />
             Only companies with jobs for you ({hiring.toLocaleString()})
           </label>
         )}
       </div>
-      {/* Filtered counts stay exact, and say what they count (the directory size is the rounded one). */}
-      <p role="status" className="tabular text-xs text-muted">
+      {/* Filtered counts stay exact, and say what they count (the directory size is the rounded-md one). */}
+      <p role="status" className="tabular type-meta text-muted">
         {results.length === 0
           ? "No matching companies"
           : `Showing ${from.toLocaleString()}–${to.toLocaleString()} of ${results.length.toLocaleString()} matching ${results.length === 1 ? "company" : "companies"}${term ? ` for “${term}”` : ""}`}
       </p>
-      <ul className="divide-y divide-line rounded-xl border border-line">
+      <ul className="divide-y divide-line rounded-md border border-line">
         {pageItems.map((g) => (
           <BrowseRow
             key={g.lead.key}
@@ -272,7 +272,7 @@ function Browse({
           />
         ))}
         {results.length === 0 && (
-          <li className="space-y-3 px-3 py-6 text-center text-sm text-muted">
+          <li className="space-y-3 px-3 py-6 text-center type-small text-muted">
             <p>{term ? <>No company matches “{term}”. If you know its careers page, add it by link.</> : "No company matches these filters."}</p>
             {term ? (
               <Button size="sm" onClick={onAddByLink}>
@@ -313,17 +313,17 @@ function BoardLine({ c, watched, jobsFor, fitFor, onAdd, onRemove, sub }: LinePr
   return (
     <div className={cx("flex items-center gap-3", sub && "pl-4")}>
       <div className="min-w-0 flex-1">
-        <p className={cx("flex items-center gap-1.5 text-sm", sub ? "text-muted" : "font-semibold")}>
+        <p className={cx("flex items-center gap-1.5 type-small", sub ? "text-muted" : "font-semibold")}>
           <span className="truncate">{sub ? `${c.name} on ${ATS_LABEL[c.ats] ?? c.ats}` : c.name}</span>
           {score !== undefined && score >= 45 && (
-            <span className={cx("shrink-0 rounded-full border px-1.5 text-[10px] font-semibold", fitOf(score).tone)}>{fitOf(score).label}</span>
+            <span className={cx("shrink-0 rounded-sm border px-1.5 type-meta font-semibold", fitOf(score).tone)}>{fitOf(score).label}</span>
           )}
-          <a href={c.careers_url} target="_blank" rel="noreferrer" className="shrink-0 text-muted hover:text-accent" aria-label={`${c.name} careers page`}>
+          <a href={c.careers_url} target="_blank" rel="noreferrer" className="shrink-0 text-muted hover:text-accent-text" aria-label={`${c.name} careers page`}>
             <ExternalLink className="size-3.5" />
           </a>
         </p>
-        <p className="text-xs text-muted">
-          {mine > 0 && <span className="font-medium text-accent">{mine === 1 ? "1 job for you · " : `${mine} jobs for you · `}</span>}
+        <p className="type-meta text-muted">
+          {mine > 0 && <span className="font-medium text-accent-text">{mine === 1 ? "1 job for you · " : `${mine} jobs for you · `}</span>}
           {[
             !sub && `Hiring system: ${ATS_LABEL[c.ats] ?? c.ats}`,
             c.open_jobs ? `${c.open_jobs.toLocaleString()} open jobs` : c.status === "dormant" ? "no open jobs right now" : c.status === "unverified" ? "not checked yet" : null,
@@ -346,7 +346,7 @@ export function BrowseRow({ lead, others, ...line }: LineProps & { lead: DirComp
     <li className="space-y-2 px-3 py-2.5">
       <BoardLine c={lead} {...line} />
       {others.length > 0 && (
-        <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="inline-flex items-center gap-1 text-xs font-medium text-accent">
+        <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="inline-flex items-center gap-1 type-meta font-medium text-accent-text">
           <ChevronDown className={cx("size-3.5 transition-transform", !open && "-rotate-90")} />
           {others.length} other careers page{others.length === 1 ? "" : "s"}
         </button>

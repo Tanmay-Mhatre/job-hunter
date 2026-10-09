@@ -8,13 +8,14 @@ import { draftToConfig, officePlaces, saveBlockers, saveConfig, type Draft } fro
 import type { Suggestions } from "../lib/suggest";
 import { ResumeStep } from "../setup/ResumeStep";
 import type { Prefs } from "../lib/prefs";
+import { useTheme, type ThemeChoice } from "../lib/theme";
 import { exportState, readStateFile, type UserState } from "../lib/userState";
 import { IndustriesStep, KeywordsStep, LocationsStep, RolesStep, ThresholdPicker } from "../setup/steps";
 import { Dialog } from "./Dialog";
 import { ScanPrefsPicker } from "./ScanButton";
 import { ScheduledScans } from "./ScheduledScans";
 import { TelegramAlerts } from "./TelegramAlerts";
-import { Button, Card, cx, IconButton, Toggle } from "./ui";
+import { Button, Card, cx, IconButton, Segmented, Toggle } from "./ui";
 
 type Props = {
   draft: Draft;
@@ -40,6 +41,7 @@ const GROUPS = [
   { id: "my-companies", label: "My companies" },
   { id: "scans", label: "Scans & alerts" },
   { id: "data", label: "Your data" },
+  { id: "appearance", label: "Appearance" },
 ] as const;
 type GroupId = (typeof GROUPS)[number]["id"];
 
@@ -130,7 +132,7 @@ export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanni
         <Group id="my-companies" label="My companies">
           <Section id="companies" title="My companies" hint="Companies you'd love to work at: scanned every time, and their jobs always come first on your Radar.">
             <div className="flex flex-wrap items-center gap-3">
-              <p className="text-sm">
+              <p className="type-small">
                 You've picked <b className="tabular">{draft.companies.length}</b> compan{draft.companies.length === 1 ? "y" : "ies"}
                 {draft.muted.length > 0 && <> and hidden {draft.muted.length}</>}.
               </p>
@@ -161,7 +163,7 @@ export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanni
             hint={`The shared company directory lists ${directorySize ? roughCount(directorySize) : "~21,000"} companies and where each one posts jobs. Jobs are always fetched live by your own scans; nothing about you is sent.`}
           >
             <div className="space-y-3">
-              <ul className="space-y-1.5 text-sm">
+              <ul className="space-y-1.5 type-small">
                 <li>
                   <b>{draft.industries.length ? "My companies + my industries" : "My companies"}</b>
                   <span className="text-muted">
@@ -173,7 +175,7 @@ export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanni
                   <span className="text-muted">: every company in the directory we can scan. The daily job feed skips companies with nothing for you, so usually minutes; up to 2 hours without it. Stop any time and it carries on later.</span>
                 </li>
               </ul>
-              <p className="text-xs text-muted">Every scan first updates the company directory, so new companies and moved careers pages are picked up.</p>
+              <p className="type-meta text-muted">Every scan first updates the company directory, so new companies and moved careers pages are picked up.</p>
               <ScanPrefsPicker />
               <Toggle checked={draft.directory.auto_update} onChange={(v) => update({ directory: { ...draft.directory, auto_update: v } })}>
                 Also update the company directory in the background when the app starts
@@ -189,9 +191,9 @@ export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanni
               <Toggle checked={draft.directory.share_additions} onChange={(v) => update({ directory: { ...draft.directory, share_additions: v } })}>
                 Share companies I add by link with everyone
               </Toggle>
-              <p className="text-xs text-muted">
+              <p className="type-meta text-muted">
                 Only the careers link is shared: the company's name, its hiring system and its board name. Never your profile, resume, searches or which jobs you look at.{" "}
-                <a href="https://github.com/Tanmay-Mhatre/job-hunter/blob/main/PRIVACY.md" target="_blank" rel="noreferrer" className="font-medium text-accent">
+                <a href="https://github.com/Tanmay-Mhatre/job-hunter/blob/main/PRIVACY.md" target="_blank" rel="noreferrer" className="font-medium text-accent-text">
                   What is sent, and where
                 </a>
               </p>
@@ -199,13 +201,17 @@ export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanni
           </Section>
         </Group>
 
+        <Group id="appearance" label="Appearance">
+          <AppearanceSection />
+        </Group>
+
         {canRunLocally && (dirty || status) && (
-          <div className="sticky bottom-16 z-10 rounded-2xl border border-line bg-surface/95 p-3 shadow-lg backdrop-blur md:bottom-4">
+          <div className="sticky bottom-16 z-10 rounded-md border border-line bg-raised/95 p-3 shadow-l2 backdrop-blur md:bottom-4">
             {status && (
-              <div role={status.tone === "bad" ? "alert" : "status"} className="mb-2 text-sm">
-                <p className={status.tone === "ok" ? "text-good" : "text-bad"}>{status.text}</p>
+              <div role={status.tone === "bad" ? "alert" : "status"} className="mb-2 type-small">
+                <p className={status.tone === "ok" ? "text-success-text" : "text-danger-text"}>{status.text}</p>
                 {status.detail && (
-                  <details className="mt-1 text-xs text-muted">
+                  <details className="mt-1 type-meta text-muted">
                     <summary className="cursor-pointer">Technical details</summary>
                     <pre className="mt-1 whitespace-pre-wrap font-mono">{status.detail}</pre>
                   </details>
@@ -219,7 +225,7 @@ export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanni
             )}
             {dirty && (
               <div className="flex flex-wrap items-center gap-2">
-                <span className="mr-auto text-sm text-muted">{blockers[0] ?? "You have unsaved changes."}</span>
+                <span className="mr-auto type-small text-muted">{blockers[0] ?? "You have unsaved changes."}</span>
                 <Button variant="ghost" onClick={revert} disabled={saving}>
                   Discard
                 </Button>
@@ -279,7 +285,7 @@ function SettingsNav({ active }: { active: GroupId }) {
   return (
     <nav
       aria-label="Settings sections"
-      className="sticky top-14 z-20 -mx-4 mb-4 border-b border-line bg-bg/95 px-4 py-2 backdrop-blur md:top-20 md:mx-0 md:mb-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none"
+      className="sticky top-14 z-20 -mx-4 mb-4 border-b border-line bg-canvas/95 px-4 py-2 backdrop-blur md:top-20 md:mx-0 md:mb-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none"
     >
       {/* Phones: a scrollable chip row that fades at the edges. Desktop: a vertical list. */}
       <ul className="flex gap-2 overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-1.5rem),transparent)] md:flex-col md:gap-0.5 md:overflow-visible md:[mask-image:none]">
@@ -290,8 +296,8 @@ function SettingsNav({ active }: { active: GroupId }) {
               aria-current={active === g.id ? "location" : undefined}
               onClick={(e) => jump(e, g.id)}
               className={cx(
-                "flex h-9 items-center whitespace-nowrap rounded-full border px-3 text-sm font-medium md:rounded-lg md:border-0",
-                active === g.id ? "border-accent bg-accent-soft text-accent" : "border-line bg-surface text-muted hover:text-fg md:bg-transparent md:hover:bg-surface-2",
+                "flex h-9 items-center whitespace-nowrap rounded-sm border px-3 type-label md:rounded-md md:border-0",
+                active === g.id ? "border-accent bg-accent-subtle text-accent-text" : "border-line bg-raised text-muted hover:text-ink md:bg-transparent md:hover:bg-inset",
               )}
             >
               {g.label}
@@ -303,10 +309,37 @@ function SettingsNav({ active }: { active: GroupId }) {
   );
 }
 
+/** Theme and contrast: saved in this browser and applied at once, so they're not part of Save. */
+function AppearanceSection() {
+  const { theme, contrast, setTheme, setContrast } = useTheme();
+  return (
+    <Section id="theme" title="Theme" hint="Follows your system's light or dark setting unless you pick one.">
+      <div className="space-y-3">
+        <Segmented<ThemeChoice>
+          label="Theme"
+          value={theme}
+          onChange={setTheme}
+          options={[
+            { value: "system", label: "System" },
+            { value: "light", label: "Light" },
+            { value: "dark", label: "Dark" },
+          ]}
+        />
+        <div>
+          <Toggle checked={contrast === "more"} onChange={(on) => setContrast(on ? "more" : "system")}>
+            Increase contrast
+          </Toggle>
+          <p className="mt-1 type-meta text-muted">Darker text and stronger borders. Turns on by itself when your system asks for more contrast.</p>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
 function Group({ id, label, children }: { id: GroupId; label: string; children: ReactNode }) {
   return (
     <div id={`settings-${id}`} tabIndex={-1} role="group" aria-labelledby={`g-${id}`} className="scroll-mt-32 space-y-4 outline-none md:scroll-mt-20">
-      <h2 id={`g-${id}`} className="text-xs font-semibold uppercase tracking-wide text-muted">
+      <h2 id={`g-${id}`} className="type-meta font-semibold uppercase tracking-wide text-muted">
         {label}
       </h2>
       {children}
@@ -341,10 +374,10 @@ function Section({
       <div>
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
-            <h3 id={`h-${id}`} className="text-base font-semibold">
+            <h3 id={`h-${id}`} className="type-body font-semibold">
               {title}
             </h3>
-            {collapsible && !expanded ? <p className="mt-0.5 truncate text-sm text-muted">{summary}</p> : <p className="mt-0.5 text-sm text-muted">{hint}</p>}
+            {collapsible && !expanded ? <p className="mt-0.5 truncate type-small text-muted">{summary}</p> : <p className="mt-0.5 type-small text-muted">{hint}</p>}
           </div>
           {collapsible && (
             <Button size="sm" variant={expanded ? "ghost" : "outline"} aria-expanded={expanded} aria-controls={`body-${id}`} aria-label={`${expanded ? "Done editing" : "Edit"} ${title.toLowerCase()}`} onClick={onToggle}>
@@ -388,9 +421,9 @@ function TrackingData({ user, prefs, onImport }: { user: UserState; prefs: Prefs
 
   return (
     <Card id="settings-tracking" className="scroll-mt-32 p-5 sm:p-6 md:scroll-mt-20">
-      <h3 className="text-base font-semibold">Your tracking data</h3>
-      <p className="mt-0.5 text-sm text-muted">
-        Statuses and notes for <b className="tabular text-fg">{tracked}</b> jobs, plus your saved Radar views and hidden companies, are saved in this
+      <h3 className="type-body font-semibold">Your tracking data</h3>
+      <p className="mt-0.5 type-small text-muted">
+        Statuses and notes for <b className="tabular text-ink">{tracked}</b> jobs, plus your saved Radar views and hidden companies, are saved in this
         browser only. Export a backup or move them to another device.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
@@ -403,10 +436,10 @@ function TrackingData({ user, prefs, onImport }: { user: UserState; prefs: Prefs
         <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
       </div>
       {msg && (
-        <div role={msg.tone === "bad" ? "alert" : "status"} className="mt-2 text-sm">
-          <p className={msg.tone === "ok" ? "text-good" : "text-bad"}>{msg.text}</p>
+        <div role={msg.tone === "bad" ? "alert" : "status"} className="mt-2 type-small">
+          <p className={msg.tone === "ok" ? "text-success-text" : "text-danger-text"}>{msg.text}</p>
           {msg.detail && (
-            <details className="mt-1 text-xs text-muted">
+            <details className="mt-1 type-meta text-muted">
               <summary className="cursor-pointer">Technical details</summary>
               <p className="mt-1 whitespace-pre-wrap font-mono">{msg.detail}</p>
             </details>
@@ -415,16 +448,16 @@ function TrackingData({ user, prefs, onImport }: { user: UserState; prefs: Prefs
       )}
 
       <Dialog open={!!pending} onClose={() => setPending(null)} labelledBy="import-title" initialFocus="[data-autofocus]">
-        <Card className="p-5 shadow-2xl sm:p-6">
+        <Card className="p-5 shadow-l3 sm:p-6">
           <div className="flex items-start gap-3">
-            <h2 id="import-title" className="min-w-0 flex-1 text-lg font-semibold">
+            <h2 id="import-title" className="min-w-0 flex-1 type-subheading font-semibold">
               Replace your tracked jobs?
             </h2>
             <IconButton label="Close" className="-mr-2 -mt-1" onClick={() => setPending(null)}>
               <X className="size-4" />
             </IconButton>
           </div>
-          <p className="mt-1 text-sm text-muted">
+          <p className="mt-1 type-small text-muted">
             This replaces statuses and notes for {tracked} job{tracked === 1 ? "" : "s"} with the ones in the file
             {pending ? ` (${Object.keys(pending.state).length})` : ""}.
           </p>

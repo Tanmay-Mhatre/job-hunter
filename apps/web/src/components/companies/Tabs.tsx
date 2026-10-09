@@ -65,8 +65,8 @@ export function TabList<T extends string>({
               className={cx(
                 "inline-flex shrink-0 items-center gap-1.5 font-medium transition-colors",
                 variant === "underline"
-                  ? cx("-mb-px h-10 border-b-2 px-3 text-sm", on ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg")
-                  : cx("h-8 rounded-full border px-3 text-xs", on ? "border-accent bg-accent-soft text-accent" : "border-line text-muted hover:text-fg"),
+                  ? cx("-mb-px h-10 border-b-2 px-3 type-small", on ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink")
+                  : cx("h-8 rounded-sm border px-3 type-meta", on ? "border-accent bg-accent-subtle text-accent-text" : "border-line text-muted hover:text-ink"),
               )}
             >
               {t.label}
@@ -82,7 +82,7 @@ export function TabList<T extends string>({
 
 export function TabPanel({ id, ids, children, className }: { id: string; ids: ReturnType<typeof useTabIds>; children: ReactNode; className?: string }) {
   return (
-    <div role="tabpanel" id={ids.panel(id)} aria-labelledby={ids.tab(id)} tabIndex={0} className={cx("outline-none focus-visible:ring-2 focus-visible:ring-accent/40 rounded-lg", className)}>
+    <div role="tabpanel" id={ids.panel(id)} aria-labelledby={ids.tab(id)} tabIndex={0} className={cx("outline-none focus-visible:ring-2 focus-visible:ring-focus/40 rounded-md", className)}>
       {children}
     </div>
   );

@@ -66,11 +66,11 @@ export function Pipeline({ user, jobsById, min, onOpen, onMove, onSetup, goRadar
               aria-pressed={shown === col}
               onClick={() => setMobileCol(col)}
               className={cx(
-                "inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-sm font-medium",
-                shown === col ? "border-accent bg-accent-soft text-accent" : "border-line bg-surface text-muted",
+                "inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-sm border px-3 type-label",
+                shown === col ? "border-accent bg-accent-subtle text-accent-text" : "border-line bg-raised text-muted",
               )}
             >
-              {STATUS_LABEL[col]} <span className="tabular text-xs">{items.length}</span>
+              {STATUS_LABEL[col]} <span className="tabular type-meta">{items.length}</span>
             </button>
           ))}
         </div>
@@ -93,13 +93,13 @@ export function Pipeline({ user, jobsById, min, onOpen, onMove, onSetup, goRadar
                 if (entry && entry.status !== col) onMove(id, entry, col);
               }}
               className={cx(
-                "min-h-64 flex-col rounded-2xl border bg-surface-2/50 p-2 transition-colors md:flex",
+                "min-h-64 flex-col rounded-md border bg-inset/50 p-2 transition-colors md:flex",
                 shown === col ? "flex" : "hidden",
-                dragOver === col ? "border-accent bg-accent-soft/30" : "border-line",
+                dragOver === col ? "border-accent bg-accent-subtle/30" : "border-line",
               )}
             >
-              <h2 className="flex items-center justify-between px-1.5 py-1 text-sm font-semibold">
-                {STATUS_LABEL[col]} <span className="tabular text-xs font-medium text-muted">{items.length}</span>
+              <h2 className="flex items-center justify-between px-1.5 py-1 type-small font-semibold">
+                {STATUS_LABEL[col]} <span className="tabular type-meta font-medium text-muted">{items.length}</span>
               </h2>
               <ul className="mt-1 flex flex-col gap-2">
                 {items.map(([id, e]) => {
@@ -113,7 +113,7 @@ export function Pipeline({ user, jobsById, min, onOpen, onMove, onSetup, goRadar
                       // Mouse shortcut: the whole card opens the job; the title button is the keyboard / screen-reader way in.
                       onClick={() => job && onOpen(job)}
                       className={cx(
-                        "rounded-xl border border-line bg-surface p-3 shadow-sm transition-shadow hover:shadow-md",
+                        "rounded-md border border-line bg-raised p-3 shadow-l1 transition-shadow hover:shadow-l2",
                         job ? "cursor-pointer" : "cursor-grab",
                       )}
                     >
@@ -121,7 +121,7 @@ export function Pipeline({ user, jobsById, min, onOpen, onMove, onSetup, goRadar
                         {job ? (
                           <button
                             type="button"
-                            className="text-left text-sm font-semibold leading-5 hover:underline"
+                            className="text-left type-small font-semibold leading-5 hover:underline"
                             onClick={(ev) => {
                               ev.stopPropagation();
                               onOpen(job);
@@ -130,21 +130,21 @@ export function Pipeline({ user, jobsById, min, onOpen, onMove, onSetup, goRadar
                             {s.title}
                           </button>
                         ) : (
-                          <p className="text-sm font-semibold leading-5">{s.title}</p>
+                          <p className="type-small font-semibold leading-5">{s.title}</p>
                         )}
-                        <span className={cx("tabular text-xs font-semibold", (job?.score ?? s.score) >= min ? "text-accent" : "text-muted")}>
+                        <span className={cx("tabular type-meta font-semibold", (job?.score ?? s.score) >= min ? "text-accent-text" : "text-muted")}>
                           {job?.score ?? s.score}
                         </span>
                       </div>
-                      <p className="mt-0.5 text-xs text-muted">{s.company}</p>
+                      <p className="mt-0.5 type-meta text-muted">{s.company}</p>
                       {e.note && (
-                        <p className="mt-2 line-clamp-2 flex gap-1 text-xs text-muted">
+                        <p className="mt-2 line-clamp-2 flex gap-1 type-meta text-muted">
                           <StickyNote className="mt-0.5 size-3 shrink-0" />
                           {e.note}
                         </p>
                       )}
                       <div className="mt-2 flex items-center justify-between gap-2">
-                        <span className="text-[11px] text-muted">
+                        <span className="type-meta text-muted">
                           {job?.status === "closed" ? "Closed · " : !job ? "No longer listed · " : ""}
                           {timeAgo(e.updatedAt)}
                         </span>
@@ -154,7 +154,7 @@ export function Pipeline({ user, jobsById, min, onOpen, onMove, onSetup, goRadar
                           value={e.status}
                           onClick={(ev) => ev.stopPropagation()}
                           onChange={(ev) => onMove(id, e, ev.target.value as Status)}
-                          className="h-8 px-1.5 text-xs"
+                          className="h-8 px-1.5 type-meta"
                         >
                           {PIPELINE.map((p) => (
                             <option key={p} value={p}>

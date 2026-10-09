@@ -5,7 +5,7 @@ import { JobDetail, type JobDetailProps } from "./JobDetail";
 export function JobDrawer(props: JobDetailProps & { onClose: () => void }) {
   return (
     <Dialog open onClose={props.onClose} label={props.job.title} placement="right" className="sm:max-w-xl">
-      <div className="h-full w-full border-l border-line bg-surface shadow-2xl">
+      <div className="h-full w-full border-l border-line bg-raised shadow-l3">
         <JobDetail {...props} />
       </div>
     </Dialog>
