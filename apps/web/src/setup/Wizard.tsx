@@ -1,6 +1,6 @@
 import { groupPlaces } from "@rawjobs/core/catalog/places";
 import { configToYaml } from "@rawjobs/core/yaml-writer";
-import { ArrowLeft, ArrowRight, ChevronDown, CircleAlert, Download, FileText, Radar as RadarIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronDown, CircleAlert, Download, FileText } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Button, Card, cx } from "../components/ui";
 import { canRunLocally } from "../lib/data";
@@ -31,11 +31,11 @@ type Props = {
 };
 
 const COPY: Record<number, { title: string; intro: string }> = {
-  [STEP.resume]: { title: "Start with your resume", intro: "Optional. We'll use it to fill in the next steps for you." },
+  [STEP.resume]: { title: "Start with your resume", intro: "Optional. It fills in the next steps for you." },
   [STEP.roles]: { title: "What roles are you looking for?", intro: "Pick a job family, then the titles you want." },
   [STEP.locations]: { title: "Where do you want to work?", intro: "Jobs in other places are hidden." },
   [STEP.keywords]: { title: "What topics matter to you?", intro: "Optional. Jobs that mention them rank higher." },
-  [STEP.review]: { title: "Review and save", intro: "Save, and we'll start finding your jobs." },
+  [STEP.review]: { title: "Review and save", intro: "Save to start finding your jobs." },
 };
 
 export function Wizard(props: Props) {
@@ -131,7 +131,7 @@ function StepFooter({ onBack, blocker, children }: { onBack: () => void; blocker
       </Button>
       <div className="flex min-w-0 flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-3">
         {blocker && (
-          <span id="step-blocker" className="text-right type-meta text-muted">
+          <span id="step-blocker" className="text-right type-small text-muted">
             {blocker}
           </span>
         )}
@@ -160,8 +160,8 @@ function Progress({ step, goStep, draft }: { step: number; goStep: (n: number) =
               aria-label={`Step ${s.id}: ${s.label}`}
               className="group w-full text-left disabled:cursor-not-allowed"
             >
-              <span className={cx("block h-1.5 rounded-0 transition-colors", s.id <= step ? "bg-accent" : "bg-line group-enabled:group-hover:bg-muted/40")} />
-              <span className={cx("mt-1.5 block truncate type-meta", s.id === step ? "font-semibold text-ink" : "text-muted")}>{s.label}</span>
+              <span className={cx("block h-1.5 rounded-0 transition-colors", s.id <= step ? "bg-ink" : "bg-line group-enabled:group-hover:bg-muted/40")} />
+              <span className={cx("mt-1.5 block truncate type-small", s.id === step ? "font-semibold text-ink" : "text-muted")}>{s.label}</span>
             </button>
           </li>
         ))}
@@ -191,10 +191,7 @@ function Welcome({
   return (
     <div className="mx-auto max-w-xl">
       <Card className="p-6 sm:p-9">
-        <span className="flex size-12 items-center justify-center rounded-md bg-accent text-on-accent">
-          <RadarIcon className="size-6" />
-        </span>
-        <h1 ref={headingRef} tabIndex={-1} className="mt-5 type-title font-semibold tracking-tight outline-none sm:type-title">
+        <h1 ref={headingRef} tabIndex={-1} className="type-title font-semibold tracking-tight outline-none sm:type-title">
           {existing ? "Fix your setup" : resuming ? "Welcome back" : "Let's set up your job radar"}
         </h1>
         <p className="mt-2 text-muted">
@@ -202,11 +199,11 @@ function Welcome({
             ? "Walk through the steps and save to fix it."
             : resuming
               ? "Your answers are saved. Pick up where you left off."
-              : "Tell us the roles and places you want. We'll find matching jobs across thousands of companies. About a minute."}
+              : "Pick the roles and places you want, and RawJobs finds matching jobs across thousands of companies. About a minute."}
         </p>
         {configErrors && (
           <div className="mt-5 rounded-md border border-warning/40 bg-warning-subtle/50 p-3 type-small">
-            <p className="font-medium text-warning-text">Some saved settings couldn't be read. We've loaded what we could.</p>
+            <p className="font-medium text-warning-text">Some saved settings couldn't be read. Everything readable is loaded.</p>
             <details className="mt-1">
               <summary className="cursor-pointer type-meta font-medium text-muted">Technical details</summary>
               <pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap font-mono type-meta text-muted">{configErrors}</pre>
@@ -239,6 +236,7 @@ const EDIT_LABEL: Record<number, string> = {
 };
 
 const WORK_STYLE: Record<string, string> = { onsite: "on-site", hybrid: "hybrid" };
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** Up to `max` names in bold, then "+N more". */
 function some(names: string[], max = 4): ReactNode {
@@ -314,7 +312,7 @@ function Review({
       STEP.resume,
       hasResume ? (
         <>
-          <FileText className="mr-1 inline size-4 text-accent-text" />
+          <FileText className="mr-1 inline size-4 text-muted" aria-hidden />
           Using your <b>master resume</b> for suggestions.
         </>
       ) : (
@@ -339,12 +337,12 @@ function Review({
       <>
         {places.length > 0 && (
           <>
-            {draft.office.map((o) => WORK_STYLE[o]).join(" or ")} in {some(places)}
+            {capitalize(draft.office.map((o) => WORK_STYLE[o]).join(" or "))} in {some(places)}
           </>
         )}
         {draft.remote && remote.length > 0 && (
           <>
-            {places.length > 0 ? ", or " : ""}remote in {some(remote, 3)}
+            {places.length > 0 ? ", or remote" : "Remote"} in {some(remote, 3)}
           </>
         )}
         .
@@ -361,7 +359,7 @@ function Review({
       <ul className="divide-y divide-line rounded-md border border-line">
         {lines.map(([n, text]) => (
           <li key={n} className="flex items-start gap-3 p-3 type-small">
-            <span className="min-w-0 flex-1 leading-6 first-letter:uppercase">{text}</span>
+            <span className="min-w-0 flex-1 leading-6">{text}</span>
             <Button size="sm" variant="ghost" onClick={() => goStep(n)} aria-label={`Edit ${EDIT_LABEL[n] ?? "this step"}`}>
               Edit
             </Button>
@@ -400,7 +398,7 @@ function Review({
 
       {error && (
         <div role="alert" className="rounded-md bg-danger-subtle/50 p-3 type-small text-danger-text">
-          <p className="font-medium">We couldn't save your setup. Check the steps above, then try again.</p>
+          <p className="font-medium">Couldn't save your setup. Check the steps above, then try again.</p>
           <details className="mt-1">
             <summary className="cursor-pointer type-meta font-medium">Technical details</summary>
             <pre className="mt-1 whitespace-pre-wrap font-mono type-meta">{error}</pre>
@@ -410,7 +408,7 @@ function Review({
 
       {!canRunLocally && (
         <p className="type-small text-muted">
-          This dashboard is hosted, so it can't save files. Download the config and save it in the app's folder as <code className="font-mono type-meta">rawjobs.config.local.yaml</code>. It stays on your computer; don't commit it.
+          This dashboard is hosted, so it can't save files. Download the config and save it in the app's folder as <code className="font-mono type-small">rawjobs.config.local.yaml</code>. It stays on your computer; don't commit it.
         </p>
       )}
 

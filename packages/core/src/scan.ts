@@ -25,6 +25,10 @@ export type ScanStart = {
   scope?: ScanScope;
   /** About how long the rest takes. */
   seconds: number;
+  /** Companies this scan covers per hiring system ("greenhouse": 120), including ones done before a resume. */
+  byAts: Record<string, number>;
+  /** Of those, done by the stopped scan this one resumes, per hiring system. */
+  resumedByAts: Record<string, number>;
 };
 
 export type ScanOptions = {
@@ -142,6 +146,12 @@ export async function scan(config: Config, opts: ScanOptions): Promise<ScanResul
   const only = opts.only?.map((s) => s.toLowerCase());
   const yours = checkOnly ? [] : config.companies.filter((c) => c.enabled && (!only?.length || only.includes(c.name.toLowerCase()) || only.includes(c.slug.toLowerCase())));
   const left = [...yours, ...checks].filter((c) => !done.has(jobCompanyKey(c)));
+  const byAts: Record<string, number> = {};
+  const resumedByAts: Record<string, number> = {};
+  for (const c of [...yours, ...checks]) {
+    byAts[c.ats] = (byAts[c.ats] ?? 0) + 1;
+    if (done.has(jobCompanyKey(c))) resumedByAts[c.ats] = (resumedByAts[c.ats] ?? 0) + 1;
+  }
   opts.onStart?.({
     yours: yours.map((c) => c.name),
     extra: checks.length,
@@ -150,6 +160,8 @@ export async function scan(config: Config, opts: ScanOptions): Promise<ScanResul
     ...(fullScan ? { scope } : {}),
     ...(feed ? { skippedByFeed: inScope.length - checks.length } : {}),
     seconds: estimateSeconds(left, readSpeeds(opts.dataDir)),
+    byAts,
+    resumedByAts,
   });
 
   // "Check now" fetches only the asked-for companies; your own jobs are left as they are.

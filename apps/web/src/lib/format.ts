@@ -17,6 +17,12 @@ export function timeAgo(iso: string | undefined, now = Date.now()): string {
   return months < 12 ? `${months}mo ago` : `${Math.round(months / 12)}y ago`;
 }
 
+/** The age alone, for source tags: "2d", "3h", "now". */
+export function shortAge(iso: string | undefined, now = Date.now()): string {
+  const t = timeAgo(iso, now);
+  return t === "just now" ? "now" : t.replace(/ ago$/, "");
+}
+
 export function ageDays(iso: string | undefined, now = Date.now()): number {
   return iso ? (now - Date.parse(iso)) / DAY : Infinity;
 }

@@ -28,13 +28,15 @@ import {
 } from "../../lib/filters";
 import type { Prefs, SavedView } from "../../lib/prefs";
 import type { FilterPicks } from "../../lib/profileSync";
-import { displayPlace } from "../../lib/format";
+import { displayPlace, timeAgo } from "../../lib/format";
+import { useDensity } from "../../lib/theme";
 import { load, save } from "../../lib/storage";
 import type { Status, UserState } from "../../lib/userState";
 import { Dialog } from "../Dialog";
 import { JobDetail } from "../JobDetail";
 import { toast } from "../Toast";
-import { Button, Card, cx, IconButton } from "../ui";
+import { Chip, IconButton, SearchField, Tabs } from "../primitives";
+import { Button, Card, cx } from "../ui";
 import { FacetMenu, OptionList } from "./FacetMenu";
 import { JobCard } from "./JobCard";
 
@@ -149,6 +151,7 @@ export function RadarPage(p: Props) {
     setFilters(on ? { countries: [], locations: [] } : { countries: placeBase.countries, locations: placeBase.locations });
   };
   const wide = useIsWide();
+  const density = useDensity();
   const min = p.meta.profile.min_score;
   const other = useOtherJobs(filters.showFailed);
   const pool = useMemo(() => (filters.showFailed && other ? [...p.jobs, ...other] : p.jobs), [p.jobs, other, filters.showFailed]);
@@ -233,8 +236,15 @@ export function RadarPage(p: Props) {
       const g = groups[next]!;
       if (next >= limit) setLimit(next + PAGE);
       setSelectedId(g.lead.id);
-      if (!wide && p.overlayOpen) p.onOpenOverlay(g.lead);
-      requestAnimationFrame(() => rowRefs.current.get(g.key)?.scrollIntoView({ block: "nearest" }));
+      const overlay = !wide && p.overlayOpen;
+      if (overlay) p.onOpenOverlay(g.lead);
+      requestAnimationFrame(() => {
+        const row = rowRefs.current.get(g.key);
+        // Focus follows the selection, so keyboard and screen-reader users keep their place (Feed: J/K move
+        // focus between rows). Not while the phone drawer is open: the list behind it is inert.
+        if (!overlay) row?.querySelector<HTMLElement>("[data-job-link]")?.focus({ preventScroll: true });
+        row?.scrollIntoView({ block: "nearest" });
+      });
     },
     [groups, index, limit, wide, p],
   );
@@ -294,8 +304,19 @@ export function RadarPage(p: Props) {
   const facet = (key: FacetKey) => counts[key];
   const relax = groups.length === 0 ? suggestRelax(pool, filters, ctx) : [];
 
+  // My companies first, then everyone else (design/components/Feed), paged together.
+  const shown = groups.slice(0, limit);
+  const feedSections =
+    !filters.mine && yourGroups > 0
+      ? [
+          { id: "mine", label: "My companies", total: yourGroups, items: shown.slice(0, yourGroups) },
+          { id: "rest", label: "Everyone else", total: groups.length - yourGroups, items: shown.slice(yourGroups) },
+        ].filter((x) => x.items.length > 0 || x.id === "mine")
+      : [{ id: "all", label: "", total: groups.length, items: shown }];
+
   const detailProps = selected && {
     job: selected,
+    isNew: hasNewTag(selected, ctx),
     entry: p.user[selected.id],
     profile: p.meta.profile,
     postings: selectedGroup!.jobs,
@@ -346,25 +367,22 @@ export function RadarPage(p: Props) {
       {/* Summary + search + sort */}
       <Card className="p-3">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-0 flex-1 basis-60">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
-            <input
-              ref={searchRef}
-              value={filters.q}
-              onChange={(e) => setFilters({ q: e.target.value })}
-              onKeyDown={(e) => e.key === "Escape" && (e.currentTarget.blur(), setFilters({ q: "" }))}
-              placeholder="Search title, company, location, topic…  ( / )"
-              aria-label="Search jobs"
-              className="h-9 w-full rounded-md border border-line bg-raised pl-8 pr-3 type-small outline-none placeholder:text-muted focus:border-accent"
-            />
-          </div>
+          <SearchField
+            ref={searchRef}
+            label="Search jobs"
+            className="min-w-0 flex-1 basis-60"
+            value={filters.q}
+            onChange={(e) => setFilters({ q: e.target.value })}
+            onKeyDown={(e) => e.key === "Escape" && (e.currentTarget.blur(), setFilters({ q: "" }))}
+            placeholder="Search titles, companies, places, keywords"
+          />
           <label className="relative inline-flex items-center">
             <ArrowUpDown className="pointer-events-none absolute left-2.5 size-3.5 text-muted" />
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as Sort)}
               aria-label="Sort"
-              className="h-9 appearance-none rounded-md border border-line bg-raised pl-8 pr-3 type-small outline-none focus:border-accent"
+              className="h-9 appearance-none rounded-md border border-line bg-raised pl-8 pr-3 type-small"
             >
               {SORTS.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -413,30 +431,20 @@ export function RadarPage(p: Props) {
         {(chips.length > 0 || olderCount > 0) && (
           <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-line pt-2">
             {chips.map((c) => (
-              <button
-                key={c.key}
-                type="button"
-                onClick={() => setFilters(c.remove)}
-                className="inline-flex h-7 items-center gap-1 rounded-sm bg-accent-subtle px-2.5 type-meta font-medium text-accent-text hover:opacity-80"
-                aria-label={`Remove filter: ${c.label}`}
-              >
-                {c.label} <X className="size-3" />
-              </button>
+              // An active filter: pressed; pressing it turns it off.
+              <Chip key={c.key} pressed onClick={() => setFilters(c.remove)} aria-label={`Filter: ${c.label}`} title="Remove this filter">
+                {c.label} <X className="rj-icon" aria-hidden />
+              </Chip>
             ))}
             {chips.length > 0 && (
-              <button type="button" onClick={() => replace(base, sort)} className="ml-1 h-7 rounded-md px-1.5 type-meta font-medium text-muted hover:bg-inset hover:text-ink">
+              <Button variant="ghost" size="sm" onClick={() => replace(base, sort)}>
                 Clear all
-              </button>
+              </Button>
             )}
             {olderCount > 0 && (
-              <button
-                type="button"
-                onClick={() => setFilters({ showOld: true })}
-                className="h-7 rounded-md px-1.5 type-meta font-medium text-accent-text hover:bg-inset"
-                title={`Postings older than ${OLD_POSTING_DAYS / 30} months are hidden: they're usually filled`}
-              >
+              <Button variant="ghost" size="sm" onClick={() => setFilters({ showOld: true })} title={`Postings older than ${OLD_POSTING_DAYS / 30} months are hidden: they're usually filled`}>
                 Show older jobs ({olderCount})
-              </button>
+              </Button>
             )}
             <span className="tabular ml-auto type-meta text-muted">
               {groups.length} {groups.length === 1 ? "role" : "roles"}
@@ -447,83 +455,98 @@ export function RadarPage(p: Props) {
       </Card>
 
       {noCompaniesYet ? (
-        <Card className="px-6 py-14 text-center">
-          <Building2 className="mx-auto size-6 text-muted" />
-          <p className="mt-2 font-medium">You haven't picked any companies yet.</p>
-          <p className="mx-auto mt-1 max-w-md type-small text-muted">Add the companies you'd love to work at: we check them every scan, and their jobs always come first here.</p>
-          <Button variant="primary" className="mt-4" onClick={p.onCompanies}>
-            Pick my companies <ArrowRight className="size-4" />
-          </Button>
-        </Card>
-      ) : groups.length === 0 ? (
-        <Card className="px-6 py-14 text-center">
-          <p className="font-medium">{filters.match === "strong" ? "No strong matches yet." : "No jobs match these filters."}</p>
-          {filters.match === "strong" && (
-            <p className="mx-auto mt-1 max-w-md type-small text-muted">
-              Strong matches need the right title and place, and a description that mentions your topics.{" "}
-              <button type="button" className="font-medium text-accent-text hover:underline" onClick={() => (location.hash = "settings?section=keywords")}>
-                {Object.keys(p.profile?.keywords ?? {}).length ? "Add more topics" : "Add topics"}
-              </button>{" "}
-              to find more.
-            </p>
-          )}
-          {relax.length > 0 ? (
-            <div className="mt-3 flex flex-wrap justify-center gap-2">
-              {relax.map((r) => (
-                <Button key={r.label} size="sm" onClick={() => setFilters(r.remove)}>
-                  Remove {r.label} → {r.count} job{r.count === 1 ? "" : "s"}
-                </Button>
-              ))}
-            </div>
-          ) : filters.mine ? (
-            <p className="mt-1 type-small text-muted">None of your companies has a matching job right now. We'll keep scanning them.</p>
-          ) : (
-            <div className="mt-3 flex flex-wrap justify-center gap-2">
-              <Button size="sm" variant="primary" onClick={() => replace(base, sort)}>
-                Clear filters
+        <div className="rj-panel">
+          <div className="rj-empty">
+            <h2 className="rj-empty__title">No companies picked yet</h2>
+            <p className="rj-empty__body">Add the companies you'd love to work at. They're checked every scan, and their jobs always come first here.</p>
+            <div className="rj-empty__actions">
+              <Button variant="primary" onClick={p.onCompanies}>
+                Pick my companies <ArrowRight className="rj-icon" aria-hidden />
               </Button>
-              {olderCount > 0 && (
-                <Button size="sm" onClick={() => setFilters({ showOld: true })}>
-                  Show older jobs ({olderCount})
-                </Button>
-              )}
             </div>
-          )}
-        </Card>
+          </div>
+        </div>
+      ) : groups.length === 0 ? (
+        <div className="rj-panel">
+          <div className="rj-empty">
+            <h2 className="rj-empty__title">{filters.match === "strong" ? "No strong matches yet" : "No jobs match these filters"}</h2>
+            {filters.match === "strong" && (
+              <p className="rj-empty__body">
+                Strong matches need the right title and place, and a description that mentions your keywords.{" "}
+                <button type="button" className="font-medium text-ink underline underline-offset-2" onClick={() => (location.hash = "settings?section=keywords")}>
+                  {Object.keys(p.profile?.keywords ?? {}).length ? "Add more keywords" : "Add keywords"}
+                </button>{" "}
+                to find more.
+              </p>
+            )}
+            {relax.length > 0 ? (
+              <div className="rj-empty__actions">
+                {relax.map((r) => (
+                  <Button key={r.label} onClick={() => setFilters(r.remove)}>
+                    Remove {r.label}: {r.count} job{r.count === 1 ? "" : "s"}
+                  </Button>
+                ))}
+              </div>
+            ) : filters.mine ? (
+              <p className="rj-empty__body">None of your companies has a matching job right now. They're checked again every scan.</p>
+            ) : (
+              <div className="rj-empty__actions">
+                <Button variant="primary" onClick={() => replace(base, sort)}>
+                  Clear filters
+                </Button>
+                {olderCount > 0 && <Button onClick={() => setFilters({ showOld: true })}>Show older jobs ({olderCount})</Button>}
+              </div>
+            )}
+          </div>
+        </div>
       ) : (
         <div className="lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-3">
-          <Card className="overflow-hidden lg:sticky lg:top-[4.5rem] lg:h-[calc(100dvh-5.5rem)]">
-            <div ref={listRef} className="lg:h-full lg:overflow-y-auto">
-              <ul>
-                {groups.slice(0, limit).map((g, i) => (
-                  <Fragment key={g.key}>
-                  {!filters.mine && yourGroups > 0 && (i === 0 || i === yourGroups) && (
-                    <ListHeading>{i === 0 ? `Your companies (${yourGroups})` : `All jobs for you (${groups.length - yourGroups})`}</ListHeading>
-                  )}
-                  <JobCard
-                    ref={(el) => {
-                      if (el) rowRefs.current.set(g.key, el);
-                      else rowRefs.current.delete(g.key);
-                    }}
-                    group={g}
-                    entry={p.user[g.lead.id]}
-                    min={min}
-                    isNew={hasNewTag(g.lead, ctx)}
-                    selected={!!selectedGroup && g.key === selectedGroup.key && (wide || p.overlayOpen)}
-                    onSelect={() => select(g.lead)}
-                    onStatus={(s) => p.onStatus(g.lead, s)}
-                    yours={p.isYours(g.lead)}
-                  />
-                  </Fragment>
-                ))}
-                {limit < groups.length && (
-                  <li ref={sentinel} className="flex items-center justify-center gap-2 py-4 type-meta text-muted">
-                    <LoaderCircle className="size-3.5 animate-spin" /> Loading more…
-                  </li>
-                )}
-              </ul>
+          {/* design/components/Feed: an L1 panel, a summary line, then one list per section. */}
+          <section aria-label="Jobs for you" className="rj-panel rj-feed lg:sticky lg:top-[4.5rem] lg:flex lg:h-[calc(100dvh-5.5rem)] lg:flex-col" data-density={density}>
+            <div className="rj-feed__head">
+              <span>
+                {groups.length} {groups.length === 1 ? "job" : "jobs"}
+                {!firstScan && newCount > 0 && ` · ${newCount} new`}
+                {p.meta.runs[0] && ` · checked ${timeAgo(p.meta.runs[0].finishedAt)}`}
+              </span>
+              <span>{SORTS.find((x) => x.value === sort)?.label}</span>
             </div>
-          </Card>
+            <div ref={listRef} className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+              {feedSections.map((sec, si) => (
+                <Fragment key={sec.id}>
+                  {sec.label && (
+                    <h2 className="rj-feed__section sticky top-0 z-sticky" id={`feed-${sec.id}`}>
+                      {sec.label} <span className="tabular font-normal">{sec.total}</span>
+                    </h2>
+                  )}
+                  <ul className="rj-feed__list" aria-labelledby={sec.label ? `feed-${sec.id}` : undefined} aria-label={sec.label ? undefined : "Jobs"}>
+                    {sec.items.map((g) => (
+                      <JobCard
+                        key={g.key}
+                        ref={(el) => {
+                          if (el) rowRefs.current.set(g.key, el);
+                          else rowRefs.current.delete(g.key);
+                        }}
+                        group={g}
+                        entry={p.user[g.lead.id]}
+                        min={min}
+                        isNew={hasNewTag(g.lead, ctx)}
+                        selected={!!selectedGroup && g.key === selectedGroup.key && (wide || p.overlayOpen)}
+                        onSelect={() => select(g.lead)}
+                        onStatus={(st) => p.onStatus(g.lead, st)}
+                        yours={p.isYours(g.lead)}
+                      />
+                    ))}
+                    {si === feedSections.length - 1 && limit < groups.length && (
+                      <li ref={sentinel} className="flex items-center gap-2 px-4 py-4 type-small text-muted">
+                        <LoaderCircle className="rj-icon animate-spin" aria-hidden /> Loading more…
+                      </li>
+                    )}
+                  </ul>
+                </Fragment>
+              ))}
+            </div>
+          </section>
           {wide && (
             <Card className="hidden overflow-hidden lg:sticky lg:top-[4.5rem] lg:block lg:h-[calc(100dvh-5.5rem)]">
               {detailProps ? <JobDetail {...detailProps} /> : <p className="p-6 type-small text-muted">Pick a job to see the details.</p>}
@@ -575,16 +598,6 @@ export function RadarPage(p: Props) {
   );
 }
 
-/** A section title inside the job list ("Your companies", "All jobs for you"). */
-function ListHeading({ children }: { children: ReactNode }) {
-  return (
-    <li className="sticky top-0 z-10 border-b border-line bg-inset/95 px-3 py-1.5 backdrop-blur">
-      {/* A real heading, so the job titles (h3) sit under it. */}
-      <h2 className="type-meta font-semibold uppercase tracking-wide text-muted">{children}</h2>
-    </li>
-  );
-}
-
 // ---------- views ----------
 
 const BUILT_IN: { id: string; label: string; filters: Partial<Filters>; count: keyof ViewCounts }[] = [
@@ -622,58 +635,52 @@ function ViewsBar(props: {
     setNaming(null);
   };
 
+  const builtIns = BUILT_IN.filter((b) => !(b.id === "new" && props.hideNew));
+  const tabValue = builtInActive && !customActive ? builtInActive.id : "";
   return (
-    <div className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]">
-      {BUILT_IN.filter((b) => !(b.id === "new" && props.hideNew)).map((b) => {
-        const on = builtInActive?.id === b.id && !customActive;
-        return (
-          <button
-            key={b.id}
-            type="button"
-            onClick={() => props.onPick({ ...props.base, ...b.filters }, props.sort)}
-            aria-pressed={on}
-            title={b.id === "new" ? "New to you since your last scan" : undefined}
-            className={cx("inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 type-label", on ? "bg-ink text-raised" : "text-muted hover:bg-inset hover:text-ink")}
-          >
-            {b.label}
-            {b.id !== "applied" && <span className={cx("tabular type-meta", !on && (b.id === "new" && props.counts.new > 0 ? "text-accent-text" : "text-muted"))}>{props.counts[b.count]}</span>}
-          </button>
-        );
-      })}
-      <span className="mx-1 h-5 w-px shrink-0 bg-line" aria-hidden />
-      {props.views.map((v) =>
-        naming?.id === v.id ? (
-          <NameInput key={v.id} value={naming.value} onChange={(value) => setNaming({ id: v.id, value })} onSubmit={submit} onCancel={() => setNaming(null)} />
-        ) : (
-          <span key={v.id} className={cx("group inline-flex h-8 shrink-0 items-center rounded-md type-label", customActive?.id === v.id ? "bg-ink text-raised" : "text-muted hover:bg-inset hover:text-ink")}>
-            <button
-              type="button"
-              className="inline-flex h-full items-center gap-1 pl-2.5 pr-1"
-              onClick={() => props.onPick(v.filters, v.sort)}
-              onDoubleClick={() => setNaming({ id: v.id, value: v.name })}
-              aria-pressed={customActive?.id === v.id}
-            >
-              <Star className="size-3.5" /> {v.name}
-            </button>
-            {/* Rename and delete: 24px targets that work with keyboard and touch, not only double-click. */}
-            <button type="button" className="inline-flex size-6 items-center justify-center rounded-md opacity-60 hover:opacity-100 focus-visible:opacity-100" onClick={() => setNaming({ id: v.id, value: v.name })} aria-label={`Rename view ${v.name}`} title="Rename">
-              <Pencil className="size-3.5" />
-            </button>
-            <button type="button" className="mr-1 inline-flex size-6 items-center justify-center rounded-md opacity-60 hover:opacity-100 focus-visible:opacity-100" onClick={() => props.onDelete(v)} aria-label={`Delete view ${v.name}`} title="Delete">
-              <X className="size-3.5" />
-            </button>
-          </span>
-        ),
-      )}
-      {naming && !naming.id ? (
-        <NameInput value={naming.value} onChange={(value) => setNaming({ value })} onSubmit={submit} onCancel={() => setNaming(null)} />
-      ) : (
-        !customActive &&
-        (!builtInActive || props.sort !== "best") && (
-          <button type="button" onClick={() => setNaming({ value: "" })} className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md px-2.5 type-label text-accent-text hover:bg-inset">
-            <Plus className="size-3.5" /> Save view
-          </button>
-        )
+    <div className="mt-3 flex flex-wrap items-end gap-x-4 gap-y-2">
+      {/* design/components/Tabs: views of one list, ink underline. */}
+      <Tabs
+        label="Radar views"
+        idPrefix="view"
+        className="min-w-0 flex-1"
+        value={tabValue}
+        onChange={(id) => {
+          const b = builtIns.find((x) => x.id === id);
+          if (b) props.onPick({ ...props.base, ...b.filters }, props.sort);
+        }}
+        items={builtIns.map((b) => ({ id: b.id, label: b.label, count: b.id === "applied" ? undefined : props.counts[b.count] }))}
+      />
+      {(props.views.length > 0 || naming || !customActive) && (
+        <div className="flex flex-wrap items-center gap-2 pb-1">
+          {props.views.map((v) =>
+            naming?.id === v.id ? (
+              <NameInput key={v.id} value={naming.value} onChange={(value) => setNaming({ id: v.id, value })} onSubmit={submit} onCancel={() => setNaming(null)} />
+            ) : (
+              <span key={v.id} className="inline-flex items-center gap-0.5">
+                <Chip pressed={customActive?.id === v.id} onClick={() => props.onPick(v.filters, v.sort)} onDoubleClick={() => setNaming({ id: v.id, value: v.name })}>
+                  {v.name}
+                </Chip>
+                <IconButton label={`Rename view ${v.name}`} size="sm" onClick={() => setNaming({ id: v.id, value: v.name })}>
+                  <Pencil className="rj-icon" aria-hidden />
+                </IconButton>
+                <IconButton label={`Delete view ${v.name}`} size="sm" onClick={() => props.onDelete(v)}>
+                  <X className="rj-icon" aria-hidden />
+                </IconButton>
+              </span>
+            ),
+          )}
+          {naming && !naming.id ? (
+            <NameInput value={naming.value} onChange={(value) => setNaming({ value })} onSubmit={submit} onCancel={() => setNaming(null)} />
+          ) : (
+            !customActive &&
+            (!builtInActive || props.sort !== "best") && (
+              <Button size="sm" variant="ghost" onClick={() => setNaming({ value: "" })}>
+                <Plus className="rj-icon" aria-hidden /> Save view
+              </Button>
+            )
+          )}
+        </div>
       )}
     </div>
   );
@@ -689,11 +696,11 @@ function NameInput({ value, onChange, onSubmit, onCancel }: { value: string; onC
         onKeyDown={(e) => (e.key === "Enter" ? onSubmit() : e.key === "Escape" && onCancel())}
         placeholder="Name this view"
         aria-label="View name"
-        className="h-8 w-40 rounded-md border border-accent bg-raised px-2 type-small outline-none"
+        className="h-8 w-40 rounded-md border border-control bg-raised px-2 type-small"
       />
-      <button type="button" onClick={onSubmit} className="inline-flex size-8 items-center justify-center rounded-md text-accent-text" aria-label="Save view name">
-        <Check className="size-4" />
-      </button>
+      <IconButton label="Save view name" size="sm" onClick={onSubmit}>
+        <Check className="rj-icon" aria-hidden />
+      </IconButton>
     </span>
   );
 }
@@ -713,7 +720,7 @@ function MoreToggles({ filters, setFilters, olderCount }: { filters: Filters; se
     <div className="space-y-0.5">
       {rows.map(([k, label]) => (
         <label key={k} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 type-small hover:bg-inset">
-          <input type="checkbox" checked={filters[k] as boolean} onChange={(e) => setFilters({ [k]: e.target.checked })} className="size-4 accent-accent" />
+          <input type="checkbox" checked={filters[k] as boolean} onChange={(e) => setFilters({ [k]: e.target.checked })} className="size-4 accent-ink" />
           {label}
         </label>
       ))}
@@ -749,14 +756,14 @@ function MoreMenu({
           <MoreToggles filters={filters} setFilters={setFilters} olderCount={olderCount} />
           {hiddenCompanies.length > 0 && (
             <div className="mt-1 border-t border-line px-2 pt-2">
-              <p className="mb-1 type-meta font-semibold text-muted">Hidden companies</p>
+              <p className="mb-1 type-label">Hidden companies</p>
               <ul className="space-y-0.5">
                 {hiddenCompanies.map((c) => (
                   <li key={c} className="flex items-center justify-between type-small">
                     <span className="truncate">{c}</span>
-                    <button type="button" className="h-7 rounded-md px-1.5 type-meta font-medium text-accent-text hover:bg-inset" onClick={() => onUnhide(c)} aria-label={`Show ${c} again`}>
+                    <Button size="sm" variant="ghost" onClick={() => onUnhide(c)} aria-label={`Show ${c} again`}>
                       Show
-                    </button>
+                    </Button>
                   </li>
                 ))}
               </ul>
@@ -801,7 +808,7 @@ function FilterSheet({ children, count, onClose, onClear }: { children: ReactNod
 function SheetSection({ label, children }: { label: string; children: ReactNode }) {
   return (
     <section>
-      <h3 className="mb-1 type-meta font-semibold uppercase tracking-wide text-muted">{label}</h3>
+      <h3 className="mb-1 type-label">{label}</h3>
       {children}
     </section>
   );
@@ -855,39 +862,29 @@ function ProfileBar({
     setError(err);
   };
 
+  const places = placeFilter.map((c) => (c === REMOTE ? "Remote" : displayPlace(c))).join(", ");
   return (
-    <div className={cx("rounded-md border px-3 py-2.5 type-small", changed ? "border-warning/50 bg-warning-subtle/30" : "border-line bg-raised")}>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        <UserRound className="size-4 shrink-0 text-muted" />
-        <p className="min-w-0 flex-1">
+    <div className={cx("rounded-md border px-3 py-2 type-small", changed ? "border-warning bg-warning-subtle" : "border-line bg-raised")}>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <UserRound className="rj-icon hidden text-muted sm:block" aria-hidden />
+        {/* One line: what your profile searches for, truncated; the full text is in Settings. On phones the
+            buttons wrap below it. */}
+        <p className="min-w-0 basis-full truncate sm:flex-1 sm:basis-0" title={parts.join(" · ")}>
           <span className="font-medium">Your profile:</span> <span className="text-muted">{parts.join(" · ")}</span>
         </p>
-        <Button size="sm" variant="ghost" onClick={onEdit}>
-          <Pencil className="size-3.5" /> Edit
+        {placeFilter.length > 0 && !changed && (
+          <Button size="sm" variant="ghost" className="shrink-0" onClick={() => onEverywhere(!everywhere)} title={everywhere ? "Showing jobs everywhere" : `Showing your places: ${places}`}>
+            {everywhere ? <MapPin className="rj-icon" aria-hidden /> : <Globe className="rj-icon" aria-hidden />}
+            {everywhere ? "Only my places" : "Show everywhere"}
+          </Button>
+        )}
+        <Button size="sm" variant="ghost" className="shrink-0" onClick={onEdit}>
+          <Pencil className="rj-icon" aria-hidden /> Edit
         </Button>
       </div>
-      {placeFilter.length > 0 && !changed && (
-        <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 pl-7 type-meta text-muted">
-          {everywhere ? (
-            <>
-              <Globe className="size-3.5 shrink-0" /> Showing jobs everywhere.
-              <button type="button" className="h-7 rounded-md px-1.5 font-medium text-accent-text hover:bg-inset" onClick={() => onEverywhere(false)}>
-                Show only my places
-              </button>
-            </>
-          ) : (
-            <>
-              <MapPin className="size-3.5 shrink-0" /> Showing your places: {placeFilter.map((c) => (c === REMOTE ? "Remote" : displayPlace(c))).join(", ")}.
-              <button type="button" className="h-7 rounded-md px-1.5 font-medium text-accent-text hover:bg-inset" onClick={() => onEverywhere(true)}>
-                Show everywhere
-              </button>
-            </>
-          )}
-        </p>
-      )}
       {changed && (
-        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-warning/30 pt-2">
-          <p className="min-w-0 flex-1 type-meta text-warning-text">
+        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-hairline pt-2">
+          <p className="min-w-0 flex-1 type-small text-ink">
             Your place filters differ from your profile. This only changes what you see here; your scans and alerts still use your profile.
           </p>
           <Button size="sm" variant="ghost" onClick={onReset} disabled={saving}>
@@ -901,7 +898,7 @@ function ProfileBar({
           )}
         </div>
       )}
-      {error && <p className="mt-1.5 type-meta text-danger-text">{error}</p>}
+      {error && <p className="mt-1.5 type-small text-danger-text">{error}</p>}
     </div>
   );
 }

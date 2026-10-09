@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { Card, cx } from "./ui";
 
 type Props = {
-  icon: ReactNode;
   title: string;
   children: ReactNode;
   /** Buttons; the first should be the primary action. */
@@ -10,14 +9,15 @@ type Props = {
   className?: string;
 };
 
-/** One look for every "nothing here yet" screen: icon, what this page is for, what to do next. */
-export function EmptyState({ icon, title, children, actions, className }: Props) {
+/** One look for every "nothing here yet" screen (the kit's `rj-empty`): what this page is for, what to do next. */
+export function EmptyState({ title, children, actions, className }: Props) {
   return (
-    <Card className={cx("px-6 py-12 text-center sm:py-14", className)}>
-      <span className="mx-auto flex size-12 items-center justify-center rounded-md bg-accent-subtle text-accent-text">{icon}</span>
-      <h2 className="mt-4 type-subheading font-semibold">{title}</h2>
-      <div className="mx-auto mt-1 max-w-md type-small text-muted">{children}</div>
-      {actions && <div className="mt-5 flex flex-wrap justify-center gap-2">{actions}</div>}
+    <Card className={cx("p-0", className)}>
+      <div className="rj-empty">
+        <h2 className="rj-empty__title">{title}</h2>
+        <div className="rj-empty__body">{children}</div>
+        {actions && <div className="rj-empty__actions">{actions}</div>}
+      </div>
     </Card>
   );
 }
@@ -25,7 +25,7 @@ export function EmptyState({ icon, title, children, actions, className }: Props)
 /** Slim inline prompt for pages that still work without setup (e.g. Settings). */
 export function SetupBanner({ children, action }: { children: ReactNode; action: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-md border border-accent/40 bg-accent-subtle/40 px-4 py-3 type-small">
+    <div className="flex flex-wrap items-center gap-3 rounded-md border border-line bg-inset px-4 py-3 type-small">
       <span className="min-w-0 flex-1">{children}</span>
       {action}
     </div>

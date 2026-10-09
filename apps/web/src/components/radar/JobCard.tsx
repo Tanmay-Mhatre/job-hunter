@@ -1,11 +1,11 @@
-import { Bookmark, CircleCheck, EyeOff, Star } from "lucide-react";
-import { forwardRef } from "react";
-import type { Job } from "../../lib/data";
+import { Bookmark, Star, X } from "lucide-react";
+import { forwardRef, type ReactNode } from "react";
 import type { JobGroup } from "../../lib/filters";
-import { ageDays, formatSalary, placeSummary, postedOrSeen, timeAgo } from "../../lib/format";
-import type { Entry, Status } from "../../lib/userState";
-import { ScoreBadge } from "../primitives";
-import { cx, IconButton } from "../ui";
+import { atsLabel } from "../../lib/filters";
+import { formatSalary, placeSummary, postedOrSeen, shortAge } from "../../lib/format";
+import { STATUS_LABEL, type Entry, type Status } from "../../lib/userState";
+import { IconButton, ScoreBadge, SourceTag } from "../primitives";
+import { cx } from "../ui";
 
 type Props = {
   group: JobGroup;
@@ -19,9 +19,7 @@ type Props = {
   yours?: boolean;
 };
 
-const SHORT_SENIORITY: Record<Job["seniority"], string> = { leadership: "Leadership", principal: "Principal/Lead", senior: "Senior", mid: "Mid-level", entry: "Entry" };
-
-/** Where the role is, across all its postings: "Berlin +3" (cities when we recognised them, else the raw location). */
+/** Where the role is, across all its postings: "Berlin +3" (cities when recognised, else the raw location). */
 function placeLine(group: JobGroup): string {
   const cities = group.jobs.flatMap((j) => j.cities);
   if (cities.length) return placeSummary(cities);
@@ -29,90 +27,70 @@ function placeLine(group: JobGroup): string {
   return group.jobs.length > 1 ? `${lead} +${group.jobs.length - 1}` : lead;
 }
 
-/** Initial-letter avatar: neutral, so the score stays the loudest thing on the row. */
-function Avatar({ name }: { name: string }) {
+const WORKPLACE: Record<string, string> = { remote: "Remote", hybrid: "Hybrid", onsite: "On-site" };
+
+/** "Acme · Dubai · Hybrid": the facts joined with the kit's separator. */
+function Meta({ parts }: { parts: ReactNode[] }) {
   return (
-    <span className="flex size-10 shrink-0 items-center justify-center rounded-sm border border-hairline bg-inset type-label text-muted" aria-hidden>
-      {name.replace(/[^\p{L}\p{N}]/gu, "").slice(0, 1).toUpperCase() || "?"}
+    <span className="rj-row__meta">
+      {parts.map((p, i) => (
+        <span key={i}>
+          {i > 0 && (
+            <span className="rj-sep" aria-hidden>
+              ·
+            </span>
+          )}
+          {p}
+        </span>
+      ))}
     </span>
   );
 }
 
 /**
- * One role in the list: who, what, where, how good a match, and why. The title is a real button whose
- * click area stretches over the whole card (the action buttons sit above it), so Tab and screen readers reach it.
+ * One job in the feed (design/components/Feed): score, then title and meta, then the row actions and
+ * where the job came from. The title is a real button whose click area stretches over the whole row;
+ * Save and Not interested sit above it and show on hover or focus (always on touch screens and phones).
  */
 export const JobCard = forwardRef<HTMLLIElement, Props>(function JobCard({ group, entry, min, isNew, selected, onSelect, onStatus, yours }, ref) {
   const job = group.lead;
   const salary = formatSalary(job.salary);
   const status = entry?.status;
-  const fresh = ageDays(postedOrSeen(job)) <= 3;
-  const where = job.countries.length ? job.countries.join(", ") : job.workplace === "remote" ? "Remote" : null;
-  const reasons = [SHORT_SENIORITY[job.seniority], where, job.why.keywords.slice(0, 3).join(", ")].filter(Boolean);
+  const muted = job.status === "closed" || status === "dismissed" || !!job.why.gate;
+
+  const meta: ReactNode[] = [job.company, placeLine(group)];
+  if (WORKPLACE[job.workplace]) meta.push(WORKPLACE[job.workplace]);
+  if (salary) meta.push(salary);
+  if (status && status !== "dismissed") meta.push(<span className="text-ink">{STATUS_LABEL[status]}</span>);
+  if (job.status === "closed") meta.push(<span className="text-danger-text">Closed</span>);
+  if (job.why.gate) meta.push(<span className="text-warning-text">Failed your {job.why.gate} filter</span>);
 
   return (
-    <li
-      ref={ref}
-      className={cx(
-        "group relative flex gap-3 border-b border-line px-3 py-3 transition-colors last:border-b-0 has-[.jc-open:focus-visible]:ring-2 has-[.jc-open:focus-visible]:ring-inset has-[.jc-open:focus-visible]:ring-focus",
-        selected ? "bg-accent-subtle/40" : "hover:bg-inset/60",
-        (job.status === "closed" || status === "dismissed" || job.why.gate) && "opacity-60",
-      )}
-    >
-      {selected && <span className="absolute inset-y-0 left-0 w-0.5 bg-accent" aria-hidden />}
-      <Avatar name={job.company} />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-start gap-2">
-          <h3 className="line-clamp-2 min-w-0 flex-1 type-body font-semibold leading-5">
-            <button
-              type="button"
-              onClick={onSelect}
-              aria-current={selected ? "true" : undefined}
-              className="jc-open cursor-pointer text-left outline-none after:absolute after:inset-0 after:content-['']"
-            >
-              {job.title}
-            </button>
-          </h3>
-          {isNew && (
-            <span className="mt-0.5 shrink-0 rounded-md bg-accent px-1.5 py-0.5 type-meta font-semibold uppercase leading-3 tracking-wide text-on-accent" title="New to you since your last scan">
-              New<span className="sr-only"> to you since your last scan</span>
-            </span>
-          )}
-        </div>
-        <p className="mt-0.5 truncate type-small text-muted">
-          {yours && <Star className="mr-1 inline size-3.5 fill-accent text-accent-text" role="img" aria-label="Your company" />}
-          <span className="font-medium text-ink">{job.company}</span> · {placeLine(group)}
-        </p>
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 type-meta">
-          <span title={job.estimated ? "Estimated: scored on title, place and date only, until the full posting is fetched" : undefined}>
-            <ScoreBadge score={job.score} threshold={min} estimated={job.estimated} />
-          </span>
-          <span className={cx(fresh ? "font-medium text-success-text" : "text-muted")}>{job.postedAt ? timeAgo(job.postedAt) : `seen ${timeAgo(job.firstSeen)}`}</span>
-          {job.workplace !== "unknown" && <span className="capitalize text-muted">· {job.workplace}</span>}
-          {salary && <span className="font-medium text-ink">· {salary}</span>}
-          {job.status === "closed" && <span className="font-medium text-danger-text">· Closed</span>}
-          {job.why.gate && <span className="font-medium text-warning-text">· Failed your {job.why.gate} filter</span>}
-          {job.estimated && <span className="text-muted">· Not scanned yet</span>}
-        </div>
-        {reasons.length > 0 && !job.why.gate && <p className="mt-1 truncate type-meta text-muted">Matches: {reasons.join(" · ")}</p>}
-      </div>
-      {/* Above the title's stretched click area. Dimmed at rest on desktop, full on hover, focus or when selected. */}
-      <div
-        className={cx(
-          "relative z-10 flex shrink-0 flex-col items-center gap-0.5 transition-opacity",
-          !status && !selected && "lg:opacity-60 lg:group-focus-within:opacity-100 lg:group-hover:opacity-100",
-        )}
-      >
-        <IconButton label="Save (s)" active={status === "saved"} onClick={() => onStatus("saved")}>
-          <Bookmark className="size-4" />
-        </IconButton>
-        <IconButton label="Mark applied (a)" active={!!status && ["applied", "interviewing", "offer"].includes(status)} onClick={() => onStatus("applied")}>
-          <CircleCheck className="size-4" />
-        </IconButton>
-        <IconButton label="Hide job (x)" active={status === "dismissed"} onClick={() => onStatus("dismissed")}>
-          <EyeOff className="size-4" />
-        </IconButton>
-      </div>
+    <li ref={ref} className={cx("rj-row", muted && "opacity-60")} aria-current={selected ? "true" : undefined}>
+      <span title={job.estimated ? "Estimated: scored on title, place and date only, until the full posting is fetched" : undefined}>
+        <ScoreBadge score={job.score} threshold={min} estimated={job.estimated} />
+      </span>
+      <span className="rj-row__main">
+        <span className="rj-row__title">
+          {yours && <Star className="rj-star" role="img" aria-label="My company" />}
+          <button type="button" onClick={onSelect} className="rj-row__link min-w-0 cursor-pointer text-left" data-job-link>
+            {job.title}
+          </button>
+        </span>
+        <Meta parts={meta} />
+      </span>
+      <span className="rj-row__side">
+        {/* Kept visible once used, so a saved or hidden row shows it at a glance. */}
+        <span className={cx("rj-row__actions", (status === "saved" || status === "dismissed") && "opacity-100")}>
+          <IconButton label="Save" shortcut="S" size="sm" aria-pressed={status === "saved"} className={cx(status === "saved" && "bg-active text-ink")} onClick={() => onStatus("saved")}>
+            <Bookmark className={cx("rj-icon", status === "saved" && "fill-current")} aria-hidden />
+          </IconButton>
+          <IconButton label="Not interested" shortcut="X" size="sm" aria-pressed={status === "dismissed"} className={cx(status === "dismissed" && "bg-active text-ink")} onClick={() => onStatus("dismissed")}>
+            <X className="rj-icon" aria-hidden />
+          </IconButton>
+        </span>
+        <SourceTag source={atsLabel(job.ats)} age={shortAge(postedOrSeen(job))} isNew={isNew} />
+      </span>
     </li>
   );
 });

@@ -1,5 +1,4 @@
 import type { ButtonHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
-import { STATUS_LABEL, type Status } from "../lib/userState";
 import { Button as RjButton, IconButton as RjIconButton, Kbd as RjKbd, type ButtonVariant } from "./primitives";
 
 export function cx(...parts: (string | false | null | undefined)[]): string {
@@ -24,40 +23,10 @@ export function IconButton({ label, active, className, children, ...rest }: Butt
   );
 }
 
-export function Chip({ children, tone = "plain", className }: { children: ReactNode; tone?: "plain" | "accent" | "warn" | "bad"; className?: string }) {
-  return (
-    <span
-      className={cx(
-        "inline-flex items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 type-meta font-medium leading-4",
-        tone === "plain" && "bg-inset text-muted",
-        tone === "accent" && "bg-accent-subtle text-accent-text",
-        tone === "warn" && "bg-warning-subtle text-warning-text",
-        tone === "bad" && "bg-danger-subtle text-danger-text",
-        className,
-      )}
-    >
-      {children}
-    </span>
-  );
-}
-
-const STATUS_TONE: Record<Status, "accent" | "warn" | "bad" | "plain"> = {
-  saved: "plain",
-  applied: "accent",
-  interviewing: "accent",
-  offer: "accent",
-  rejected: "bad",
-  dismissed: "plain",
-};
-
-export function StatusChip({ status }: { status: Status }) {
-  return <Chip tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Chip>;
-}
-
 export function Select({ className, children, ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
-      className={cx("h-9 rounded-md border border-line bg-raised px-2.5 type-small text-ink outline-none focus:border-accent", className)}
+      className={cx("h-9 rounded-md border border-line bg-raised px-2.5 type-small text-ink", className)}
       {...rest}
     >
       {children}
@@ -86,7 +55,7 @@ export function Segmented<T extends string | number>({
           aria-checked={o.value === value}
           onClick={() => onChange(o.value)}
           className={cx(
-            "rounded-md px-2.5 type-meta font-medium transition-colors",
+            "rounded-md px-2.5 type-label transition-colors",
             o.value === value ? "bg-inset text-ink shadow-l1" : "text-muted hover:text-ink",
           )}
         >
@@ -100,7 +69,7 @@ export function Segmented<T extends string | number>({
 export function Toggle({ checked, onChange, children }: { checked: boolean; onChange: (v: boolean) => void; children: ReactNode }) {
   return (
     <label className="inline-flex cursor-pointer select-none items-center gap-2 type-small text-muted hover:text-ink">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="size-4 accent-accent" />
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="size-4 accent-ink" />
       {children}
     </label>
   );
@@ -163,7 +132,7 @@ export function Pagination({ page, pageSize, total, onPage }: { page: number; pa
                 aria-current={p === page ? "page" : undefined}
                 className={cx(
                   "tabular hidden h-8 min-w-8 rounded-md px-2 type-meta sm:inline-block",
-                  p === page ? "bg-accent text-on-accent" : "text-muted hover:bg-inset hover:text-ink",
+                  p === page ? "bg-ink text-raised" : "text-muted hover:bg-inset hover:text-ink",
                 )}
               >
                 {p.toLocaleString()}

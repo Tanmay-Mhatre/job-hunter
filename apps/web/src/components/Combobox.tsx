@@ -67,7 +67,7 @@ export function Combobox({ label, placeholder, search, onPick, onFreeText }: Pro
             setOpen(false);
           }
         }}
-        className="h-11 w-full rounded-md border border-line bg-raised pl-9 pr-3 type-small outline-none placeholder:text-muted focus:border-accent"
+        className="h-11 w-full rounded-md border border-line bg-raised pl-9 pr-3 type-small placeholder:text-muted"
       />
       {open && q.trim() && (
         <ul
@@ -99,9 +99,9 @@ export function Combobox({ label, placeholder, search, onPick, onFreeText }: Pro
                 onMouseEnter={() => setActive(i)}
                 className={cx("flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 type-small", i === active && "bg-inset")}
               >
-                <Plus className="size-3.5 shrink-0 text-accent-text" />
+                <Plus className="size-3.5 shrink-0 text-muted" aria-hidden />
                 <span className="min-w-0 flex-1 truncate font-medium">{item.label}</span>
-                {item.hint && <span className="hidden max-w-[55%] truncate type-meta text-muted sm:block">{item.hint}</span>}
+                {item.hint && <span className="hidden max-w-[55%] truncate type-small text-muted sm:block">{item.hint}</span>}
               </li>
             ))
           )}

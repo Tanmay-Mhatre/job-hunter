@@ -41,10 +41,10 @@ function PickButton({ active, onClick, children }: { active: boolean; onClick: (
       onClick={onClick}
       className={cx(
         "inline-flex h-9 items-center gap-1.5 rounded-md border px-3 type-label transition-colors",
-        active ? "border-accent bg-accent-subtle text-accent-text" : "border-line bg-raised hover:bg-inset",
+        active ? "border-ink bg-ink text-raised" : "border-line bg-raised hover:bg-inset",
       )}
     >
-      {active && <Check className="size-4" />}
+      {active && <Check className="size-4" aria-hidden />}
       {children}
     </button>
   );
@@ -87,7 +87,7 @@ function Section({ n, title, hint, action, children }: { n: number; title: strin
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-start gap-x-2.5 gap-y-2">
-        <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-sm bg-accent-subtle type-meta font-semibold text-accent-text">{n}</span>
+        <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-sm bg-inset type-label text-ink">{n}</span>
         <div className="min-w-[14rem] flex-1">
           <SectionHeading>{title}</SectionHeading>
           {hint && <p className="mt-0.5 type-small text-muted">{hint}</p>}
@@ -154,8 +154,8 @@ export function RolesStep({ draft, update, suggest }: StepProps) {
         }
       >
         {fam && !choosing ? (
-          <div className="flex items-center gap-2 rounded-md border border-accent bg-accent-subtle/40 px-3 py-2.5">
-            <Check className="size-4 text-accent-text" />
+          <div className="flex items-center gap-2 rounded-md border border-ink bg-active px-3 py-2.5">
+            <Check className="size-4 text-ink" aria-hidden />
             <span className="font-semibold">{fam.label}</span>
             <span className="type-small text-muted">· {fam.titles.length} titles</span>
           </div>
@@ -166,7 +166,7 @@ export function RolesStep({ draft, update, suggest }: StepProps) {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Filter families, e.g. product, risk, sales…"
               aria-label="Filter job families"
-              className="h-10 w-full rounded-md border border-line bg-raised px-3 type-small outline-none placeholder:text-muted focus:border-accent"
+              className="h-10 w-full rounded-md border border-line bg-raised px-3 type-small placeholder:text-muted"
             />
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {families.map((f) => {
@@ -179,16 +179,16 @@ export function RolesStep({ draft, update, suggest }: StepProps) {
                     onClick={() => pickFamily(f.id)}
                     className={cx(
                       "flex items-center gap-2 rounded-md border px-3 py-2.5 text-left transition-colors",
-                      active ? "border-accent bg-accent-subtle/50" : "border-line hover:bg-inset",
+                      active ? "border-ink bg-active" : "border-line hover:bg-inset",
                     )}
                   >
                     <span className="min-w-0 flex-1">
                       <span className="line-clamp-2 block type-small font-semibold">{f.label}</span>
-                      <span className="block type-meta text-muted">
+                      <span className="block type-small text-muted">
                         {f.titles.length} titles{f.id === suggestedFamily ? " · matches your resume" : ""}
                       </span>
                     </span>
-                    {active && <Check className="size-4 shrink-0 text-accent-text" />}
+                    {active && <Check className="size-4 shrink-0 text-ink" aria-hidden />}
                   </button>
                 );
               })}
@@ -248,7 +248,7 @@ export function RolesStep({ draft, update, suggest }: StepProps) {
           )}
           {otherOptions.length > 0 && (
             <div>
-              <p className="mb-1.5 type-meta font-medium text-muted">{fam ? "Other titles" : "Your titles"}{suggest?.titles.length ? ` (incl. ${RESUME_LABEL(suggest).toLowerCase()})` : ""}</p>
+              <p className="mb-1.5 type-label text-muted">{fam ? "Other titles" : "Your titles"}{suggest?.titles.length ? ` (incl. ${RESUME_LABEL(suggest).toLowerCase()})` : ""}</p>
               <ToggleChips
                 label="Other titles"
                 options={otherOptions}
@@ -258,7 +258,7 @@ export function RolesStep({ draft, update, suggest }: StepProps) {
             </div>
           )}
           <div>
-            <p className="mb-1.5 type-meta font-medium text-muted">Add a title from any family</p>
+            <p className="mb-1.5 type-label text-muted">Add a title from any family</p>
             <Combobox
               label="Search job titles"
               placeholder={`Search ${TITLE_INDEX.length}+ titles, or type your own…`}
@@ -391,7 +391,7 @@ function GroupedPlaces({ terms, onChange, label, remote }: { terms: string[]; on
               role="listitem"
               className={cx(
                 "inline-flex h-8 items-center rounded-md border type-label",
-                open === g.key ? "border-accent bg-accent-subtle text-accent-text" : "border-accent/50 bg-accent-subtle/60 text-accent-text",
+                open === g.key ? "border-ink bg-active text-ink" : "border-line bg-raised text-ink",
               )}
             >
               <button
@@ -403,7 +403,7 @@ function GroupedPlaces({ terms, onChange, label, remote }: { terms: string[]; on
                 title={g.terms.join(", ")}
               >
                 {name}
-                {expandable && !citiesOnly && <span className="type-meta">· {g.terms.length}/{g.options.length}</span>}
+                {expandable && !citiesOnly && <span className="tabular font-normal text-muted">· {g.terms.length}/{g.options.length}</span>}
                 {expandable && <ChevronDown className={cx("size-3.5 transition-transform", open === g.key && "rotate-180")} />}
               </button>
               <button
@@ -423,7 +423,7 @@ function GroupedPlaces({ terms, onChange, label, remote }: { terms: string[]; on
       </div>
       {openGroup && (
         <div className="rounded-md border border-line bg-inset/40 p-3">
-          <p className="mb-2 type-meta text-muted">
+          <p className="mb-2 type-small text-muted">
             Words matched for <b className="text-ink">{titleCase(openGroup.name)}</b>. Deselect any you don't want.
           </p>
           <ToggleChips
@@ -515,8 +515,8 @@ export function LocationsStep({ draft, update, suggest }: StepProps) {
                   aria-pressed={active}
                   onClick={() => toggleGroup("places", key, countryTerms(countryByName.get(name)!, withCities))}
                   className={cx(
-                    "inline-flex h-7 items-center gap-1 rounded-md border px-2 type-meta font-medium",
-                    active ? "border-accent bg-accent-subtle text-accent-text" : "border-dashed border-line text-muted hover:border-accent hover:text-ink",
+                    "inline-flex h-7 items-center gap-1 rounded-md border px-2 type-label",
+                    active ? "border-ink bg-ink text-raised" : "border-dashed border-line text-muted hover:border-ink/40 hover:bg-hover hover:text-ink",
                   )}
                 >
                   {active ? <Check className="size-3" /> : <Plus className="size-3" />}
@@ -527,7 +527,7 @@ export function LocationsStep({ draft, update, suggest }: StepProps) {
           </div>
           {suggest?.places.length ? (
             <div>
-              <p className="mb-1.5 type-meta font-medium text-muted">{RESUME_LABEL(suggest)}</p>
+              <p className="mb-1.5 type-label text-muted">{RESUME_LABEL(suggest)}</p>
               <ToggleChips
                 size="sm"
                 label="Places from your resume"
@@ -563,7 +563,7 @@ export function LocationsStep({ draft, update, suggest }: StepProps) {
           </div>
           {suggest?.remoteRegions.length ? (
             <div>
-              <p className="mb-1.5 type-meta font-medium text-muted">{RESUME_LABEL(suggest)}</p>
+              <p className="mb-1.5 type-label text-muted">{RESUME_LABEL(suggest)}</p>
               <ToggleChips
                 size="sm"
                 label="Remote regions from your resume"
@@ -644,7 +644,7 @@ export function IndustriesStep({ draft, update, suggest }: StepProps) {
       {fromResume.length > 0 && (
         <div className="rounded-md border border-dashed border-line p-4">
           <p className="mb-2 type-small">
-            <span className="font-semibold text-accent-text">{RESUME_LABEL(suggest)}</span>
+            <span className="font-semibold text-ink">{RESUME_LABEL(suggest)}</span>
             <span className="text-muted">: click to add or remove</span>
           </p>
           <ToggleChips
@@ -664,7 +664,7 @@ export function IndustriesStep({ draft, update, suggest }: StepProps) {
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search industries, e.g. forex, neobank, payments…"
           aria-label="Search industries"
-          className="h-9 w-full rounded-md border border-line bg-raised pl-9 pr-3 type-small outline-none placeholder:text-muted focus:border-accent"
+          className="h-9 w-full rounded-md border border-line bg-raised pl-9 pr-3 type-small placeholder:text-muted"
         />
       </div>
 
@@ -693,8 +693,8 @@ export function IndustriesStep({ draft, update, suggest }: StepProps) {
       <p className="type-small text-muted">
         {draft.industries.length === 0
           ? "None picked. That's OK: your jobs are found by your roles and places."
-          : `${draft.industries.length} picked. We'll scan and suggest companies in ${draft.industries.length === 1 ? "this industry" : "these industries"}, and you can narrow your Radar to ${draft.industries.length === 1 ? "it" : "them"}.`}
-        {topics.length > 0 && <> Next we'll offer topics like {topics.slice(0, 5).join(", ")}.</>}
+          : `${draft.industries.length} picked. Companies in ${draft.industries.length === 1 ? "this industry" : "these industries"} are scanned and suggested, and you can narrow your Radar to ${draft.industries.length === 1 ? "it" : "them"}.`}
+        {topics.length > 0 && <> The next step offers topics like {topics.slice(0, 5).join(", ")}.</>}
       </p>
     </div>
   );
@@ -798,7 +798,7 @@ export function KeywordsStep({ draft, update, suggest, resumeText = "" }: StepPr
             rows={3}
             aria-label="Text to find topics in"
             placeholder="Paste text here…"
-            className="w-full resize-y rounded-md border border-line bg-raised p-2.5 type-small outline-none placeholder:text-muted focus:border-accent"
+            className="w-full resize-y rounded-md border border-line bg-raised p-2.5 type-small placeholder:text-muted"
           />
         </Field>
         {entries.length > 0 && (
@@ -846,19 +846,19 @@ function WeightControl({ keyword, weight, onChange }: { keyword: string; weight:
     ref.current?.querySelectorAll<HTMLButtonElement>("[role=radio]")[next - 1]?.focus();
   };
   return (
-    <div ref={ref} role="radiogroup" aria-label={`Importance of ${keyword}`} onKeyDown={onKey} className="flex items-center gap-0.5">
+    <div ref={ref} role="radiogroup" aria-label={`Weight for ${keyword}`} onKeyDown={onKey} className="flex items-center gap-0.5">
       {[1, 2, 3, 4, 5].map((i) => (
         <button
           key={i}
           type="button"
           role="radio"
           aria-checked={i === weight}
-          aria-label={String(i)}
+          aria-label={`${i} of 5${i === 1 ? ", nice to have" : i === 5 ? ", core" : ""}`}
           tabIndex={i === weight ? 0 : -1}
           onClick={() => onChange(i)}
           className={cx(
-            "flex size-6 items-center justify-center rounded-md type-meta font-medium tabular transition-colors",
-            i === weight ? "bg-accent text-on-accent" : i < weight ? "bg-accent-subtle text-accent-text" : "bg-inset text-muted hover:bg-line",
+            "flex size-6 items-center justify-center rounded-md type-label tabular transition-colors",
+            i === weight ? "bg-ink text-raised" : i < weight ? "bg-active text-ink" : "bg-inset text-muted hover:bg-line",
           )}
         >
           {i}
@@ -883,7 +883,7 @@ function AddKeyword({ onAdd }: { onAdd: (k: string) => void }) {
         onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), submit())}
         placeholder="Add a keyword, e.g. tokenization"
         aria-label="Add a keyword"
-        className="h-9 min-w-0 flex-1 rounded-md border border-line bg-raised px-3 type-small outline-none placeholder:text-muted focus:border-accent"
+        className="h-9 min-w-0 flex-1 rounded-md border border-line bg-raised px-3 type-small placeholder:text-muted"
       />
       <Button onClick={submit} disabled={!text.trim()}>
         <Plus className="size-4" /> Add
@@ -912,16 +912,16 @@ export function ThresholdPicker({ draft, update }: StepProps) {
           aria-pressed={draft.minScore === t.value}
           className={cx(
             "rounded-md border p-3 text-left transition-colors",
-            draft.minScore === t.value ? "border-accent bg-accent-subtle/50" : "border-line hover:bg-inset",
+            draft.minScore === t.value ? "border-ink bg-active" : "border-line hover:bg-inset",
           )}
         >
           <span className="block type-small font-semibold">
             {t.label} <span className="tabular font-normal text-muted">({t.value}+)</span>
           </span>
-          <span className="mt-0.5 block type-meta text-muted">{t.hint}</span>
+          <span className="mt-0.5 block type-small text-muted">{t.hint}</span>
         </button>
       ))}
-      {custom && <p className="type-meta text-muted sm:col-span-3">Custom threshold from your config: {draft.minScore}+</p>}
+      {custom && <p className="type-small text-muted sm:col-span-3">Custom threshold from your config: {draft.minScore}+</p>}
     </div>
   );
 }

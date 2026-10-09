@@ -71,7 +71,7 @@ export async function checkCompanies(urls: string[]): Promise<CompanyCheck[]> {
   if (!canRunLocally) {
     return urls.map((input): CompanyCheck => {
       const d = detectCompany(input);
-      if (!d) return { input, status: "unknown", error: "Not a careers site we recognise yet." };
+      if (!d) return { input, status: "unknown", error: "Not a careers site RawJobs can read yet." };
       const { supported, ...ref } = d;
       return { input, ...ref, key: companyKey(ref), careers_url: careersUrl(ref) || input, name_source: "slug", status: supported ? "live" : "soon" };
     });
@@ -105,11 +105,15 @@ export type RunEvent =
       skippedByFeed?: number;
       /** Older CLIs: the last `checking` companies aren't yours. */
       checking?: number;
+      /** Companies this scan covers per hiring system ("greenhouse": 120). Older CLIs leave it out. */
+      byAts?: Record<string, number>;
+      /** Of those, done before this scan started (it resumed a stopped one), per hiring system. */
+      doneByAts?: Record<string, number>;
     }
   /** A company done: every one of yours, and directory ones that matched or failed. */
-  | ({ type: "company"; done?: number } & CompanyHealth)
-  /** Directory companies done, as a count. */
-  | { type: "progress"; done: number }
+  | ({ type: "company"; done?: number; doneByAts?: Record<string, number> } & CompanyHealth)
+  /** Directory companies done, as a count (`ats`: the hiring system of the last one). */
+  | { type: "progress"; done: number; ats?: string; doneByAts?: Record<string, number> }
   | {
       type: "done";
       jobsFound: number;

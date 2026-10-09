@@ -63,8 +63,9 @@ export function FacetMenu({ label, options, selected, onChange, single, searchab
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         className={cx(
-          "inline-flex h-8 max-w-56 items-center gap-1 rounded-sm border px-3 type-meta font-medium transition-colors",
-          active ? "border-accent bg-accent-subtle text-accent-text" : "border-line bg-raised text-ink hover:bg-inset",
+          // Looks like a filter chip (design/components/Chip): inverted while it filters something.
+          "rj-chip max-w-56",
+          active && "border-[var(--chip-on-bg)] bg-[var(--chip-on-bg)] text-[var(--chip-on-fg)] hover:bg-[var(--chip-on-bg)] hover:text-[var(--chip-on-fg)]",
         )}
       >
         <span className="truncate">{summary}</span>
@@ -72,12 +73,12 @@ export function FacetMenu({ label, options, selected, onChange, single, searchab
       </button>
       {open && (
         <div id={panelId} role="group" aria-label={label} className="absolute left-0 top-full z-30 mt-1 w-72 rounded-md border border-line bg-raised p-1.5 shadow-l3">
-          {optionsLabel && options.length > 0 && <p className="px-2 pb-0.5 pt-1 type-meta font-semibold uppercase tracking-wide text-muted">{optionsLabel}</p>}
+          {optionsLabel && options.length > 0 && <p className="px-2 pb-0.5 pt-1 type-label">{optionsLabel}</p>}
           <OptionList label={label} options={options} selected={selected} onChange={onChange} single={single} searchable={searchable} autoFocus />
           {footer}
           {active && (
             <div className="mt-1 border-t border-line pt-1 text-right">
-              <button type="button" className="rounded-md px-2 py-1 type-meta font-medium text-accent-text hover:bg-inset" onClick={() => onChange([])}>
+              <button type="button" className="rj-btn rj-btn--quiet rj-btn--sm" onClick={() => onChange([])}>
                 Clear
               </button>
             </div>
@@ -112,7 +113,7 @@ export function OptionList({
             onChange={(e) => setQ(e.target.value)}
             placeholder={`Search ${label.toLowerCase()}…`}
             aria-label={`Search ${label.toLowerCase()}`}
-            className="h-8 w-full rounded-md border border-line bg-raised pl-8 pr-2 type-meta outline-none focus:border-accent"
+            className="h-8 w-full rounded-md border border-line bg-raised pl-8 pr-2 type-small"
           />
         </div>
       )}
@@ -123,7 +124,7 @@ export function OptionList({
           const heading = o.group && o.group !== shown[i - 1]?.group ? (o.group === "yours" ? "From your profile" : "Also mentioned in jobs") : null;
           return (
             <li key={o.value}>
-              {heading && <p className="px-2 pb-0.5 pt-2 type-meta font-semibold uppercase tracking-wide text-muted first:pt-0.5">{heading}</p>}
+              {heading && <p className="px-2 pb-0.5 pt-2 type-label first:pt-0.5">{heading}</p>}
               <button
                 type="button"
                 aria-pressed={on}
@@ -131,7 +132,7 @@ export function OptionList({
                 disabled={!on && o.count === 0}
                 className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left type-small hover:bg-inset disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent"
               >
-                <span className={cx("flex size-4 shrink-0 items-center justify-center border", single ? "rounded-dot" : "rounded-sm", on ? "border-accent bg-accent text-on-accent" : "border-line")}>
+                <span className={cx("flex size-4 shrink-0 items-center justify-center border", single ? "rounded-dot" : "rounded-sm", on ? "border-ink bg-ink text-raised" : "border-control")}>
                   {on && <Check className="size-3" />}
                 </span>
                 <span className="min-w-0 flex-1 truncate">{o.label}</span>
@@ -140,7 +141,7 @@ export function OptionList({
             </li>
           );
         })}
-        {shown.length === 0 && <li className="px-2 py-3 text-center type-meta text-muted">Nothing here with the current filters.</li>}
+        {shown.length === 0 && <li className="px-2 py-3 type-small text-muted">Nothing here with the current filters.</li>}
       </ul>
     </>
   );

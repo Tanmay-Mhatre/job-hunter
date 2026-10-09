@@ -83,10 +83,10 @@ function useAutoSave(draft: Draft, saved: Draft, onSaved: () => Promise<void>, e
 
 /** "Saving…", "Saved · used in your next scan", or what went wrong (with the reason and Retry, inline). */
 function SaveStatus({ state, retry, onScan, scanning }: { state: SaveState; retry: () => void; onScan: () => void; scanning: boolean }) {
-  if (!canRunLocally) return <span className="type-meta text-muted">Changes stay in this browser.</span>;
+  if (!canRunLocally) return <span className="type-small text-muted">Changes stay in this browser.</span>;
   if (state.kind === "error")
     return (
-      <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 type-meta text-danger-text">
+      <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 type-small text-danger-text">
         <CircleAlert className="size-3.5 shrink-0" /> Couldn't save your changes{state.message ? `: ${state.message}` : "."}
         <button type="button" className="min-h-6 font-medium underline" onClick={retry}>
           Retry
@@ -95,17 +95,17 @@ function SaveStatus({ state, retry, onScan, scanning }: { state: SaveState; retr
     );
   if (state.kind === "saving")
     return (
-      <span className="inline-flex items-center gap-1.5 type-meta text-muted">
+      <span className="inline-flex items-center gap-1.5 type-small text-muted">
         <LoaderCircle className="size-3.5 animate-spin" /> Saving…
       </span>
     );
   return (
-    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 type-meta text-muted">
+    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 type-small text-muted">
       <span className="inline-flex items-center gap-1">
         <Check className="size-3.5 text-success-text" /> {state.kind === "saved" ? "Saved. Used in your next scan." : "Changes save automatically."}
       </span>
       {state.kind === "saved" && (
-        <button type="button" className="inline-flex min-h-6 items-center gap-1 font-medium text-accent-text disabled:opacity-50" onClick={onScan} disabled={scanning}>
+        <button type="button" className="inline-flex min-h-6 items-center gap-1 font-medium text-ink underline underline-offset-2 hover:text-muted disabled:opacity-50" onClick={onScan} disabled={scanning}>
           <RefreshCw className="size-3" /> Scan now
         </button>
       )}
@@ -180,7 +180,6 @@ export function CompaniesTab({ configured, meta, jobs, draft, saved, update, onS
   if (!configured) {
     return (
       <EmptyState
-        icon={<Building2 className="size-6" />}
         title="Set up your radar first"
         actions={
           <Button variant="primary" onClick={toSetup}>
@@ -188,7 +187,7 @@ export function CompaniesTab({ configured, meta, jobs, draft, saved, update, onS
           </Button>
         }
       >
-        Tell us the roles and places you want. Then pick the companies you'd love to work at: we scan them every time and list their jobs first.
+        Choose the roles and places you want, then the companies you'd love to work at. Those companies are scanned every time and their jobs come first.
       </EmptyState>
     );
   }
@@ -307,7 +306,7 @@ export function CompaniesTab({ configured, meta, jobs, draft, saved, update, onS
                     <span className="font-medium">{h.name ?? h.key}</span>
                     <button
                       type="button"
-                      className="min-h-6 type-meta font-medium text-accent-text"
+                      className="min-h-6 type-label text-ink underline underline-offset-2 hover:text-muted"
                       aria-label={`Show ${h.name ?? h.key} again`}
                       onClick={() => {
                         if (h.key) update({ muted: draft.muted.filter((k) => k !== h.key) });

@@ -38,7 +38,7 @@ export function QuickAdd({ q, onQ, count, linkOpen, onToggleLink, linkPanelId, s
             onKeyDown={(e) => e.key === "Escape" && q && (e.preventDefault(), onQ(""))}
             placeholder={count ? `Search ${roughCount(count)} companies…` : "Search companies…"}
             aria-label="Search companies"
-            className="h-11 w-full rounded-md border border-line bg-raised pl-9 pr-10 type-small outline-none placeholder:text-muted focus:border-accent [&::-webkit-search-cancel-button]:hidden"
+            className="h-11 w-full rounded-md border border-line bg-raised pl-9 pr-10 type-small placeholder:text-muted [&::-webkit-search-cancel-button]:hidden"
           />
           {q && (
             <button
@@ -52,7 +52,7 @@ export function QuickAdd({ q, onQ, count, linkOpen, onToggleLink, linkPanelId, s
             </button>
           )}
         </div>
-        <Button className={cx("h-11 shrink-0", linkOpen && "border-accent text-accent-text")} onClick={onToggleLink} aria-expanded={linkOpen} aria-controls={linkPanelId}>
+        <Button className={cx("h-11 shrink-0", linkOpen && "border-ink bg-active text-ink")} onClick={onToggleLink} aria-expanded={linkOpen} aria-controls={linkPanelId}>
           <Link2 className="size-4" /> Add by link
         </Button>
       </div>

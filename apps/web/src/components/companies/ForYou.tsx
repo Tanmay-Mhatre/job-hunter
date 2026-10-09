@@ -7,7 +7,8 @@ import { refOf, visible, type CompanySuggestion, type CompanySuggestions, type S
 import { canRunLocally } from "../../lib/data";
 import { load, save } from "../../lib/storage";
 import { AddAll, AddButton } from "../CompanyButtons";
-import { Button, Card, Chip, cx } from "../ui";
+import { Chip } from "../primitives";
+import { Button, Card, cx } from "../ui";
 import { CardSkeleton, Monogram, SuggestionCard } from "./SuggestionCard";
 import { TabList, TabPanel, useTabIds } from "./Tabs";
 
@@ -43,7 +44,7 @@ const real = <T extends CompanySuggestion>(list: readonly T[], skip: ReadonlySet
 
 /**
  * Companies picked for you: hiring for your roles now, like the companies on your resume, worth
- * watching, one pack per industry, and ones we can't scan yet. Rule-based and local: nothing
+ * watching, one pack per industry, and ones RawJobs can't scan yet. Rule-based and local: nothing
  * about you leaves this computer.
  */
 export function ForYou({ state, watched, muted, pastEmployers, onPastEmployers, onAddMany, onRemoveMany, onMute, onUnmute, compact, offHint, onRetry }: Props) {
@@ -124,20 +125,20 @@ export function ForYou({ state, watched, muted, pastEmployers, onPastEmployers, 
       <div className={cx("flex flex-wrap items-start justify-between gap-3", compact && "hidden")}>
         <div className="min-w-0">
           <h2 className="flex items-center gap-2 type-body font-semibold">
-            <Sparkles className="size-4 text-accent-text" /> Picked for you
+            <Sparkles className="size-4 text-muted" aria-hidden /> Picked for you
           </h2>
           <p className="mt-0.5 type-small text-muted">From your roles, places, industries and past employers. Worked out on this computer; nothing about you is sent anywhere.</p>
         </div>
         {data && data.coverage.in_industries > 0 && (
-          <p className="rounded-sm bg-inset px-3 py-1 type-meta text-muted" title="Companies in the directory tagged with your industries, and how many of them are on a hiring system we can scan">
-            We can scan <b className="tabular text-ink">{data.coverage.trackable.toLocaleString()}</b> of {data.coverage.in_industries.toLocaleString()} companies in your industries
+          <p className="type-small text-muted" title="Companies in the directory tagged with your industries, and how many of them are on a hiring system RawJobs can scan">
+            <b className="tabular font-semibold text-ink">{data.coverage.trackable.toLocaleString()}</b> of {data.coverage.in_industries.toLocaleString()} companies in your industries can be scanned
           </p>
         )}
       </div>
 
       <PastEmployers names={pastEmployers} suggested={data?.pastEmployers.map((p) => p.name)} onChange={onPastEmployers} />
       {compact && top5.length > 0 && (
-        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-md bg-accent-subtle/50 p-3 type-small">
+        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-md bg-inset p-3 type-small">
           <span className="mr-auto">Quick start: add the {top5.length} best fits ({top5.map((s) => s.name).join(", ")}).</span>
           <AddAll items={top5.map(refOf)} watched={watched} onAddMany={onAddMany} onRemoveMany={onRemoveMany} />
         </div>
@@ -145,7 +146,7 @@ export function ForYou({ state, watched, muted, pastEmployers, onPastEmployers, 
 
       {state.kind === "off" && offSettled ? (
         <p className="mt-4 rounded-md border border-dashed border-line p-4 type-small text-muted">
-          {!canRunLocally && offHint ? offHint : canRunLocally ? "Pick the roles you want first, and we'll suggest companies hiring for them." : "Suggestions aren't available in this version of the app. Search the directory or add a company by link instead."}
+          {!canRunLocally && offHint ? offHint : canRunLocally ? "Pick the roles you want first to see companies hiring for them." : "Suggestions aren't available in this version of the app. Search the directory or add a company by link instead."}
         </p>
       ) : state.kind === "error" ? (
         <div role="alert" className="mt-4 space-y-2 rounded-md bg-warning-subtle/50 p-4 type-small">
@@ -183,7 +184,6 @@ export function ForYou({ state, watched, muted, pastEmployers, onPastEmployers, 
             onChange={setLens}
             label="Kinds of suggestions"
             ids={ids}
-            variant="pill"
             after={state.kind === "loading" && <LoaderCircle className="ml-1 size-4 shrink-0 animate-spin text-muted" aria-label="Updating suggestions" />}
           />
 
@@ -195,7 +195,7 @@ export function ForYou({ state, watched, muted, pastEmployers, onPastEmployers, 
               <span className="mr-auto">
                 Hid <b>{hidden.name}</b>. Its jobs won't show either.
               </span>
-              <button type="button" className="inline-flex items-center gap-1 type-meta font-medium text-accent-text" onClick={() => (onUnmute(hidden.key), setHidden(null))}>
+              <button type="button" className="inline-flex items-center gap-1 type-label text-ink underline underline-offset-2 hover:text-muted" onClick={() => (onUnmute(hidden.key), setHidden(null))}>
                 <Undo2 className="size-3.5" /> Undo
               </button>
             </p>
@@ -237,7 +237,7 @@ const LENS_INTRO: Record<Lens, string> = {
   hiring: "Companies with open roles that pass your title and place filters today.",
   like: "Companies like the ones on your resume that also fit what you want now.",
   watching: "A good fit, but nothing open for you today. Add them to My companies to hear first when something opens.",
-  soon: "In your industries, but on hiring systems we can't scan yet. Add them now and we'll scan them once they're supported.",
+  soon: "In your industries, but on hiring systems RawJobs can't scan yet. Add them now and they're scanned once support ships.",
 };
 
 /** What the lens is, and "Add all" for everything in it (not just the cards on screen). */
@@ -299,7 +299,7 @@ function LikeLens({
   onDismiss: (key: string) => void;
 }) {
   const [open, setOpen] = useState<string[]>([]);
-  if (!hasEmployers) return <Empty>Add the companies you've worked at above, and we'll find companies like them that are hiring for you.</Empty>;
+  if (!hasEmployers) return <Empty>Add the companies you've worked at above to see companies like them that are hiring for you.</Empty>;
   return (
     <div className="space-y-5">
       {rows.length === 0 && <Empty>No close match yet for your past employers among companies that fit your roles and places.</Empty>}
@@ -308,7 +308,7 @@ function LikeLens({
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <h3 className="min-w-0 flex-1 type-small font-semibold">
               Because you worked at {r.seed}
-              {!r.in_directory && <span className="ml-2 type-meta text-muted">(matched on the industries in that role on your resume)</span>}
+              {!r.in_directory && <span className="ml-2 type-small font-normal text-muted">(matched on the industries in that role on your resume)</span>}
             </h3>
             <AddAll items={r.items.map(refOf)} watched={watched} onAddMany={onAddMany} onRemoveMany={onRemoveMany} />
           </div>
@@ -320,7 +320,7 @@ function LikeLens({
           <h3 className="flex items-center gap-2 type-small font-semibold">
             <History className="size-4 text-muted" /> Go back?
           </h3>
-          <p className="type-meta text-muted">Your past employers that we can scan. Some people like to keep an eye on them.</p>
+          <p className="type-small text-muted">Your past employers that RawJobs can scan. Some people like to keep an eye on them.</p>
           <ul className="flex flex-wrap gap-2">
             {goBack.map(({ company: c }) => (
               <li key={c!.key} className="flex items-center gap-2 rounded-md border border-line py-1.5 pl-2 pr-1.5">
@@ -362,7 +362,7 @@ function Packs({
       {packs.map((p) => (
         <section key={p.industry} className="flex flex-col gap-3 rounded-md border border-line p-4">
           <header className="flex items-center gap-2">
-            <Package className="size-4 text-accent-text" />
+            <Package className="size-4 text-muted" aria-hidden />
             <h3 className="mr-auto type-small font-semibold">{INDUSTRY_BY_ID.get(p.industry)?.label ?? p.industry}</h3>
             <AddAll items={p.items.map(refOf)} watched={watched} onAddMany={onAddMany} onRemoveMany={onRemoveMany} />
           </header>
@@ -371,25 +371,21 @@ function Packs({
               const on = watched.has(s.key);
               return (
                 <li key={s.key}>
-                  <button
-                    type="button"
-                    aria-pressed={on}
+                  <Chip
+                    pressed={on}
                     onClick={() => (on ? onRemoveMany([s.key]) : onAddMany([refOf(s)]))}
                     title={s.reasons.join(" · ")}
-                    className={cx(
-                      "inline-flex h-8 items-center gap-1.5 rounded-md border pl-1.5 pr-2.5 type-meta font-medium transition-colors",
-                      on ? "border-accent bg-accent-subtle text-accent-text" : "border-line hover:border-muted/50",
-                    )}
+                    count={s.matches > 0 ? s.matches : undefined}
+                    className="pl-1.5"
                   >
                     <Monogram name={s.name} size="xs" />
                     {s.name}
-                    {s.matches > 0 && <span className="tabular text-accent-text">{s.matches}</span>}
-                  </button>
+                  </Chip>
                 </li>
               );
             })}
           </ul>
-          <p className="type-meta text-muted">Numbers are roles that match you now. Tap a company to add or remove it.</p>
+          <p className="type-small text-muted">Numbers are roles that match you now. Tap a company to add or remove it.</p>
         </section>
       ))}
     </div>
@@ -402,14 +398,10 @@ export function PastEmployers({ names, suggested = [], onChange }: { names: stri
   if (!names.length && suggested.length) {
     return (
       <div className="mt-4 flex flex-wrap items-center gap-1.5 rounded-md border border-dashed border-line p-2.5">
-        <span className="mr-1 inline-flex items-center gap-1.5 type-meta font-medium text-muted">
-          <Briefcase className="size-3.5" /> From your resume, you've worked at
+        <span className="mr-1 inline-flex items-center gap-1.5 type-label text-muted">
+          <Briefcase className="size-4" aria-hidden /> From your resume, you've worked at
         </span>
-        {suggested.map((n) => (
-          <Chip key={n} className="h-7 type-meta">
-            {n}
-          </Chip>
-        ))}
+        <span className="type-small text-ink">{suggested.join(", ")}</span>
         <Button size="sm" variant="primary" className="ml-auto" onClick={() => onChange(suggested)}>
           Looks right
         </Button>
@@ -423,11 +415,11 @@ export function PastEmployers({ names, suggested = [], onChange }: { names: stri
   };
   return (
     <div className="mt-4 flex flex-wrap items-center gap-1.5">
-      <span className="mr-1 inline-flex items-center gap-1.5 type-meta font-medium text-muted">
-        <Briefcase className="size-3.5" /> You've worked at
+      <span className="mr-1 inline-flex items-center gap-1.5 type-label text-muted">
+        <Briefcase className="size-4" aria-hidden /> You've worked at
       </span>
       {names.map((n) => (
-        <Chip key={n} className="h-7 gap-1 pl-2 pr-1 type-meta">
+        <span key={n} className="rj-chip cursor-default gap-1 pr-1">
           {n}
           <button
             type="button"
@@ -438,7 +430,7 @@ export function PastEmployers({ names, suggested = [], onChange }: { names: stri
           >
             <X className="size-3.5" />
           </button>
-        </Chip>
+        </span>
       ))}
       <form
         className="inline-flex items-center"
@@ -452,10 +444,10 @@ export function PastEmployers({ names, suggested = [], onChange }: { names: stri
           onChange={(e) => setText(e.target.value)}
           placeholder={names.length ? "Add another" : "Past employer…"}
           aria-label="Add a past employer"
-          className="h-7 w-44 rounded-md border border-dashed border-line bg-transparent px-2 type-meta outline-none placeholder:text-muted focus:border-accent"
+          className="h-7 w-44 rounded-md border border-dashed border-line bg-transparent px-2 type-small placeholder:text-muted"
         />
         {text.trim() && (
-          <button type="submit" aria-label={`Add ${text.trim()} as a past employer`} className="ml-1 inline-flex size-7 items-center justify-center rounded-md text-accent-text hover:bg-accent-subtle">
+          <button type="submit" aria-label={`Add ${text.trim()} as a past employer`} className="ml-1 inline-flex size-7 items-center justify-center rounded-md text-ink hover:bg-hover">
             <Plus className="size-4" />
           </button>
         )}

@@ -79,7 +79,7 @@ export function DirectoryBar({ onUpdated, companies }: { onUpdated: () => void; 
         {busy ? <LoaderCircle className="size-3.5 animate-spin" /> : <CloudDownload className="size-3.5" />}
         {busy ? "Updating…" : status.present ? "Update directory" : "Download directory"}
       </Button>
-      <p role="status" className={cx("w-full type-meta empty:hidden", message?.tone === "bad" ? "text-danger-text" : "text-muted")}>
+      <p role="status" className={cx("w-full type-small empty:hidden", message?.tone === "bad" ? "text-danger-text" : "text-muted")}>
         {message?.text}
       </p>
     </div>

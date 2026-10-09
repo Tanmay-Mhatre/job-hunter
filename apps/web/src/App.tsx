@@ -7,6 +7,7 @@ import { checklistItems, ConfigProblemCard, FailingBanner, FirstScanCard, NoMatc
 import { ApplyPrompt } from "./components/ApplyPrompt";
 import { JobDrawer } from "./components/JobDrawer";
 import { Pipeline } from "./components/Pipeline";
+import { FeedSkeleton } from "./components/radar/FeedSkeleton";
 import { RadarPage } from "./components/radar/RadarPage";
 import { NotifyWhenDone } from "./components/NotifyWhenDone";
 import { ScanButton, ScanChooser } from "./components/ScanButton";
@@ -23,9 +24,9 @@ import { checkNow, draftFromConfig, draftToConfig, emptyDraft, rebaseDraft, save
 import { buildSuggestions } from "./lib/suggest";
 import { load, save } from "./lib/storage";
 import { timeAgo } from "./lib/format";
+import { hasNewTag } from "./lib/filters";
 import { useTheme } from "./lib/theme";
 import { useUserState, type Status } from "./lib/userState";
-import logoMark from "./design/logos/rawjobs-mark.svg";
 import wordmarkInk from "./design/logos/rawjobs-wordmark-ink.svg";
 import wordmarkPaper from "./design/logos/rawjobs-wordmark-paper.svg";
 import { Wizard } from "./setup/Wizard";
@@ -278,12 +279,10 @@ export function App() {
       <header className="sticky top-0 z-30 border-b border-line bg-raised/85 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4">
           <a href="#radar" onClick={() => go({ tab: "radar" })} className="flex shrink-0 items-center rounded-sm" aria-label="RawJobs, go to Radar">
-            {/* The wordmark from 96px up; the mark on phones (design/logos). */}
-            <img src={logoMark} alt="" className={cx("size-7", inSetup ? "hidden" : "sm:hidden")} />
-            <span className={cx(inSetup ? "contents" : "hidden sm:contents")}>
-              <img src={wordmarkInk} alt="" className="rj-wordmark-ink h-auto w-25" />
-              <img src={wordmarkPaper} alt="" className="rj-wordmark-paper h-auto w-25" />
-            </span>
+            {/* The wordmark at every width, 100px (the minimum is 96px): ink on light themes, paper on dark.
+                The app mark is for the favicon and app icon only (design/logos). The link names it. */}
+            <img src={wordmarkInk} alt="" className="rj-wordmark-ink h-auto w-25" />
+            <img src={wordmarkPaper} alt="" className="rj-wordmark-paper h-auto w-25" />
           </a>
           {inSetup ? (
             <span className="type-small text-muted">· Setup</span>
@@ -325,7 +324,7 @@ export function App() {
 
       <main id="main" tabIndex={-1} className={cx("mx-auto max-w-6xl px-4 pt-5 outline-none", inSetup ? "pb-10" : "pb-24 md:pb-10")}>
         {status === undefined || state.kind === "loading" ? (
-          <p className="py-20 text-center type-small text-muted">Loading…</p>
+          <FeedSkeleton />
         ) : inSetup ? (
           <Wizard
             step={(route as { setup: number }).setup}
@@ -491,7 +490,11 @@ export function App() {
               key={t.id}
               type="button"
               onClick={() => go({ tab: t.id })}
-              className={cx("flex flex-col items-center gap-0.5 py-2 type-meta font-medium", tab === t.id ? "text-accent-text" : "text-muted")}
+              className={cx(
+                "relative flex min-h-14 flex-col items-center justify-center gap-0.5 py-1.5 type-label",
+                // Selected: ink, with the same 2px ink indicator the tabs use (never the accent).
+                tab === t.id ? "text-ink after:absolute after:inset-x-4 after:top-0 after:h-0.5 after:bg-ink" : "text-muted",
+              )}
               aria-current={tab === t.id ? "page" : undefined}
             >
               <t.icon className="size-5" />
@@ -504,6 +507,11 @@ export function App() {
       {openJob && meta && (
         <JobDrawer
           job={openJob}
+          isNew={(() => {
+            // Same rule as the feed: new since the previous full scan, never on the first.
+            const full = meta.runs.filter((r) => !r.partial);
+            return hasNewTag(openJob, { firstScan: full.length <= 1, newSince: full[1] ? Date.parse(full[1].finishedAt) : undefined });
+          })()}
           entry={user.state[openJob.id]}
           profile={meta.profile}
           postings={jobs.filter((j) => j.group === openJob.group)}
@@ -574,11 +582,12 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 
 function ShortcutHelp({ open, onClose }: { open: boolean; onClose: () => void }) {
   const rows: [string[], string][] = [
-    [["j", "k"], "Next / previous job"],
+    [["J", "K"], "Next / previous job"],
     [["Enter"], "Open job"],
-    [["s"], "Save"],
-    [["a"], "Mark applied"],
-    [["x"], "Hide job"],
+    [["S"], "Save"],
+    [["A"], "Mark as applied"],
+    [["X"], "Not interested"],
+    [["C"], "Copy description"],
     [["/"], "Search"],
     [["1", "4"], "Switch section"],
     [["Esc"], "Close"],
@@ -587,7 +596,7 @@ function ShortcutHelp({ open, onClose }: { open: boolean; onClose: () => void })
     <Dialog open={open} onClose={onClose} labelledBy="shortcut-help-title" className="max-w-sm">
       <Card className="w-full p-5 shadow-l3">
         <div className="flex items-center justify-between gap-2">
-          <h2 id="shortcut-help-title" className="type-body font-semibold">
+          <h2 id="shortcut-help-title" className="type-subheading">
             Keyboard shortcuts
           </h2>
           <IconButton label="Close" onClick={onClose} className="-mr-2">

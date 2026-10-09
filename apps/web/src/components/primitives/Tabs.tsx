@@ -38,10 +38,13 @@ export function Tabs<T extends string>({
     refs.current.get(target.id)?.focus();
   };
 
+  // With no tab selected (e.g. a saved view is showing), the first tab keeps the list reachable by Tab.
+  const anySelected = items.some((t) => t.id === value);
   return (
     <div className={cx("rj-tabs", className)} role="tablist" aria-label={label} onKeyDown={onKeyDown}>
-      {items.map((t) => {
+      {items.map((t, i) => {
         const selected = t.id === value;
+        const tabbable = selected || (!anySelected && i === 0);
         return (
           <button
             key={t.id}
@@ -55,7 +58,7 @@ export function Tabs<T extends string>({
             className="rj-tab"
             aria-selected={selected}
             aria-controls={panelId}
-            tabIndex={selected ? 0 : -1}
+            tabIndex={tabbable ? 0 : -1}
             onClick={() => onChange(t.id)}
           >
             {t.label}

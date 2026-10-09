@@ -21,6 +21,9 @@ export type ScanState = {
   done: number;
   /** Done before this scan started (it resumed a stopped one). */
   resumed: number;
+  /** Companies this scan covers per hiring system, and how many of each are done (newer CLIs only). */
+  byAts?: Record<string, number>;
+  doneByAts?: Record<string, number>;
   /** About how long the scan takes, from the start. */
   seconds?: number;
   /** Health of your companies, and directory ones that matched or failed, by company name. */
@@ -49,6 +52,49 @@ export function setScanPrefs(p: Partial<ScanPrefs>): void {
   window.dispatchEvent(new Event("rawjobs:scan-prefs"));
 }
 
+/** How one event from the running scan changes what's shown ("error" is handled by the caller). */
+export function applyScanEvent(s: ScanState, e: RunEvent): ScanState {
+  switch (e.type) {
+    case "sync":
+      return { ...s, syncing: true };
+    case "synced":
+      return { ...s, syncing: false, sync: e.message, feed: e.feed };
+    case "start":
+      return {
+        ...s,
+        syncing: false,
+        companies: e.companies,
+        total: e.total ?? e.companies.length,
+        done: e.resumed ?? 0,
+        resumed: e.resumed ?? 0,
+        seconds: e.seconds,
+        skippedByFeed: e.skippedByFeed,
+        byAts: e.byAts,
+        doneByAts: e.byAts ? { ...e.doneByAts } : undefined,
+      };
+    case "company": {
+      const { type: _, done, doneByAts, ...h } = e;
+      return { ...s, done: done ?? s.done + 1, results: { ...s.results, [h.company]: h }, ...(doneByAts ? { doneByAts: { ...doneByAts } } : {}) };
+    }
+    case "progress":
+      return { ...s, done: Math.max(s.done, e.done), ...(e.doneByAts ? { doneByAts: { ...e.doneByAts } } : {}) };
+    case "done":
+      return { ...s, summary: e };
+    case "notified":
+      return { ...s, notify: { asked: true, result: e.result } };
+    default:
+      return s;
+  }
+}
+
+/** One progress row per hiring system, biggest first. Older CLIs send no breakdown: one row (ats "") for all companies. */
+export function progressRows(scan: ScanState): { ats: string; done: number; total: number }[] {
+  if (!scan.byAts || !Object.keys(scan.byAts).length) return scan.total ? [{ ats: "", done: Math.min(scan.done, scan.total), total: scan.total }] : [];
+  return Object.entries(scan.byAts)
+    .map(([ats, total]) => ({ ats, total, done: Math.min(scan.doneByAts?.[ats] ?? 0, total) }))
+    .sort((x, y) => y.total - x.total || x.ats.localeCompare(y.ats));
+}
+
 /** One scan at a time, shared by the header button, the wizard and Radar cards. */
 export function useScan(onFinished: () => void | Promise<void>) {
   const [scan, setScan] = useState<ScanState>(IDLE);
@@ -64,26 +110,8 @@ export function useScan(onFinished: () => void | Promise<void>) {
       try {
         await runScan(
           (e) => {
-            if (e.type === "sync") setScan((s) => ({ ...s, syncing: true }));
-            else if (e.type === "synced") setScan((s) => ({ ...s, syncing: false, sync: e.message, feed: e.feed }));
-            else if (e.type === "start")
-              setScan((s) => ({
-                ...s,
-                syncing: false,
-                companies: e.companies,
-                total: e.total ?? e.companies.length,
-                done: e.resumed ?? 0,
-                resumed: e.resumed ?? 0,
-                seconds: e.seconds,
-                skippedByFeed: e.skippedByFeed,
-              }));
-            else if (e.type === "company") {
-              const { type: _, done, ...h } = e;
-              setScan((s) => ({ ...s, done: done ?? s.done + 1, results: { ...s.results, [h.company]: h } }));
-            } else if (e.type === "progress") setScan((s) => ({ ...s, done: Math.max(s.done, e.done) }));
-            else if (e.type === "done") setScan((s) => ({ ...s, summary: e }));
-            else if (e.type === "notified") setScan((s) => ({ ...s, notify: { asked: true, result: e.result } }));
-            else if (e.type === "error") failed = e.message;
+            if (e.type === "error") failed = e.message;
+            else setScan((s) => applyScanEvent(s, e));
           },
           { scope, fresh: opts.fresh },
         );

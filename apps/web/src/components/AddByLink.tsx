@@ -1,10 +1,11 @@
-import { CircleAlert, CircleCheck, Clock, ExternalLink, HelpCircle, Link2, LoaderCircle, MapPin, Moon, X } from "lucide-react";
+import { CircleAlert, ExternalLink, HelpCircle, Link2, LoaderCircle, MapPin, X } from "lucide-react";
 import { useId, useState } from "react";
 import { ATS_LABEL, keyOf, SUPPORTED, type CompanyRef } from "../lib/companies";
 import { displayPlace } from "../lib/format";
 import { checkCompanies, type CompanyCheck } from "../lib/setup";
 import { AddAll, AddButton } from "./CompanyButtons";
-import { Button, Chip, cx } from "./ui";
+import { Status } from "./primitives";
+import { Button, cx } from "./ui";
 
 type Result = CompanyCheck & { id: string };
 
@@ -88,9 +89,9 @@ export function AddByLink({
           autoFocus={autoFocus}
           aria-describedby={`${helpId}-hint`}
           placeholder={"https://jobs.lever.co/company\nhttps://job-boards.greenhouse.io/another"}
-          className="w-full resize-y rounded-md border border-line bg-raised p-3 font-mono type-small outline-none placeholder:text-muted focus:border-accent"
+          className="w-full resize-y rounded-md border border-line bg-raised p-3 font-mono type-small placeholder:text-muted"
         />
-        <p id={`${helpId}-hint`} className="type-meta text-muted">
+        <p id={`${helpId}-hint`} className="type-small text-muted">
           {FORMATS} One link per line.
         </p>
         <div className="flex flex-wrap items-center gap-3">
@@ -100,7 +101,7 @@ export function AddByLink({
           </Button>
           <button
             type="button"
-            className="inline-flex min-h-8 items-center gap-1 type-label text-accent-text"
+            className="inline-flex min-h-8 items-center gap-1 type-label text-ink underline underline-offset-2 hover:text-muted"
             onClick={() => setShowHelp((v) => !v)}
             aria-expanded={showHelp}
             aria-controls={helpId}
@@ -123,18 +124,11 @@ export function AddByLink({
             </details>
           </div>
         )}
-        <div className="flex flex-wrap items-center gap-1.5 type-meta text-muted">
-          <span>Supported hiring systems:</span>
-          {[...SUPPORTED].map((a) => (
-            <Chip key={a} tone="accent">
-              {ATS_LABEL[a]}
-            </Chip>
-          ))}
-        </div>
+        <p className="type-small text-muted">Supported hiring systems: {[...SUPPORTED].map((a) => ATS_LABEL[a] ?? a).join(", ")}</p>
         {showHelp && (
           <div id={helpId} className="rounded-md bg-inset p-3 type-small">
             <p>Open the company's careers page and click any job. If the address looks like one of these, paste it (anything after the company name is fine):</p>
-            <ul className="mt-2 space-y-1 font-mono type-meta text-muted">
+            <ul className="mt-2 space-y-1 font-mono type-small text-muted">
               <li>job-boards.greenhouse.io/<b className="text-ink">company</b></li>
               <li>jobs.lever.co/<b className="text-ink">company</b></li>
               <li>jobs.ashbyhq.com/<b className="text-ink">company</b></li>
@@ -218,31 +212,30 @@ function ResultCard({
 }) {
   const ok = addable(r);
   const places = r.top_locations ?? [];
+  // Board health as Status (shape + color + word); everything else is plain text with " · " between.
   const status =
     r.status === "live" ? (
-      <Chip tone="accent">
-        <CircleCheck className="mr-1 inline size-3" />
-        Hiring · {r.open_jobs?.toLocaleString()} open job{r.open_jobs === 1 ? "" : "s"}
-      </Chip>
+      <Status state="healthy" />
     ) : r.status === "dormant" ? (
-      <Chip>
-        <Moon className="mr-1 inline size-3" />
-        No openings right now
-      </Chip>
+      <Status state="dormant" />
     ) : r.status === "soon" ? (
-      <Chip tone="warn">
-        <Clock className="mr-1 inline size-3" />
-        Not supported yet
-      </Chip>
+      <span className="text-muted">Not supported yet</span>
+    ) : r.status === "unknown" ? (
+      <span className="inline-flex items-center gap-1.5 text-danger-text">
+        <CircleAlert className="size-4 shrink-0" aria-hidden /> This isn't a careers link RawJobs recognises
+      </span>
     ) : (
-      <Chip tone="bad">
-        <CircleAlert className="mr-1 inline size-3" />
-        {r.status === "unknown" ? "Not a careers link we recognise" : "Couldn't open this careers page"}
-      </Chip>
+      <Status state="broken" label="Couldn't open this careers page" />
     );
+  const facts = [
+    r.status === "live" && `${r.open_jobs?.toLocaleString()} open job${r.open_jobs === 1 ? "" : "s"}`,
+    r.status === "dormant" && "No openings right now",
+    r.matches !== undefined && r.matches > 0 && (r.matches === 1 ? "1 role matches you" : `${r.matches} roles match you`),
+    ok && (r.in_directory ? "In the company directory" : r.status !== "soon" && "New: added to the directory"),
+  ].filter(Boolean);
 
   return (
-    <li className={cx("flex min-w-0 flex-col gap-2 rounded-md border p-3", added ? "border-accent bg-accent-subtle/20" : ok ? "border-line" : "border-danger/40")}>
+    <li className={cx("flex min-w-0 flex-col gap-2 rounded-md border p-3", added ? "border-ink/40 bg-inset" : ok ? "border-line" : "border-danger/40")}>
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           {ok && !added ? (
@@ -251,18 +244,18 @@ function ResultCard({
               onChange={(e) => onName(e.target.value)}
               aria-label="Company name"
               title="Edit the name if it's wrong"
-              className="-ml-1.5 h-8 w-full max-w-72 rounded-md border border-transparent bg-transparent px-1.5 font-semibold outline-none hover:border-line focus:border-accent"
+              className="-ml-1.5 h-8 w-full max-w-72 rounded-md border border-transparent bg-transparent px-1.5 font-semibold hover:border-line"
             />
           ) : (
             <p className={cx("truncate font-semibold", !ok && "font-mono type-small")}>{ok ? name : r.input}</p>
           )}
           {r.ats && (
-            <p className="flex min-w-0 items-center gap-1 type-meta text-muted">
+            <p className="flex min-w-0 items-center gap-1 type-small text-muted">
               <span className="shrink-0">Hiring system: {ATS_LABEL[r.ats] ?? r.ats}</span>
               {ok && r.careers_url && (
                 <>
                   <span>·</span>
-                  <a href={r.careers_url} target="_blank" rel="noreferrer" className="inline-flex min-w-0 items-center gap-1 hover:text-accent-text">
+                  <a href={r.careers_url} target="_blank" rel="noreferrer" className="inline-flex min-w-0 items-center gap-1 hover:text-ink">
                     <span className="truncate">{r.careers_url.replace(/^https:\/\//, "")}</span>
                     <ExternalLink className="size-3 shrink-0" />
                   </a>
@@ -277,21 +270,20 @@ function ResultCard({
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-1">
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 type-small">
         {status}
-        {r.matches !== undefined && r.matches > 0 && <Chip tone="accent">{r.matches === 1 ? "1 role matches you" : `${r.matches} roles match you`}</Chip>}
-        {ok && (r.in_directory ? <Chip>In our directory</Chip> : r.status !== "soon" && <Chip>New: added to the directory</Chip>)}
-      </div>
+        {facts.length > 0 && <span className="text-muted">{facts.map((f) => `· ${f}`).join(" ")}</span>}
+      </p>
 
       {places.length > 0 && (
-        <p className="flex items-center gap-1 type-meta text-muted" title={places.join("; ")}>
+        <p className="flex items-center gap-1 type-small text-muted" title={places.join("; ")}>
           <MapPin className="size-3 shrink-0" />
           <span className="min-w-0 truncate">{places.slice(0, 2).map(displayPlace).join(", ")}</span>
           {places.length > 2 && <span className="shrink-0">+{places.length - 2}</span>}
         </p>
       )}
       {r.match_examples && r.match_examples.length > 0 ? (
-        <ul className="space-y-0.5 type-meta">
+        <ul className="space-y-0.5 type-small">
           {r.match_examples.map((e) => (
             <li key={e} className="truncate">
               • {e}
@@ -301,18 +293,18 @@ function ResultCard({
       ) : (
         r.sample_titles &&
         r.sample_titles.length > 0 && (
-          <p className="truncate type-meta text-muted">
+          <p className="truncate type-small text-muted">
             {r.matches === 0 ? "Nothing matching you today. Roles there now: " : "Roles there now: "}
             {r.sample_titles.join(", ")}
           </p>
         )
       )}
-      {r.status === "dormant" && <p className="type-meta text-muted">The careers page exists but has no openings. Add it and we'll tell you when one appears.</p>}
+      {r.status === "dormant" && <p className="type-small text-muted">The careers page exists but has no openings. Add it and you'll see its jobs as soon as one appears.</p>}
       {r.status === "soon" && r.ats && (
-        <p className="type-meta text-muted">We can't scan {ATS_LABEL[r.ats] ?? "this hiring system"} yet. Add it now and we'll scan it once it's supported.</p>
+        <p className="type-small text-muted">{ATS_LABEL[r.ats] ?? "This hiring system"} isn't supported yet. Add it now and it's scanned once support ships.</p>
       )}
       {!ok && r.status !== "soon" && (
-        <div className="space-y-1.5 type-meta text-muted">
+        <div className="space-y-1.5 type-small text-muted">
           <p>
             {r.status === "unknown"
               ? FORMATS
@@ -320,11 +312,11 @@ function ResultCard({
           </p>
           <div className="flex flex-wrap items-center gap-3">
             {r.status !== "unknown" && (
-              <button type="button" className="min-h-8 font-medium text-accent-text" onClick={onRetry}>
+              <button type="button" className="min-h-8 font-medium text-ink underline underline-offset-2 hover:text-muted" onClick={onRetry}>
                 Try again
               </button>
             )}
-            <button type="button" className="inline-flex min-h-8 items-center gap-1 font-medium text-accent-text" onClick={onHelp}>
+            <button type="button" className="inline-flex min-h-8 items-center gap-1 font-medium text-ink underline underline-offset-2 hover:text-muted" onClick={onHelp}>
               <HelpCircle className="size-3.5" /> Where do I find this link?
             </button>
           </div>

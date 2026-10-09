@@ -8,6 +8,7 @@ type Props = {
   selected: readonly string[];
   onChange: (next: string[]) => void;
   label: string;
+  /** "accent" is kept as a name for the default: pressed chips are inverted ink, like the Chip primitive. */
   tone?: "accent" | "bad" | "plain";
   /** Show a small input to add a value that isn't in the options. */
   addPlaceholder?: string;
@@ -32,7 +33,7 @@ export function ToggleChips({ options, selected, onChange, label, tone = "accent
     setText("");
   };
   const on = {
-    accent: "border-accent bg-accent-subtle text-accent-text",
+    accent: "border-ink bg-ink text-raised",
     bad: "border-danger/50 bg-danger-subtle text-danger-text",
     plain: "border-ink/30 bg-inset text-ink",
   }[tone];
@@ -49,8 +50,8 @@ export function ToggleChips({ options, selected, onChange, label, tone = "accent
             onClick={() => toggle(v)}
             className={cx(
               "inline-flex items-center gap-1 rounded-md border font-medium transition-colors",
-              size === "sm" ? "h-7 px-2 type-meta" : "h-8 px-2.5 type-small",
-              active ? on : "border-dashed border-line text-muted hover:border-accent hover:text-ink",
+              size === "sm" ? "h-7 px-2 type-label" : "h-8 px-2.5 type-label",
+              active ? on : "border-dashed border-line text-muted hover:border-ink/40 hover:bg-hover hover:text-ink",
             )}
           >
             {active ? <Check className="size-3.5" /> : <Plus className="size-3.5" />}
@@ -72,7 +73,7 @@ export function ToggleChips({ options, selected, onChange, label, tone = "accent
           placeholder={addPlaceholder}
           aria-label={`Add to ${label}`}
           className={cx(
-            "min-w-36 flex-1 rounded-md border border-transparent bg-transparent px-2 type-small outline-none placeholder:text-muted focus:border-line",
+            "min-w-36 flex-1 rounded-md border border-transparent bg-transparent px-2 type-small placeholder:text-muted",
             size === "sm" ? "h-7" : "h-8",
           )}
         />

@@ -4,14 +4,25 @@ import { ATS_LABEL, SUPPORTED } from "../../lib/companies";
 import type { CompanySuggestion } from "../../lib/companySuggest";
 import { displayPlace } from "../../lib/format";
 import { AddButton } from "../CompanyButtons";
-import { Button, Chip, cx } from "../ui";
+import { StatusGlyph, type GlyphShape } from "../primitives";
+import { Button, cx } from "../ui";
 
 /** "Strong fit" and friends instead of a bare number: the score is relative, the label is what people act on. */
-export function fitOf(score: number): { label: string; tone: string } {
-  if (score >= 70) return { label: "Strong fit", tone: "border-accent/40 bg-accent-subtle text-accent-text" };
-  // A positive state: accent/green, never the warning amber.
-  if (score >= 45) return { label: "Good fit", tone: "border-success/40 bg-raised text-success-text" };
-  return { label: "Worth a look", tone: "border-line bg-inset text-muted" };
+export function fitOf(score: number): { label: string; shape: GlyphShape } {
+  if (score >= 70) return { label: "Strong fit", shape: "full" };
+  if (score >= 45) return { label: "Good fit", shape: "half" };
+  return { label: "Worth a look", shape: "empty" };
+}
+
+/** The fit as plain text with the score glyph (shape, not color, carries the band). */
+export function FitLabel({ score, className }: { score: number; className?: string }) {
+  const fit = fitOf(score);
+  return (
+    <span className={cx("inline-flex shrink-0 items-center gap-1.5 type-small text-ink", className)} title={`Score ${score} / 100`}>
+      <StatusGlyph shape={fit.shape} />
+      {fit.label}
+    </span>
+  );
 }
 
 /**
@@ -69,7 +80,6 @@ type Props = {
 /** One suggested company: why it fits, an example role, and Add / Don't suggest. */
 export function SuggestionCard({ s, added, onAdd, onRemove, onHide }: Props) {
   const [open, setOpen] = useState(false);
-  const fit = fitOf(s.score);
   const soon = !SUPPORTED.has(s.ats);
   const headline = s.matches
     ? [`${s.matches} ${s.matches === 1 ? "role matches" : "roles match"} you`, s.new_matches > 0 && `${s.new_matches} new this week`].filter(Boolean).join(" · ")
@@ -79,43 +89,35 @@ export function SuggestionCard({ s, added, onAdd, onRemove, onHide }: Props) {
   const chips = s.reasons.filter((r) => !HEADLINE.test(r) && !r.startsWith("Like "));
   const like = s.reasons.find((r) => r.startsWith("Like "));
   return (
-    <article className={cx("flex flex-col gap-3 rounded-md border bg-raised p-4 transition-colors", added ? "border-accent/50" : "border-line hover:border-muted/40")}>
+    <article className={cx("flex flex-col gap-3 rounded-md border bg-raised p-4 transition-colors", added ? "border-ink/40" : "border-line hover:border-muted/40")}>
       <header className="flex items-start gap-3">
         <Monogram name={s.name} />
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 font-semibold leading-5">
             <span className="truncate">{s.name}</span>
-            <a href={s.careers_url} target="_blank" rel="noreferrer" className="shrink-0 text-muted hover:text-accent-text" aria-label={`${s.name} careers page`}>
+            <a href={s.careers_url} target="_blank" rel="noreferrer" className="shrink-0 text-muted hover:text-ink" aria-label={`${s.name} careers page`}>
               <ExternalLink className="size-3.5" />
             </a>
           </p>
-          <p className="truncate type-meta text-muted">
+          <p className="truncate type-small text-muted">
             {[`Hiring system: ${ATS_LABEL[s.ats] ?? s.ats}`, s.open_jobs ? `${s.open_jobs.toLocaleString()} open jobs` : null, soon && "not supported yet"].filter(Boolean).join(" · ")}
           </p>
         </div>
-        <span className={cx("shrink-0 rounded-sm border px-2 py-0.5 type-meta font-semibold", fit.tone)} title={`Score ${s.score} / 100`}>
-          {fit.label}
-        </span>
+        <FitLabel score={s.score} />
       </header>
 
-      {like && <p className="rounded-md bg-inset px-2.5 py-1.5 type-meta text-ink">{like}</p>}
-      {headline && <p className="type-label text-accent-text">{headline}</p>}
+      {like && <p className="rounded-md bg-inset px-2.5 py-1.5 type-small text-ink">{like}</p>}
+      {headline && <p className="type-label text-ink">{headline}</p>}
       {s.examples[0] && (
-        <p className="truncate type-meta text-muted" title={s.examples.join("\n")}>
+        <p className="truncate type-small text-muted" title={s.examples.join("\n")}>
           e.g. {shortExample(s.examples[0])}
         </p>
       )}
       {chips.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {chips.slice(0, open ? chips.length : 2).map((r) => (
-            <Chip key={r} className="max-w-full truncate">
-              {r}
-            </Chip>
-          ))}
-        </div>
+        <p className="type-small text-muted">{chips.slice(0, open ? chips.length : 2).join(" · ")}</p>
       )}
       {open && (
-        <div className="space-y-1 rounded-md border border-line p-2.5 type-meta text-muted">
+        <div className="space-y-1 rounded-md border border-line p-2.5 type-small text-muted">
           <p>
             Score <b className="tabular text-ink">{s.score}</b> / 100 from your roles, places, industries and topics.
           </p>
@@ -143,7 +145,7 @@ export function SuggestionCard({ s, added, onAdd, onRemove, onHide }: Props) {
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
           aria-label={`Why ${s.name}?`}
-          className="ml-auto inline-flex min-h-8 items-center gap-0.5 type-meta font-medium text-muted hover:text-ink"
+          className="ml-auto inline-flex min-h-8 items-center gap-0.5 type-label text-muted hover:text-ink"
         >
           Why? <ChevronDown className={cx("size-3.5 transition-transform", open && "rotate-180")} />
         </button>
