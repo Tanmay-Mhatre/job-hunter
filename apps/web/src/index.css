@@ -179,16 +179,32 @@ h3 {
   }
 }
 
-/* The kit's phone footer: Apply on its own row, then two 1fr columns. A button won't shrink below its
-   label, so the columns may shrink (nothing pushes past the screen edge); the company button says
-   "Add company" (JobDetail), which fits half of a 375px screen. Copy description, the
-   quiet extra, takes a full row so it never sits alone in half of one. */
+/* The job's footer is one row on laptops: Apply, Save, Add company, then Copy description as an icon
+   at the far end. On phones Apply takes its own row and the rest share the next one: the labelled
+   buttons split it (they may shrink; "Add company" fits half of a 375px screen), the icon keeps its
+   square 44px. */
+/* A section's one column never grows past the drawer (the description's 65ch line would push it sideways on phones). */
+.rj-drawer__section {
+  grid-template-columns: minmax(0, 1fr);
+}
+.rj-drawer__foot {
+  align-items: center;
+}
 @media (max-width: 720px) {
   .rj-drawer__foot {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: wrap;
   }
-  .rj-drawer__foot > .rj-btn--quiet {
-    grid-column: 1 / -1;
+  .rj-drawer__foot > .rj-btn {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .rj-drawer__foot > .rj-btn--primary {
+    flex-basis: 100%;
+  }
+  .rj-drawer__foot > .rj-btn--icon {
+    flex: none;
+    width: var(--control-lg, 44px);
   }
 }
 

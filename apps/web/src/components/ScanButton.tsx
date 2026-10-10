@@ -1,9 +1,11 @@
 import { ChevronDown, LoaderCircle, RefreshCw, Square, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { atsLabel } from "../lib/filters";
 import { roughCount } from "../lib/format";
-import { aboutTime, SCOPE_LABEL, scanPrefs, scopeLabel, setScanPrefs, useScanPrefs, type ScanState } from "../lib/scan";
+import { aboutTime, progressRows, SCOPE_LABEL, scanLine, scanPrefs, scopeLabel, setScanPrefs, useScanPrefs, type ScanState } from "../lib/scan";
 import { scanPlan, type ScanPlan, type ScanScope } from "../lib/setup";
 import { Dialog } from "./Dialog";
+import { IconButton as RjIconButton, SourceTag } from "./primitives";
 import { Button, Card, cx, IconButton } from "./ui";
 
 const SCOPE_HINT: Record<ScanScope, string> = {
@@ -13,18 +15,28 @@ const SCOPE_HINT: Record<ScanScope, string> = {
 
 /**
  * "Scan now": asks which scan to run (preselecting your default), or, if you chose "don't ask
- * again", runs your default straight away. The arrow next to it always asks. While a scan runs, the
- * button stops it (what's done is kept, and the next scan of the same type carries on).
+ * again", runs your default straight away. The arrow next to it always asks. While a scan runs it
+ * becomes the scan's status (ScanStatus): progress, the Telegram bell, and Stop.
  */
-export function ScanButton({ scan, onRequest, onChoose, onStop }: { scan: ScanState; onRequest: () => void; onChoose: () => void; onStop: () => void }) {
+export function ScanButton({
+  scan,
+  onRequest,
+  onChoose,
+  onStop,
+  notify,
+  notifyLine,
+}: {
+  scan: ScanState;
+  onRequest: () => void;
+  onChoose: () => void;
+  onStop: () => void;
+  /** The Telegram bell, given a way to open the scan details. */
+  notify?: (openDetails: () => void) => ReactNode;
+  /** What happens when the scan ends, for the details. */
+  notifyLine?: string;
+}) {
   const prefs = useScanPrefs();
-  if (scan.phase === "running")
-    return (
-      <Button size="sm" onClick={onStop} disabled={scan.stopping} title="Stop after the companies in progress; the next scan carries on from there">
-        {scan.stopping ? <LoaderCircle className="size-3.5 animate-spin" /> : <Square className="size-3 fill-current" />}
-        {scan.stopping ? "Stopping…" : "Stop scan"}
-      </Button>
-    );
+  if (scan.phase === "running") return <ScanStatus scan={scan} onStop={onStop} notify={notify} notifyLine={notifyLine} />;
   return (
     <div className="inline-flex">
       <Button size="sm" className="rounded-r-0" onClick={onRequest} title={prefs.ask ? "Scan now: choose which scan" : `Scan now: ${SCOPE_LABEL[prefs.scope]}`}>
@@ -33,6 +45,117 @@ export function ScanButton({ scan, onRequest, onChoose, onStop }: { scan: ScanSt
       <Button size="sm" className="-ml-px rounded-l-0 px-1.5" onClick={onChoose} aria-label="Choose which scan to run" title="Choose which scan to run">
         <ChevronDown className="size-3.5" />
       </Button>
+    </div>
+  );
+}
+
+/** A small ring that fills as the scan goes; spins until the scan knows how many companies it covers. */
+function ProgressRing({ value }: { value: number | null }) {
+  if (value === null) return <LoaderCircle className="rj-icon animate-spin text-muted" aria-hidden />;
+  const r = 6;
+  const c = 2 * Math.PI * r;
+  return (
+    <svg viewBox="0 0 16 16" className="rj-icon -rotate-90" aria-hidden>
+      <circle cx="8" cy="8" r={r} fill="none" stroke="var(--progress-track)" strokeWidth="2.5" />
+      <circle cx="8" cy="8" r={r} fill="none" stroke="var(--progress-fill)" strokeWidth="2.5" strokeDasharray={c} strokeDashoffset={c * (1 - value)} className="transition-[stroke-dashoffset] duration-300" />
+    </svg>
+  );
+}
+
+/**
+ * A running scan, in the header instead of a row across the page: a ring and the percent; hover,
+ * focus or click it for the details (what it's scanning, time left, progress per hiring system, matches
+ * so far, the Telegram message). Then the Telegram bell and Stop (what's done is kept, and the next
+ * scan of the same type carries on).
+ */
+export function ScanStatus({ scan, onStop, notify, notifyLine }: { scan: ScanState; onStop: () => void; notify?: (openDetails: () => void) => ReactNode; notifyLine?: string }) {
+  /** "hover" follows the pointer and focus; "pinned" stays until clicked again, Esc, or a click elsewhere. */
+  const [open, setOpen] = useState<false | "hover" | "pinned">(false);
+  const root = useRef<HTMLDivElement>(null);
+  const timer = useRef<number | undefined>(undefined);
+  const later = (fn: () => void, ms: number) => {
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(fn, ms);
+  };
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  useEffect(() => {
+    if (open !== "pinned") return;
+    const away = (e: PointerEvent) => {
+      if (!root.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("pointerdown", away);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+
+  const done = Math.min(scan.done, scan.total);
+  const value = scan.syncing || !scan.total ? null : done / scan.total;
+  const percent = value === null ? null : Math.floor(value * 100);
+  const bars = progressRows(scan);
+  const found = Object.values(scan.results).reduce((n, h) => n + (h.ok ? h.matches : 0), 0);
+  const label = scan.stopping ? "Stopping…" : scan.syncing ? "Updating…" : "Scanning";
+
+  return (
+    <div
+      ref={root}
+      className="relative flex items-center gap-1"
+      onPointerEnter={(e) => e.pointerType === "mouse" && later(() => setOpen((o) => o || "hover"), 120)}
+      onPointerLeave={(e) => e.pointerType === "mouse" && later(() => setOpen((o) => (o === "hover" ? false : o)), 200)}
+      onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node) && setOpen((o) => (o === "hover" ? false : o))}
+    >
+      <Button
+        size="sm"
+        onClick={() => setOpen((o) => (o === "pinned" ? false : "pinned"))}
+        onFocus={(e) => e.currentTarget.matches(":focus-visible") && setOpen((o) => o || "hover")}
+        aria-expanded={!!open}
+        aria-controls="scan-details"
+        aria-label={`Scan ${percent === null ? "starting" : `${percent}% done`}: show details`}
+      >
+        <ProgressRing value={value} />
+        <span className="max-sm:hidden">{label}</span>
+        {percent !== null && <span className="tabular text-muted">{percent}%</span>}
+      </Button>
+      {notify?.(() => setOpen("pinned"))}
+      <RjIconButton size="sm" label={scan.stopping ? "Stopping scan" : "Stop scan"} onClick={onStop} disabled={scan.stopping}>
+        {scan.stopping ? <LoaderCircle className="rj-icon animate-spin" /> : <Square className="size-3 fill-current" />}
+      </RjIconButton>
+      {/* Says the scan is running or stopping; the percent itself isn't announced on every tick. */}
+      <span className="sr-only" role="status">
+        {scan.stopping ? "Stopping the scan" : "Scan running"}
+      </span>
+
+      {open && (
+        <div id="scan-details" className="absolute right-0 top-full z-40 mt-2 w-[24rem] max-w-[calc(100vw-2rem)] rounded-md border border-line bg-raised p-4 shadow-l3">
+          <p className="type-small font-medium">{scanLine(scan)}</p>
+          {bars.length > 0 && (
+            <div className="rj-progress mt-3" role="group" aria-label="Scan progress">
+              {bars.map((b) => (
+                <div key={b.ats || "all"} className="rj-progress__row">
+                  <SourceTag source={b.ats ? atsLabel(b.ats) : "All companies"} className="min-w-0 truncate" />
+                  <span className="rj-progress__track">
+                    <span className="rj-progress__fill" style={{ transform: `scaleX(${b.total ? b.done / b.total : 0})` }} />
+                  </span>
+                  <span className="rj-progress__count">
+                    {b.done.toLocaleString()} / {b.total.toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {scan.total > 0 && (
+            <p className="mt-3 type-small text-muted">
+              <b className="tabular font-semibold text-ink">{found.toLocaleString()}</b> matching {found === 1 ? "job" : "jobs"} so far. Stop any time: the next scan carries on from here.
+            </p>
+          )}
+          {notifyLine && <p className="mt-2 border-t border-line pt-2 type-small text-muted">{notifyLine}</p>}
+        </div>
+      )}
     </div>
   );
 }

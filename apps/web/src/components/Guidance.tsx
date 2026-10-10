@@ -1,11 +1,11 @@
 import { diagnoseNoMatches } from "@rawjobs/core/diagnose";
-import { ArrowRight, Bell, Check, ChevronDown, ChevronRight, LoaderCircle, RefreshCw, TriangleAlert, X } from "lucide-react";
+import { ArrowRight, Bell, Check, ChevronDown, ChevronRight, RefreshCw, TriangleAlert, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { scheduleStatus } from "../lib/automation";
 import type { Config } from "@rawjobs/core/schema";
 import { keyOf } from "../lib/companies";
 import { canRunLocally, type DataMeta, type Job } from "../lib/data";
-import { scanLine, type ScanState } from "../lib/scan";
+import type { ScanState } from "../lib/scan";
 import { STEP, STEP_COUNT } from "../lib/setup";
 import { load, save } from "../lib/storage";
 import { ScanProgress } from "./ScanProgress";
@@ -407,41 +407,6 @@ export function FailingBanner({ count, onOpen, className }: { count: number; onO
       </span>
       <span className="pl-6.5 font-medium text-warning-text underline underline-offset-2 sm:pl-0">Review failing companies</span>
     </button>
-  );
-}
-
-export function ScanningBar({ scan, onStop }: { scan: ScanState; onStop?: () => void }) {
-  if (scan.phase !== "running") return null;
-  return (
-    <Card className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 type-small">
-      <LoaderCircle className="size-4 animate-spin text-muted" aria-hidden="true" />
-      <span className="min-w-0 flex-1" role="status">
-        {scanLine(scan)}
-      </span>
-      {scan.total > 0 && (
-        <span className="flex items-center gap-2">
-          <span
-            className="rj-progress__track block w-28"
-            role="progressbar"
-            aria-label="Scan progress"
-            aria-valuemin={0}
-            aria-valuemax={scan.total}
-            aria-valuenow={Math.min(scan.done, scan.total)}
-            aria-valuetext={`${Math.min(scan.done, scan.total).toLocaleString()} of ${scan.total.toLocaleString()} companies`}
-          >
-            <span className="rj-progress__fill" style={{ transform: `scaleX(${Math.min(scan.done / scan.total, 1)})` }} />
-          </span>
-          <span className="tabular type-meta text-muted" aria-hidden="true">
-            {Math.min(scan.done, scan.total).toLocaleString()} / {scan.total.toLocaleString()}
-          </span>
-        </span>
-      )}
-      {onStop && (
-        <Button size="sm" variant="ghost" onClick={onStop} disabled={scan.stopping}>
-          {scan.stopping ? "Stopping…" : "Stop scan"}
-        </Button>
-      )}
-    </Card>
   );
 }
 
