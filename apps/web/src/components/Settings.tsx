@@ -7,6 +7,7 @@ import { displayPlace, roughCount } from "../lib/format";
 import { draftToConfig, officePlaces, saveBlockers, saveConfig, type Draft } from "../lib/setup";
 import type { Suggestions } from "../lib/suggest";
 import { ResumeStep } from "../setup/ResumeStep";
+import { offerWhat, ruleKey, ruleLabel, type HideRule } from "../lib/notForMe";
 import type { Prefs } from "../lib/prefs";
 import { setDensityChoice, useDensity, useTheme, type Density, type ThemeChoice } from "../lib/theme";
 import { exportState, readStateFile, type UserState } from "../lib/userState";
@@ -29,6 +30,8 @@ type Props = {
   user: UserState;
   prefs: Prefs;
   onImport: (s: UserState, prefs?: Partial<Prefs>) => void;
+  /** Stop a Not interested rule hiding jobs. */
+  onRemoveRule?: (rule: HideRule) => void;
   suggest: Suggestions;
   resumeText: string;
   saveResume: (text: string) => Promise<{ ok: true } | { ok: false; error: string }>;
@@ -55,7 +58,7 @@ const sectionFromHash = () => new URLSearchParams(location.hash.split("?")[1] ??
 const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 /** Edit any part of the setup after the wizard, then save (and scan). */
-export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanning, user, prefs, onImport, suggest, resumeText, saveResume, removeResume, toCompanies, onStartOver }: Props) {
+export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanning, user, prefs, onImport, onRemoveRule, suggest, resumeText, saveResume, removeResume, toCompanies, onStartOver }: Props) {
   const [status, setStatus] = useState<{ tone: "ok" | "bad"; text: string; detail?: string; retry?: boolean } | null>(null);
   const [saving, setSaving] = useState(false);
   const lastSave = useRef(false);
@@ -188,7 +191,7 @@ export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanni
         </Group>
 
         <Group id="data" label="Your data">
-          <TrackingData user={user} prefs={prefs} onImport={onImport} />
+          <TrackingData user={user} prefs={prefs} onImport={onImport} onRemoveRule={onRemoveRule} />
           <Section id="sharing" title="Sharing" hint="Help everyone find more companies. On by default; turn it off here.">
             <div className="space-y-2">
               <Toggle checked={draft.directory.share_additions} onChange={(v) => update({ directory: { ...draft.directory, share_additions: v } })}>
@@ -419,7 +422,17 @@ function Section({
   );
 }
 
-function TrackingData({ user, prefs, onImport }: { user: UserState; prefs: Prefs; onImport: (s: UserState, prefs?: Partial<Prefs>) => void }) {
+function TrackingData({
+  user,
+  prefs,
+  onImport,
+  onRemoveRule,
+}: {
+  user: UserState;
+  prefs: Prefs;
+  onImport: (s: UserState, prefs?: Partial<Prefs>) => void;
+  onRemoveRule?: (rule: HideRule) => void;
+}) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState<{ tone: "ok" | "bad"; text: string; detail?: string } | null>(null);
   /** A file read and waiting for "Replace N jobs". */
@@ -449,11 +462,11 @@ function TrackingData({ user, prefs, onImport }: { user: UserState; prefs: Prefs
     <Card id="settings-tracking" className="scroll-mt-32 p-5 sm:p-6 md:scroll-mt-20">
       <h3 className="type-body font-semibold">Your tracking data</h3>
       <p className="mt-0.5 type-small text-muted">
-        Statuses and notes for <b className="tabular text-ink">{tracked}</b> jobs, plus your saved Radar views and hidden companies, are saved in this
+        Statuses and notes for <b className="tabular text-ink">{tracked}</b> jobs, plus your saved Radar views, hidden companies and Not interested rules, are saved in this
         browser only. Export a backup or move them to another device.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button onClick={() => exportState(user, prefs)} disabled={!tracked && !prefs.views.length && !prefs.hiddenCompanies.length}>
+        <Button onClick={() => exportState(user, prefs)} disabled={!tracked && !prefs.views.length && !prefs.hiddenCompanies.length && !prefs.hideRules.length}>
           <Download className="size-4" /> Export
         </Button>
         <Button onClick={() => fileRef.current?.click()}>
@@ -461,6 +474,24 @@ function TrackingData({ user, prefs, onImport }: { user: UserState; prefs: Prefs
         </Button>
         <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
       </div>
+      {prefs.hideRules.length > 0 && (
+        <div className="mt-4">
+          <h4 className="type-label">Not interested rules</h4>
+          <p className="mt-0.5 type-small text-muted">You turned these on after saying why a job wasn't for you. They hide jobs from the Radar, never ones you saved or applied to. To see them anyway, turn on &ldquo;Include hidden jobs and companies&rdquo; under More on the Radar.</p>
+          <ul className="mt-2 divide-y divide-line rounded-md border border-line">
+            {prefs.hideRules.map((r) => (
+              <li key={ruleKey(r)} className="flex items-center justify-between gap-2 px-3 py-1.5 type-small">
+                <span className="min-w-0">{ruleLabel(r)}</span>
+                {onRemoveRule && (
+                  <Button size="sm" variant="ghost" onClick={() => onRemoveRule(r)} aria-label={`Remove the rule hiding ${offerWhat({ kind: "rule", rule: r })}`}>
+                    Remove
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {msg && (
         <div role={msg.tone === "bad" ? "alert" : "status"} className="mt-2 type-small">
           <p className={msg.tone === "ok" ? "text-success-text" : "text-danger-text"}>{msg.text}</p>

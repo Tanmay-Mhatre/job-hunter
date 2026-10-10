@@ -6,6 +6,7 @@ import { rankScore } from "@rawjobs/core/score";
 import { ATS_LABEL } from "./companies";
 import type { Job, Profile } from "./data";
 import { ageDays, postedOrSeen } from "./format";
+import { hiddenByRules, type HideRule } from "./notForMe";
 import type { Status, UserState } from "./userState";
 
 export type Workplace = Job["workplace"];
@@ -78,6 +79,8 @@ export type Ctx = {
   /** Industry ids per company name. */
   industriesOf: (company: string) => string[];
   hiddenCompanies: ReadonlySet<string>;
+  /** Your Not interested rules (Prefs.hideRules): hidden like a hidden company, never a job you're tracking. */
+  hideRules?: readonly HideRule[];
   /** Is this job at one of your companies? (A nudge up in Best match, and the My companies view.) */
   isYours?: (j: Job) => boolean;
   /** The user's own countries, cities and industries (from their profile): listed first in the menus. */
@@ -117,6 +120,8 @@ function passes(j: Job, f: Filters, ctx: Ctx, terms: string[], skip?: FacetKey):
   if (!f.showFailed && j.why.gate) return false;
   if (!f.showClosed && j.status === "closed") return false;
   if (!f.showHidden && (entry?.status === "dismissed" || ctx.hiddenCompanies.has(j.company))) return false;
+  // A rule never hides a job you saved or applied to: you picked that one yourself.
+  if (!f.showHidden && !entry?.status && hiddenByRules(j, ctx.hideRules)) return false;
   if (f.mine && !ctx.isYours?.(j)) return false;
   if (!f.olderIndex && j.estimated && ageDays(postedOrSeen(j), ctx.now) > INDEX_MAX_AGE_DAYS) return false;
   if (!f.showOld && ageDays(postedOrSeen(j), ctx.now) > OLD_POSTING_DAYS) return false;

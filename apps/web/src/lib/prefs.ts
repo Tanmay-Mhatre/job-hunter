@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Filters, Sort } from "./filters";
+import { ruleKey, type HideRule } from "./notForMe";
 import { load, save } from "./storage";
 
 /** A named filter + sort combination the user saved on the Radar. */
@@ -10,13 +11,27 @@ export type Prefs = {
   views: SavedView[];
   /** Company names whose jobs are hidden from the Radar. */
   hiddenCompanies: string[];
+  /** Rules you confirmed after a Not interested reason ("Hide senior roles"). Older exports have none. */
+  hideRules: HideRule[];
 };
 
 const KEY = "rawjobs.prefs.v1";
-const EMPTY: Prefs = { views: [], hiddenCompanies: [] };
+const EMPTY: Prefs = { views: [], hiddenCompanies: [], hideRules: [] };
+/** Missing or broken lists (older exports, hand edits) become empty ones. */
+export const withDefaults = (p: Partial<Prefs>): Prefs => ({
+  ...EMPTY,
+  ...p,
+  views: Array.isArray(p.views) ? p.views : [],
+  hiddenCompanies: Array.isArray(p.hiddenCompanies) ? p.hiddenCompanies : [],
+  hideRules: Array.isArray(p.hideRules) ? p.hideRules : [],
+});
+
+/** Add a rule; one with the same key (a pay rule in the same currency and period) is replaced. */
+export const addRule = (rules: HideRule[], rule: HideRule) => [...rules.filter((r) => ruleKey(r) !== ruleKey(rule)), rule];
+export const removeRule = (rules: HideRule[], rule: HideRule) => rules.filter((r) => ruleKey(r) !== ruleKey(rule));
 
 export function usePrefs() {
-  const [prefs, setPrefs] = useState<Prefs>(() => ({ ...EMPTY, ...load<Partial<Prefs>>(KEY, {}) }));
+  const [prefs, setPrefs] = useState<Prefs>(() => withDefaults(load<Partial<Prefs>>(KEY, {})));
   useEffect(() => save(KEY, prefs), [prefs]);
 
   const saveView = useCallback((name: string, filters: Filters, sort: Sort) => {
@@ -37,7 +52,12 @@ export function usePrefs() {
       setPrefs((p) => ({ ...p, hiddenCompanies: hidden ? [...new Set([...p.hiddenCompanies, company])] : p.hiddenCompanies.filter((c) => c !== company) })),
     [],
   );
-  const replacePrefs = useCallback((next: Partial<Prefs>) => setPrefs({ ...EMPTY, ...next }), []);
+  /** Turn a rule on or off (Undo, and the list under More). */
+  const setRule = useCallback(
+    (rule: HideRule, on: boolean) => setPrefs((p) => ({ ...p, hideRules: on ? addRule(p.hideRules, rule) : removeRule(p.hideRules, rule) })),
+    [],
+  );
+  const replacePrefs = useCallback((next: Partial<Prefs>) => setPrefs(withDefaults(next)), []);
 
-  return { prefs, saveView, renameView, deleteView, restoreView, setCompanyHidden, replacePrefs };
+  return { prefs, saveView, renameView, deleteView, restoreView, setCompanyHidden, setRule, replacePrefs };
 }

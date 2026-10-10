@@ -168,6 +168,35 @@ const SCREENS: Screen[] = [
     },
   },
   {
+    id: "radar-not-interested",
+    viewportOnly: true,
+    what: "Radar after X on the first row and Too senior: the reasons toast offers the matching rule",
+    scenario: "demo",
+    hash: "#radar",
+    ready: strong,
+    act: async (page) => {
+      await page.locator("li.rj-row").first().getByRole("button", { name: "Not interested" }).click();
+      await page.getByRole("button", { name: "Too senior" }).click();
+      await page.getByText(/^Hide all /).waitFor();
+    },
+  },
+  {
+    id: "radar-drawer-not-interested",
+    viewportOnly: true,
+    what: "Phone job drawer after Not interested and Location: the reasons sit right under Your status",
+    scenario: "demo",
+    hash: "#radar",
+    widths: [375],
+    ready: strong,
+    act: async (page) => {
+      await page.getByRole("button", { name: strong, exact: true }).first().click();
+      const dialog = page.getByRole("dialog");
+      await dialog.getByRole("button", { name: "Not interested" }).click();
+      await dialog.getByRole("button", { name: "Location" }).click();
+      await dialog.getByRole("button", { name: "Location" }).scrollIntoViewIfNeeded();
+    },
+  },
+  {
     id: "drawer",
     viewportOnly: true,
     what: "Job drawer on the strongest job (opened from the Pipeline)",

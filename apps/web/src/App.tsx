@@ -6,6 +6,7 @@ import { SetupBanner } from "./components/EmptyState";
 import { checklistItems, ConfigProblemCard, FailingBanner, FirstScanCard, NoMatches, SetupChecklist, SetupHero } from "./components/Guidance";
 import { ApplyPrompt } from "./components/ApplyPrompt";
 import { JobDrawer } from "./components/JobDrawer";
+import { NotForMeProvider, useNotForMeApi } from "./components/NotForMe";
 import { Pipeline } from "./components/Pipeline";
 import { FeedSkeleton } from "./components/radar/FeedSkeleton";
 import { RadarPage } from "./components/radar/RadarPage";
@@ -270,7 +271,17 @@ export function App() {
   const jobs = state.kind === "ready" ? state.jobs : [];
   const jobsById = useMemo(() => new Map(jobs.map((j) => [j.id, j])), [jobs]);
   const openJob = openId ? jobsById.get(openId) : undefined;
-  const onStatus = useCallback((job: Job, s: Status) => user.toggleStatus(job, s), [user]);
+  // Not interested, with an optional reason: X (row button or key) asks why in a toast; the drawer asks inline.
+  const notForMe = useNotForMeApi({ user: user.state, update: user.update, prefs: prefs.prefs, setRule: prefs.setRule, hideCompany, jobs });
+  const { askWhy } = notForMe;
+  const onStatus = useCallback(
+    (job: Job, s: Status) => {
+      const prev = user.state[job.id]?.status;
+      user.toggleStatus(job, s);
+      if (s === "dismissed" && prev !== "dismissed") askWhy(job, prev);
+    },
+    [user, askWhy],
+  );
   const onOpen = useCallback((job: Job) => setOpenId(job.id), []);
   const onApply = useCallback((job: Job) => setApplying(job), []);
 
@@ -313,6 +324,7 @@ export function App() {
   const items = checklistItems(notSetUp ? draftToConfig(draft) : status?.config, meta, !!resume.text);
 
   return (
+    <NotForMeProvider value={notForMe}>
     <div className="min-h-dvh">
       <a href="#main" onClick={(e) => (e.preventDefault(), document.getElementById("main")?.focus())} className="sr-only-focusable fixed left-3 top-3 z-[70] rounded-md bg-raised px-3 py-2 type-label shadow-l3">
         Skip to content
@@ -480,6 +492,7 @@ export function App() {
                     onDeleteView={prefs.deleteView}
                     onRestoreView={prefs.restoreView}
                     onHideCompany={hideCompany}
+                    onSetRule={prefs.setRule}
                     isYours={isYours}
                     companyCount={yourKeys.size}
                     indexGeneratedAt={state.indexGeneratedAt}
@@ -559,6 +572,7 @@ export function App() {
                   user.replaceAll(state);
                   if (p) prefs.replacePrefs(p);
                 }}
+                onRemoveRule={(rule) => prefs.setRule(rule, false)}
                 suggest={suggest}
                 resumeText={resume.text}
                 saveResume={saveResume}
@@ -626,6 +640,7 @@ export function App() {
       <ScanChooser open={choosing} onClose={closeChooser} onStart={(scope) => void startScan(scope)} />
       <Toaster />
     </div>
+    </NotForMeProvider>
   );
 }
 
