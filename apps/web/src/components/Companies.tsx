@@ -1,5 +1,5 @@
 import { Clock, ExternalLink, RefreshCw, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ATS_LABEL, keyOf } from "../lib/companies";
 import type { CompanyHealth, DataMeta } from "../lib/data";
 import { formatDate, formatDateTime, timeAgo } from "../lib/format";
@@ -102,6 +102,7 @@ export function MyCompanies({
   onRemoveMany,
   onScan,
   scanning,
+  attention = 0,
 }: {
   rows: CompanyRow[];
   savedKeys: Set<string>;
@@ -112,8 +113,13 @@ export function MyCompanies({
   /** Scan now (offered when a company's last scan failed). */
   onScan?: () => void;
   scanning?: boolean;
+  /** Above 0 when a "failing" link was followed; each new value sorts by Needs attention. */
+  attention?: number;
 }) {
-  const [sort, setSort] = useState<"jobs" | "name" | "attention">("jobs");
+  const [sort, setSort] = useState<"jobs" | "name" | "attention">(attention ? "attention" : "jobs");
+  useEffect(() => {
+    if (attention) setSort("attention");
+  }, [attention]);
   const rows = useMemo<Row[]>(
     () =>
       list.map((r) => {
