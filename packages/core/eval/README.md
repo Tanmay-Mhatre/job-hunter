@@ -15,21 +15,72 @@ Everything here is invented: the candidates, the companies and the postings. No 
 | `lib.ts` | Loads and checks the set, scores every pair, computes the metrics. |
 | `run.ts` | The report (`pnpm eval:match`). |
 | `baseline.json` | The last accepted report, with every pair's score. `test/eval.test.ts` fails if NDCG@10 drops more than 0.02 below it. |
-| `REVIEW.md` | 50 draft labels for a person to confirm or correct. |
+| `REVIEW.md` | The 50 in-field pairs, with the posting's key requirements and the label, for a person to confirm or correct. |
 
 ## Rubric
+
+The question behind every label: would this person, triaging their inbox, apply?
 
 | Label | Meaning |
 |---|---|
 | 4 Strong | Would apply today: meets the must-haves, right level, no dealbreaker. |
-| 3 Good | Worth applying: minor gaps (a nice-to-have, one level off, adjacent domain). |
-| 2 Stretch | Plausible but real gaps (missing a must-have, two levels off, new domain). |
-| 1 Poor | Same field but clearly wrong (wrong specialisation, far level, keyword match only). |
-| 0 No | Not relevant, or a dealbreaker (different job, visa / location / salary blocker). |
+| 3 Good | Worth applying: minor gaps only (a nice-to-have, one level below, adjacent domain, a key unknown). |
+| 2 Stretch | Plausible but a real gap (a missing must-have, new domain, one level up without its must-haves). |
+| 1 Poor | Same field but clearly wrong (domain-locked or wrong specialisation, far level, two real gaps). |
+| 0 No | Not relevant, or a dealbreaker (different job, a stated dealbreaker, visa / location / salary blocker). |
 
-Label by reading the profile's `about` and the posting, never by looking at the score. The set exists to catch
-where the scorer is wrong, so a label tuned to the scorer is worthless. Unknowns (no description, no salary) are
-judged on what is known: a title-only posting that fits on everything we can see is a 3, not a failure.
+Label by reading the profile's `about` and the full posting, never by looking at the score. The set exists to catch
+where the scorer is wrong, so a label tuned to the scorer is worthless.
+
+### Tie-break rules
+
+Each fact about a pair gives a cap; the label is the lowest cap. Apply them in this order.
+
+1. **Dealbreakers: 0.** Anything the candidate lists as a dealbreaker, including a specialisation (frontend,
+   marketing-only design, credit risk, AP/AR, insurance sales, operations, agency, junior roles), a location or
+   relocation they rule out, and "no sponsorship" for someone who needs it.
+2. **Different job: 0.** The day-to-day work is another profession and the candidate's core skills aren't what it
+   uses, whatever words the title or industry share (an IT business analyst for an FP&A analyst).
+3. **Salary** (base, same period) against the stated floor, using the top of the posted range:
+
+   | Top of range | Effect |
+   |---|---|
+   | at or above the floor (including ranges that straddle it) | no gap |
+   | below the floor by up to 5% | real gap, cap 2: negotiable at a stretch |
+   | below the floor by more than 5% | blocker, 0 |
+   | no salary stated | no gap; judge the rest |
+
+4. **Unknowns cap; they don't subtract and don't stack.**
+   - A title-only posting (no description) caps at 3: the must-haves can't be checked. Lower it if the title itself
+     shows a gap.
+   - Sponsorship not stated, or only "for exceptional candidates", caps at 3 for someone who needs it.
+   - A requirement the candidate's `about` doesn't mention (a language, a certificate) counts as not met.
+5. **Level**, on the ladder junior < mid < senior < lead / staff < director / principal:
+
+   | Posting's level | Effect |
+   |---|---|
+   | the candidate's level, or the next step they say they're ready for, with the must-haves met | no gap |
+   | one level below | minor gap, cap 3 (0 if they rule out junior roles and it is one) |
+   | one level up they aren't ready for, missing its level-defining must-haves (years, staff scope, managing people) | real gap, cap 2 |
+   | two or more levels away, or required years at least double theirs | far, cap 1 |
+
+   Having at least two-thirds of a stated years minimum is no gap at the right level. The requirements that define a
+   level gap are that one gap, not extra ones.
+6. **Function and domain.**
+
+   | Case | Effect |
+   |---|---|
+   | same job, adjacent domain (the knowledge transfers; the domain is only a nice-to-have) | minor, cap 3 |
+   | same job, new domain where domain knowledge is a must-have | real gap, cap 2 |
+   | same job, but the domain is locked in as required years or a network in that domain | wrong specialisation, cap 1 |
+   | adjacent function doing the same work under another name (DevOps / SRE for platform) | no gap |
+   | adjacent function whose must-haves accept the candidate's function ("partnerships, alliances or B2B sales") | minor, cap 3 |
+   | adjacent function whose must-haves need years in that function, which the candidate has done in part | real gap, cap 2 (not at all: cap 1) |
+
+7. **Combining.** Any number of minor gaps stays 3 (three or more make it 2); two real gaps make it 1. A partly met
+   must-have is a minor gap; an unmet one is a real gap. Exception: when the posting is a neighbouring function, the
+   must-haves that define that function (its core years and work) are judged by rule 6, not here: done only in part is
+   a real gap (cap 2).
 
 ## Running it
 
@@ -61,6 +112,9 @@ When a scoring change makes the order better, run `--json` and commit the new `b
 
 ## Who labelled what
 
-`by: draft` labels were written by Claude from the rubric, before the scorer was run. When a person confirms or
-corrects one (see `REVIEW.md`), set its `by: user` and change the label if needed. The report counts how many
-pairs have been reviewed.
+`by: draft` labels were written by Claude from the first, looser rubric, before the scorer was run; they are all
+"different job" zeros now. `by: reconciled` labels (the 50 in-field pairs) were re-labelled under the tie-break rules
+above, after a blind second labeller who never saw the drafts labelled the same pairs: where the two disagreed, the
+rules were sharpened until the case had one answer, and the pair was labelled again from the profile and posting.
+When a person confirms or corrects a label (see `REVIEW.md`), set its `by: user` and change the label if needed. The
+report counts reconciled and person-reviewed pairs.

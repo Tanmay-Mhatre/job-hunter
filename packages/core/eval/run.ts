@@ -35,7 +35,7 @@ const row = (name: string, m: Metrics, was?: Metrics) =>
   `${name.padEnd(18)}${KEYS.map(([k]) => `${fmt(m[k])}${delta(m[k], was?.[k])}`.padEnd(base ? 18 : 10)).join("")}`;
 
 const labelled = Object.values(set.labels).flatMap((m) => Object.values(m));
-console.log(`${set.profiles.length} profiles x ${set.jobs.length} postings = ${report.overall.pairs} pairs (${labelled.filter((l) => l.by === "user").length} reviewed by a person)\n`);
+console.log(`${set.profiles.length} profiles x ${set.jobs.length} postings = ${report.overall.pairs} pairs (${labelled.filter((l) => l.by === "reconciled").length} reconciled, ${labelled.filter((l) => l.by === "user").length} reviewed by a person)\n`);
 console.log(`${"".padEnd(18)}${KEYS.map(([, n]) => n.padEnd(base ? 18 : 10)).join("")}`);
 for (const p of report.profiles) console.log(row(p.id, p, base?.profiles.find((b) => b.id === p.id)));
 console.log(row("overall (mean)", report.overall, base?.overall));

@@ -1,23 +1,23 @@
 {
   "overall": {
-    "ndcg5": 0.741,
-    "ndcg10": 0.81,
+    "ndcg5": 0.712,
+    "ndcg10": 0.789,
     "p5": 0.367,
-    "spearman": 0.717,
+    "spearman": 0.632,
     "confusion": {
       "strong": {
         "strong": 11,
         "good": 4,
-        "weak": 3
+        "weak": 4
       },
       "good": {
-        "strong": 9,
-        "good": 0,
-        "weak": 2
+        "strong": 4,
+        "good": 1,
+        "weak": 1
       },
       "weak": {
-        "strong": 10,
-        "good": 5,
+        "strong": 15,
+        "good": 4,
         "weak": 250
       }
     },
@@ -26,20 +26,20 @@
   "profiles": [
     {
       "id": "b2b-ae",
-      "ndcg5": 0.867,
-      "ndcg10": 0.872,
+      "ndcg5": 0.793,
+      "ndcg10": 0.804,
       "p5": 0.4,
-      "spearman": 0.652,
+      "spearman": 0.648,
       "confusion": {
         "strong": {
           "strong": 1,
           "good": 1,
-          "weak": 0
+          "weak": 1
         },
         "good": {
           "strong": 0,
           "good": 0,
-          "weak": 1
+          "weak": 0
         },
         "weak": {
           "strong": 1,
@@ -50,10 +50,10 @@
     },
     {
       "id": "finance-analyst",
-      "ndcg5": 0.655,
-      "ndcg10": 0.743,
+      "ndcg5": 0.635,
+      "ndcg10": 0.724,
       "p5": 0.4,
-      "spearman": 0.727,
+      "spearman": 0.524,
       "confusion": {
         "strong": {
           "strong": 2,
@@ -61,12 +61,12 @@
           "weak": 0
         },
         "good": {
-          "strong": 1,
+          "strong": 0,
           "good": 0,
           "weak": 0
         },
         "weak": {
-          "strong": 2,
+          "strong": 3,
           "good": 1,
           "weak": 42
         }
@@ -74,10 +74,10 @@
     },
     {
       "id": "fintech-pm",
-      "ndcg5": 0.771,
-      "ndcg10": 0.842,
+      "ndcg5": 0.731,
+      "ndcg10": 0.833,
       "p5": 0.4,
-      "spearman": 0.676,
+      "spearman": 0.574,
       "confusion": {
         "strong": {
           "strong": 2,
@@ -85,13 +85,13 @@
           "weak": 1
         },
         "good": {
-          "strong": 1,
-          "good": 0,
+          "strong": 0,
+          "good": 1,
           "weak": 0
         },
         "weak": {
-          "strong": 2,
-          "good": 1,
+          "strong": 3,
+          "good": 0,
           "weak": 41
         }
       }
@@ -122,10 +122,10 @@
     },
     {
       "id": "platform-eng",
-      "ndcg5": 0.411,
-      "ndcg10": 0.619,
+      "ndcg5": 0.375,
+      "ndcg10": 0.593,
       "p5": 0.2,
-      "spearman": 0.727,
+      "spearman": 0.637,
       "confusion": {
         "strong": {
           "strong": 2,
@@ -133,12 +133,12 @@
           "weak": 1
         },
         "good": {
-          "strong": 3,
+          "strong": 1,
           "good": 0,
           "weak": 0
         },
         "weak": {
-          "strong": 2,
+          "strong": 4,
           "good": 0,
           "weak": 40
         }
@@ -146,10 +146,10 @@
     },
     {
       "id": "product-designer",
-      "ndcg5": 0.913,
-      "ndcg10": 0.916,
+      "ndcg5": 0.907,
+      "ndcg10": 0.91,
       "p5": 0.4,
-      "spearman": 0.717,
+      "spearman": 0.603,
       "confusion": {
         "strong": {
           "strong": 2,
@@ -157,12 +157,12 @@
           "weak": 0
         },
         "good": {
-          "strong": 2,
+          "strong": 1,
           "good": 0,
           "weak": 1
         },
         "weak": {
-          "strong": 1,
+          "strong": 2,
           "good": 1,
           "weak": 42
         }
@@ -177,7 +177,7 @@
       "company": "Brindle Lending",
       "score": 100,
       "label": 0,
-      "why": "Credit risk and IFRS 9 provisioning: credit/lending risk is her dealbreaker.",
+      "why": "Credit risk and IFRS 9 provisioning: credit/lending risk is her stated dealbreaker.",
       "gap": 4
     },
     {
@@ -187,7 +187,7 @@
       "company": "Pixelmint",
       "score": 100,
       "label": 0,
-      "why": "React/TypeScript canvas editor: a frontend role, his dealbreaker; Go/Kubernetes are only boilerplate.",
+      "why": "React/TypeScript canvas editor: a frontend role, his dealbreaker; the Go/Kubernetes mentions are about other teams.",
       "gap": 4
     },
     {
@@ -197,7 +197,7 @@
       "company": "Lagerwerk",
       "score": 0,
       "label": 4,
-      "why": "DevOps title, but Kubernetes, Terraform, Argo CD, AWS, Postgres, Go in Berlin at EUR 82-96k.",
+      "why": "DevOps title, same work: Kubernetes on AWS, Terraform, Argo CD, Postgres, Go, Berlin hybrid, EUR 82-96k straddles the floor.",
       "gap": -4
     },
     {
@@ -207,7 +207,17 @@
       "company": "Peoplegrid",
       "score": 95,
       "label": 0,
-      "why": "SMB AE at AED 15-18k base, far under his 25k floor, and a step back.",
+      "why": "SMB AE for 1-2 year sellers; base AED 15-18k tops out 28% under the 25k floor (salary blocker), and a step down.",
+      "gap": 3.8
+    },
+    {
+      "profile": "finance-analyst",
+      "job": "fin-02",
+      "title": "Financial Analyst",
+      "company": "Cartwheel",
+      "score": 95,
+      "label": 0,
+      "why": "SGD 5-6k tops out 8% under her 6.5k floor (more than 5%: salary blocker); also a 1-2 year support role.",
       "gap": 3.8
     },
     {
@@ -217,7 +227,7 @@
       "company": "Cartwheel",
       "score": 95,
       "label": 0,
-      "why": "AP/AR operations at SGD 3.8-4.5k: payables/receivables work is her dealbreaker.",
+      "why": "AP/AR finance operations: her stated dealbreaker (and SGD 3.8-4.5k is far under the floor).",
       "gap": 3.8
     },
     {
@@ -227,7 +237,17 @@
       "company": "Kroonpay",
       "score": 95,
       "label": 0,
-      "why": "On-site in Amsterdam, must already live in NL, no relocation: dealbreaker.",
+      "why": "On-site in Amsterdam, must already live in NL, no relocation: on-site outside the UK is her dealbreaker.",
+      "gap": 3.8
+    },
+    {
+      "profile": "platform-eng",
+      "job": "eng-02",
+      "title": "Platform Engineer",
+      "company": "Cloudyard",
+      "score": 95,
+      "label": 0,
+      "why": "EUR 65-78k tops out 8% under his 85k floor (more than 5%: salary blocker); also a level down (2+ years).",
       "gap": 3.8
     },
     {
@@ -237,7 +257,7 @@
       "company": "Northbeam Systems",
       "score": 95,
       "label": 0,
-      "why": "Remote but US residents only, no sponsorship: he's in Berlin.",
+      "why": "Remote for US residents only, no sponsorship: US-only remote is his dealbreaker.",
       "gap": 3.8
     },
     {
@@ -247,28 +267,8 @@
       "company": "Pixelmint",
       "score": 95,
       "label": 0,
-      "why": "Marketing website and landing pages for growth marketing: her marketing-only dealbreaker.",
+      "why": "Marketing website and campaign pages for Growth Marketing: marketing-only design is her dealbreaker.",
       "gap": 3.8
-    },
-    {
-      "profile": "ml-ds",
-      "job": "ml-03",
-      "title": "Machine Learning Engineer, LLM",
-      "company": "Glyphic AI",
-      "score": 90,
-      "label": 0,
-      "why": "LLM work she'd like, but no visa sponsorship: dealbreaker.",
-      "gap": 3.6
-    },
-    {
-      "profile": "fintech-pm",
-      "job": "pm-11",
-      "title": "Senior Product Manager, KYC & Onboarding",
-      "company": "Halcyon Bank",
-      "score": 87,
-      "label": 0,
-      "why": "KYC and onboarding is her domain, but GBP 60-72k is far under her 95k floor.",
-      "gap": 3.48
     }
   ],
   "scores": {
