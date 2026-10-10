@@ -36,6 +36,11 @@ export const ATS_LABEL: Record<string, string> = {
 /** Hiring systems we can scan (every one we recognise). Anything else is kept as "not supported yet". */
 export const SUPPORTED = new Set(Object.keys(ATS_LABEL));
 
+/** "Review failing companies" links: My companies, sorted by Needs attention. */
+export const FAILING_HASH = "companies?sort=attention";
+/** The address asks for Needs attention (a "failing" link was followed). */
+export const wantsAttention = () => new URLSearchParams(location.hash.split("?")[1] ?? "").get("sort") === "attention";
+
 /** Directory key for a watched company or a directory entry: "ats:slug" (Workday adds shard and site). */
 export const keyOf = (c: { ats?: string; slug?: string; shard?: string; site?: string }) => companyKey({ ats: c.ats ?? "", slug: c.slug ?? "", shard: c.shard, site: c.site });
 
