@@ -1,6 +1,5 @@
-import { INDUSTRY_BY_ID } from "@rawjobs/core/catalog/industries";
-import { ArrowRight, ArrowUpDown, Building2, Check, Globe, LoaderCircle, MapPin, Pencil, Plus, Search, SlidersHorizontal, Star, UserRound, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ArrowRight, ArrowUpDown, LoaderCircle, SlidersHorizontal, UserRound, X } from "lucide-react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useOtherJobs, type DataMeta, type Job, type Profile } from "../../lib/data";
 import {
   activeChips,
@@ -10,10 +9,7 @@ import {
   foldCompanies,
   fromQuery,
   groupJobs,
-  INDEX_MAX_AGE_DAYS,
   hasNewTag,
-  OLD_POSTING_DAYS,
-  REMOTE,
   isNewJob,
   profileFilters,
   profilePlaces,
@@ -23,26 +19,29 @@ import {
   toQuery,
   type Ctx,
   type FacetKey,
-  type FacetOption,
   type FeedRow,
   type Filters,
   type JobGroup,
   type Sort,
 } from "../../lib/filters";
-import { offerWhat, ruleKey, ruleLabel, type HideRule } from "../../lib/notForMe";
+import { offerWhat, type HideRule } from "../../lib/notForMe";
 import type { Prefs, SavedView } from "../../lib/prefs";
 import type { FilterPicks } from "../../lib/profileSync";
-import { displayPlace, postedOrSeen, timeAgo } from "../../lib/format";
-import { useDensity } from "../../lib/theme";
+import { postedOrSeen, timeAgo } from "../../lib/format";
+import { newSinceLastVisit } from "../../lib/newSince";
+import { useDensity, useMaxAge } from "../../lib/theme";
 import { load, save } from "../../lib/storage";
 import type { Status, UserState } from "../../lib/userState";
-import { Dialog } from "../Dialog";
 import { JobDetail } from "../JobDetail";
 import { toast } from "../Toast";
-import { Chip, IconButton, SearchField, Tabs } from "../primitives";
-import { Button, Card, cx } from "../ui";
+import { Chip, SearchField } from "../primitives";
+import { Button, Card } from "../ui";
 import { FacetMenu, OptionList } from "./FacetMenu";
+import { FilterSheet, SheetSection, SORTS, SortOptions } from "./FilterSheet";
 import { JobCard } from "./JobCard";
+import { ageLimit, MoreMenu, MoreToggles } from "./MoreFilters";
+import { ProfileBar } from "./ProfileBar";
+import { ViewsBar } from "./ViewsBar";
 
 type Props = {
   jobs: Job[];
@@ -82,17 +81,13 @@ type Props = {
 };
 
 const FILTER_KEY = "rawjobs.radar.v2";
+/** Visits (by their "new since" line) whose closed jobs were already announced, so switching tabs doesn't repeat it. */
+const closedToldFor = new Set<number>();
 /** "Show everywhere" was picked for these profile places (JSON); a change of places brings the place filter back. */
 const EVERYWHERE_KEY = "rawjobs.radar.everywhere";
 const PAGE = 40;
 /** Your companies' freshest roles shown above the list in Best match. */
 const STRIP = 3;
-const SORTS: { value: Sort; label: string }[] = [
-  { value: "best", label: "Best match" },
-  { value: "newest", label: "Newest" },
-  { value: "salary", label: "Highest salary" },
-  { value: "company", label: "Company A–Z" },
-];
 
 /**
  * Filters + sort: from the URL (shareable, Back works), else your own changes if you made any,
@@ -181,16 +176,23 @@ export function RadarPage(p: Props) {
     return m;
   }, [p.meta.companies, p.jobs]);
   const hidden = useMemo(() => new Set(p.prefs.hiddenCompanies), [p.prefs.hiddenCompanies]);
-  // "New to you": first found since the previous full scan. On the first scan everything would be, so nothing is.
+  // "New to you": first found since your last visit (lib/newSince). On the first scan everything would be, so nothing is.
   const fullRuns = p.meta.runs.filter((r) => !r.partial);
   const firstScan = fullRuns.length <= 1;
-  const newSince = fullRuns[1] ? Date.parse(fullRuns[1].finishedAt) : undefined;
+  const latestScan = fullRuns[0]?.finishedAt;
+  const previousScan = fullRuns[1]?.finishedAt;
+  const newSince = useMemo(() => newSinceLastVisit(latestScan, previousScan), [latestScan, previousScan]);
+  // One clock for filters, tags and order, moved on every hour.
+  const now = useHourlyNow();
+  const maxAgeDays = useMaxAge();
   const ctx: Ctx = useMemo(
     () => {
       const places = profilePlaces(profile);
       return {
         firstScan,
         newSince,
+        now,
+        maxAgeDays,
         user: p.user,
         min,
         industriesOf: (c: string) => industriesByCompany.get(c) ?? [],
@@ -200,27 +202,37 @@ export function RadarPage(p: Props) {
         mine: { countries: new Set([...places.countries, ...(places.remote ? ["Remote"] : [])]), locations: new Set(places.locations), industries: new Set(profile.industries) },
       };
     },
-    [p.user, min, industriesByCompany, hidden, p.prefs.hideRules, profileKey, p.isYours, firstScan, newSince], // eslint-disable-line react-hooks/exhaustive-deps
+    [p.user, min, industriesByCompany, hidden, p.prefs.hideRules, profileKey, p.isYours, firstScan, newSince, now, maxAgeDays], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   // One list, in the order you picked: your companies are starred and nudged up in Best match, never pinned.
-  const now = useHourlyNow();
-  const visible = useMemo(() => sortJobs(applyFilters(pool, filters, ctx), sort, p.isYours, now), [pool, filters, ctx, sort, p.isYours, now]);
+  // Typing in search updates the box at once; the list catches up when React has a moment (useDeferredValue).
+  const q = useDeferredValue(filters.q);
+  const listFilters = useMemo(() => (q === filters.q ? filters : { ...filters, q }), [filters, q]);
+  const visible = useMemo(() => sortJobs(applyFilters(pool, listFilters, ctx), sort, p.isYours, now), [pool, listFilters, ctx, sort, p.isYours, now]);
   const groups = useMemo(() => groupJobs(visible), [visible]);
   // One company can't fill the page ("+N more at …"), except in Newest (a plain date order) and when you've
   // picked companies yourself.
   const [openCompanies, setOpenCompanies] = useState<ReadonlySet<string>>(() => new Set());
   useEffect(() => setOpenCompanies(new Set()), [filters, sort]);
   const fold = sort !== "newest" && !filters.mine && !filters.companies.length;
-  const rows: FeedRow[] = useMemo(() => (fold ? foldCompanies(groups, openCompanies) : groups.map((group) => ({ kind: "group" as const, group }))), [fold, groups, openCompanies]);
-  /** The roles J/K steps through: the list's rows, folded ones left out. */
-  const navGroups = useMemo(() => rows.flatMap((r) => (r.kind === "group" ? [r.group] : [])), [rows]);
-  const counts = useMemo(() => facetCounts(pool, filters, ctx), [pool, filters, ctx]);
-  const chips = activeChips(filters, ctx, base);
-  // Postings older than ~6 months that the other filters would show: "Show older jobs (N)".
+  // Best match: your companies' freshest roles in a strip above the list, and not again in it.
+  const strip = useMemo(
+    () => (sort === "best" && !filters.mine ? groups.filter((g) => p.isYours(g.lead)).sort((a, b) => postedOrSeen(b.lead).localeCompare(postedOrSeen(a.lead))).slice(0, STRIP) : []),
+    [sort, filters.mine, groups, p.isYours],
+  );
+  const rows: FeedRow[] = useMemo(() => {
+    const rest = strip.length ? groups.filter((g) => !strip.includes(g)) : groups;
+    return fold ? foldCompanies(rest, openCompanies) : rest.map((group) => ({ kind: "group" as const, group }));
+  }, [fold, groups, strip, openCompanies]);
+  /** The roles J/K steps through: the strip, then the list's rows, folded ones left out. */
+  const navGroups = useMemo(() => [...strip, ...rows.flatMap((r) => (r.kind === "group" ? [r.group] : []))], [strip, rows]);
+  const counts = useMemo(() => facetCounts(pool, listFilters, ctx), [pool, listFilters, ctx]);
+  const chips = useMemo(() => activeChips(filters, ctx, base), [filters, ctx, base]);
+  // Postings past your age limit that the other filters would show: "Show older jobs (N)".
   const olderCount = useMemo(
-    () => (filters.showOld ? 0 : applyFilters(pool, { ...filters, showOld: true }, ctx).length - visible.length),
-    [pool, filters, ctx, visible.length],
+    () => (listFilters.showOld ? 0 : applyFilters(pool, { ...listFilters, showOld: true }, ctx).length - visible.length),
+    [pool, listFilters, ctx, visible.length],
   );
 
   // Summary numbers over all matches (not the current filters).
@@ -228,12 +240,10 @@ export function RadarPage(p: Props) {
   const open = useMemo(() => applyFilters(p.jobs, base, ctx), [p.jobs, base, ctx]);
   const newCount = open.filter((j) => isNewJob(j, ctx)).length;
   const strongCount = open.filter((j) => j.score >= min).length;
+  // Saved and Applied keep jobs that closed or aged out, so they're counted with their own view's filters.
+  const savedCount = useMemo(() => applyFilters(p.jobs, { ...base, status: "saved" }, ctx).length, [p.jobs, base, ctx]);
+  const appliedCount = useMemo(() => applyFilters(p.jobs, { ...base, status: "applied" }, ctx).length, [p.jobs, base, ctx]);
   const yourGroups = groups.filter((g) => p.isYours(g.lead)).length;
-  // Best match: your companies' freshest roles, above the list (they're in it too, at their own rank).
-  const strip = useMemo(
-    () => (sort === "best" && !filters.mine ? groups.filter((g) => p.isYours(g.lead)).sort((a, b) => postedOrSeen(b.lead).localeCompare(postedOrSeen(a.lead))).slice(0, STRIP) : []),
-    [sort, filters.mine, groups, p.isYours],
-  );
   // The newest job in the list, said in the head when the list isn't sorted by date.
   const newest = useMemo(() => (sort === "newest" ? undefined : visible.reduce<string | undefined>((m, j) => (!m || postedOrSeen(j) > m ? postedOrSeen(j) : m), undefined)), [sort, visible]);
   const noCompaniesYet = filters.mine && p.companyCount === 0;
@@ -295,8 +305,15 @@ export function RadarPage(p: Props) {
 
   // ----- keyboard: j/k move, s/a/x status, Enter opens (phones), "/" search -----
   const searchRef = useRef<HTMLInputElement>(null);
+  // One listener for the page's life; it calls the latest handler (props change on every render).
+  const onKeyRef = useRef<(e: KeyboardEvent) => void>(() => {});
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
+    const onKey = (e: KeyboardEvent) => onKeyRef.current(e);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+  useEffect(() => {
+    onKeyRef.current = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (t?.closest?.("input, textarea, select") || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === "/") {
@@ -320,9 +337,21 @@ export function RadarPage(p: Props) {
       else if (e.key === "a") p.onStatus(selected, "applied");
       else if (e.key === "x") p.onStatus(selected, "dismissed");
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [move, selected, wide, p]);
+  });
+
+  // ----- jobs you saved or applied to that closed since your last visit: said once per visit -----
+  useEffect(() => {
+    if (newSince === undefined || closedToldFor.has(newSince)) return;
+    closedToldFor.add(newSince);
+    const closed = p.jobs.filter((j) => j.status === "closed" && j.closedAt && Date.parse(j.closedAt) > newSince && ["saved", "applied", "interviewing", "offer"].includes(p.user[j.id]?.status ?? ""));
+    if (!closed.length) return;
+    const view = closed.some((j) => p.user[j.id]?.status === "saved") ? "saved" : "applied";
+    toast({
+      message: closed.length === 1 ? <><b>{closed[0]!.title}</b> at {closed[0]!.company} closed since your last visit.</> : <>{closed.length} jobs you saved or applied to closed since your last visit.</>,
+      actionLabel: "See",
+      onAction: () => replace({ ...base, status: view }, sort),
+    });
+  }, [newSince]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ----- hide a company, with undo -----
   const hideCompany = (company: string, hide: boolean) => {
@@ -351,21 +380,19 @@ export function RadarPage(p: Props) {
   const [sheet, setSheet] = useState(false);
   /** Laptops and up: the filter row under the search, opened with Filters. */
   const [filtersOpen, setFiltersOpen] = useState(false);
+  /** Seniority, industry, company and keywords: shown on request, so the first row holds the common ones. */
+  const [moreFacets, setMoreFacets] = useState(false);
   const facet = (key: FacetKey) => counts[key];
-  const relax = groups.length === 0 ? suggestRelax(pool, filters, ctx) : [];
+  const relax = useMemo(() => (groups.length === 0 ? suggestRelax(pool, listFilters, ctx) : []), [groups.length, pool, listFilters, ctx]);
 
-  /** One role's row; only the list's rows (`listed`) are where J/K moves focus to. */
-  const card = (g: JobGroup, listed: boolean) => (
+  /** One role's row, in the strip or the list: each role shows once, and J/K moves focus to it. */
+  const card = (g: JobGroup) => (
     <JobCard
-      key={listed ? g.key : `strip:${g.key}`}
-      ref={
-        listed
-          ? (el) => {
-              if (el) rowRefs.current.set(g.key, el);
-              else rowRefs.current.delete(g.key);
-            }
-          : undefined
-      }
+      key={g.key}
+      ref={(el) => {
+        if (el) rowRefs.current.set(g.key, el);
+        else rowRefs.current.delete(g.key);
+      }}
       group={g}
       entry={p.user[g.lead.id]}
       min={min}
@@ -447,7 +474,7 @@ export function RadarPage(p: Props) {
             filters={filters}
             sort={sort}
             views={p.prefs.views}
-            counts={{ all: open.length, mine: open.filter(p.isYours).length, new: newCount, strong: strongCount, saved: open.filter((j) => p.user[j.id]?.status === "saved").length }}
+            counts={{ all: open.length, mine: open.filter(p.isYours).length, new: newCount, strong: strongCount, saved: savedCount, applied: appliedCount }}
             hideNew={firstScan}
             onPick={replace}
             onSave={(name) => p.onSaveView(name, filters, sort)}
@@ -493,12 +520,16 @@ export function RadarPage(p: Props) {
               <FacetMenu label="Country" searchable options={facet("countries")} selected={filters.countries} onChange={(v) => setFilters({ countries: v })} />
               <FacetMenu label="Location" searchable options={facet("locations")} selected={filters.locations} onChange={(v) => setFilters({ locations: v })} />
               <FacetMenu label="Workplace" options={facet("workplace")} selected={filters.workplace} onChange={(v) => setFilters({ workplace: v as Filters["workplace"] })} />
-              <FacetMenu label="Seniority" options={facet("seniority")} selected={filters.seniority} onChange={(v) => setFilters({ seniority: v as Filters["seniority"] })} />
-              {facet("industries").length > 0 && <FacetMenu label="Industry" options={facet("industries")} selected={filters.industries} onChange={(v) => setFilters({ industries: v })} />}
-              <FacetMenu label="Company" searchable options={facet("companies")} selected={filters.companies} onChange={(v) => setFilters({ companies: v })} />
-              {facet("topics").length > 0 && <FacetMenu label="Keywords" searchable options={facet("topics")} selected={filters.topics} onChange={(v) => setFilters({ topics: v })} />}
               <FacetMenu label="Match" single options={facet("match")} selected={filters.match === "all" ? [] : [filters.match]} onChange={(v) => setFilters({ match: (v[0] as Filters["match"]) ?? "all" })} />
-              <MoreMenu filters={filters} setFilters={setFilters} ats={facet("ats")} olderCount={olderCount} hiddenCompanies={p.prefs.hiddenCompanies} onUnhide={(c) => p.onHideCompany(c, false)} hideRules={p.prefs.hideRules} onRemoveRule={removeRule} />
+              {/* The rest on request; one that's filtering something always shows. */}
+              {(moreFacets || filters.seniority.length > 0) && <FacetMenu label="Seniority" options={facet("seniority")} selected={filters.seniority} onChange={(v) => setFilters({ seniority: v as Filters["seniority"] })} />}
+              {(moreFacets || filters.industries.length > 0) && facet("industries").length > 0 && <FacetMenu label="Industry" options={facet("industries")} selected={filters.industries} onChange={(v) => setFilters({ industries: v })} />}
+              {(moreFacets || filters.companies.length > 0) && <FacetMenu label="Company" searchable options={facet("companies")} selected={filters.companies} onChange={(v) => setFilters({ companies: v })} />}
+              {(moreFacets || filters.topics.length > 0) && facet("topics").length > 0 && <FacetMenu label="Keywords" searchable options={facet("topics")} selected={filters.topics} onChange={(v) => setFilters({ topics: v })} />}
+              <MoreMenu filters={filters} setFilters={setFilters} ats={facet("ats")} olderCount={olderCount} maxAgeDays={maxAgeDays} hiddenCompanies={p.prefs.hiddenCompanies} onUnhide={(c) => p.onHideCompany(c, false)} hideRules={p.prefs.hideRules} onRemoveRule={removeRule} />
+              <Button variant="ghost" size="sm" aria-expanded={moreFacets} onClick={() => setMoreFacets((o) => !o)}>
+                {moreFacets ? "Fewer filters" : "More filters"}
+              </Button>
             </div>
           </div>
         )}
@@ -517,7 +548,7 @@ export function RadarPage(p: Props) {
               </Button>
             )}
             {olderCount > 0 && (
-              <Button variant="ghost" size="sm" onClick={() => setFilters({ showOld: true })} title={`Postings older than ${OLD_POSTING_DAYS / 30} months are hidden: they're usually filled`}>
+              <Button variant="ghost" size="sm" onClick={() => setFilters({ showOld: true })} title={`Postings older than ${ageLimit(maxAgeDays)} are hidden: they're usually filled. Change this in Settings › Job list.`}>
                 Show older jobs ({olderCount})
               </Button>
             )}
@@ -616,7 +647,7 @@ export function RadarPage(p: Props) {
                     Latest at my companies <span className="tabular font-normal">{yourGroups}</span>
                   </h2>
                   <ul className="rj-feed__list" aria-labelledby="feed-mine">
-                    {strip.map((g) => card(g, false))}
+                    {strip.map((g) => card(g))}
                     {yourGroups > strip.length && (
                       <li className="px-4 py-2">
                         <Button variant="ghost" size="sm" onClick={() => setFilters({ mine: true })}>
@@ -626,14 +657,14 @@ export function RadarPage(p: Props) {
                     )}
                   </ul>
                   <h2 className="rj-feed__section sticky top-0 z-sticky" id="feed-all">
-                    All jobs <span className="tabular font-normal">{groups.length}</span>
+                    Everything else <span className="tabular font-normal">{groups.length - strip.length}</span>
                   </h2>
                 </>
               )}
               <ul className="rj-feed__list" aria-labelledby={strip.length ? "feed-all" : undefined} aria-label={strip.length ? undefined : "Jobs"}>
                 {shown.map((r) =>
                   r.kind === "group" ? (
-                    card(r.group, true)
+                    card(r.group)
                   ) : (
                     <li key={`more:${r.company}`} className="px-4 py-2">
                       <Button variant="ghost" size="sm" onClick={() => setOpenCompanies((s) => new Set([...s, r.company]))}>
@@ -689,8 +720,13 @@ export function RadarPage(p: Props) {
           <SheetSection label="Company">
             <OptionList label="Company" searchable options={facet("companies")} selected={filters.companies} onChange={(v) => setFilters({ companies: v })} />
           </SheetSection>
+          {facet("topics").length > 0 && (
+            <SheetSection label="Keywords">
+              <OptionList label="Keywords" searchable options={facet("topics")} selected={filters.topics} onChange={(v) => setFilters({ topics: v })} />
+            </SheetSection>
+          )}
           <SheetSection label="More">
-            <MoreToggles filters={filters} setFilters={setFilters} olderCount={olderCount} />
+            <MoreToggles filters={filters} setFilters={setFilters} olderCount={olderCount} maxAgeDays={maxAgeDays} />
           </SheetSection>
           {facet("ats").length > 1 && (
             <SheetSection label="Hiring system">
@@ -700,357 +736,6 @@ export function RadarPage(p: Props) {
         </FilterSheet>
       )}
 
-    </div>
-  );
-}
-
-// ---------- views ----------
-
-const BUILT_IN: { id: string; label: string; filters: Partial<Filters>; count: keyof ViewCounts }[] = [
-  { id: "all", label: "All", filters: {}, count: "all" },
-  { id: "mine", label: "My companies", filters: { mine: true }, count: "mine" },
-  { id: "new", label: "New", filters: { status: "new" }, count: "new" },
-  { id: "strong", label: "Strong", filters: { match: "strong" }, count: "strong" },
-  { id: "saved", label: "Saved", filters: { status: "saved" }, count: "saved" },
-  { id: "applied", label: "Applied", filters: { status: "applied" }, count: "all" },
-];
-type ViewCounts = { all: number; mine: number; new: number; strong: number; saved: number };
-
-function ViewsBar(props: {
-  className?: string;
-  /** Your profile's filters: the built-in views start from them. */
-  base: Filters;
-  filters: Filters;
-  sort: Sort;
-  views: SavedView[];
-  counts: ViewCounts;
-  /** First scan: every job would be new, so there's no New view. */
-  hideNew?: boolean;
-  onPick: (f: Filters, s: Sort) => void;
-  onSave: (name: string) => SavedView;
-  onRename: (id: string, name: string) => void;
-  onDelete: (view: SavedView) => void;
-}) {
-  const [naming, setNaming] = useState<{ id?: string; value: string } | null>(null);
-  const matchesView = (f: Filters) => sameFilters(f, props.filters);
-  const builtInActive = BUILT_IN.find((b) => matchesView({ ...props.base, ...b.filters }));
-  const customActive = props.views.find((v) => matchesView(v.filters) && v.sort === props.sort);
-  const submit = () => {
-    if (!naming?.value.trim()) return setNaming(null);
-    if (naming.id) props.onRename(naming.id, naming.value);
-    else props.onSave(naming.value);
-    setNaming(null);
-  };
-
-  const builtIns = BUILT_IN.filter((b) => !(b.id === "new" && props.hideNew));
-  const tabValue = builtInActive && !customActive ? builtInActive.id : "";
-  return (
-    <div className={cx("flex flex-wrap items-end gap-x-4 gap-y-2 lg:flex-nowrap", props.className)}>
-      {/* design/components/Tabs: views of one list, ink underline. */}
-      <Tabs
-        label="Radar views"
-        idPrefix="view"
-        className="min-w-0 flex-1"
-        value={tabValue}
-        onChange={(id) => {
-          const b = builtIns.find((x) => x.id === id);
-          if (b) props.onPick({ ...props.base, ...b.filters }, props.sort);
-        }}
-        items={builtIns.map((b) => ({ id: b.id, label: b.label, count: b.id === "applied" ? undefined : props.counts[b.count] }))}
-      />
-      {(props.views.length > 0 || naming || !customActive) && (
-        <div className="flex flex-wrap items-center gap-2 pb-1">
-          {props.views.map((v) =>
-            naming?.id === v.id ? (
-              <NameInput key={v.id} value={naming.value} onChange={(value) => setNaming({ id: v.id, value })} onSubmit={submit} onCancel={() => setNaming(null)} />
-            ) : (
-              <span key={v.id} className="inline-flex items-center gap-0.5">
-                <Chip pressed={customActive?.id === v.id} onClick={() => props.onPick(v.filters, v.sort)} onDoubleClick={() => setNaming({ id: v.id, value: v.name })}>
-                  {v.name}
-                </Chip>
-                <IconButton label={`Rename view ${v.name}`} size="sm" onClick={() => setNaming({ id: v.id, value: v.name })}>
-                  <Pencil className="rj-icon" aria-hidden />
-                </IconButton>
-                <IconButton label={`Delete view ${v.name}`} size="sm" onClick={() => props.onDelete(v)}>
-                  <X className="rj-icon" aria-hidden />
-                </IconButton>
-              </span>
-            ),
-          )}
-          {naming && !naming.id ? (
-            <NameInput value={naming.value} onChange={(value) => setNaming({ value })} onSubmit={submit} onCancel={() => setNaming(null)} />
-          ) : (
-            !customActive &&
-            (!builtInActive || props.sort !== "best") && (
-              <Button size="sm" variant="ghost" onClick={() => setNaming({ value: "" })}>
-                <Plus className="rj-icon" aria-hidden /> Save view
-              </Button>
-            )
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function NameInput({ value, onChange, onSubmit, onCancel }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onCancel: () => void }) {
-  return (
-    <span className="inline-flex shrink-0 items-center gap-1">
-      <input
-        autoFocus
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => (e.key === "Enter" ? onSubmit() : e.key === "Escape" && onCancel())}
-        placeholder="Name this view"
-        aria-label="View name"
-        className="h-8 w-40 rounded-md border border-control bg-raised px-2 type-small"
-      />
-      <IconButton label="Save view name" size="sm" onClick={onSubmit}>
-        <Check className="rj-icon" aria-hidden />
-      </IconButton>
-    </span>
-  );
-}
-
-// ---------- "More" filters ----------
-
-function MoreToggles({ filters, setFilters, olderCount }: { filters: Filters; setFilters: (p: Partial<Filters>) => void; olderCount: number }) {
-  const rows: [keyof Filters, string][] = [
-    ["salaryOnly", "Salary listed"],
-    ["showOld", `Show older jobs${olderCount ? ` (${olderCount})` : ""}: posted over ${OLD_POSTING_DAYS / 30} months ago`],
-    ["showFailed", "Include jobs that failed your filters"],
-    ["showClosed", "Include closed jobs"],
-    ["showHidden", "Include hidden jobs and companies"],
-    ["olderIndex", `Include not-yet-scanned jobs older than ${INDEX_MAX_AGE_DAYS} days`],
-  ];
-  return (
-    <div className="space-y-0.5">
-      {rows.map(([k, label]) => (
-        <label key={k} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 type-small hover:bg-inset">
-          <input type="checkbox" checked={filters[k] as boolean} onChange={(e) => setFilters({ [k]: e.target.checked })} className="size-4 accent-ink" />
-          {label}
-        </label>
-      ))}
-    </div>
-  );
-}
-
-function MoreMenu({
-  filters,
-  setFilters,
-  ats,
-  olderCount,
-  hiddenCompanies,
-  onUnhide,
-  hideRules,
-  onRemoveRule,
-}: {
-  filters: Filters;
-  setFilters: (p: Partial<Filters>) => void;
-  ats: FacetOption[];
-  olderCount: number;
-  hiddenCompanies: string[];
-  onUnhide: (company: string) => void;
-  hideRules: HideRule[];
-  onRemoveRule: (rule: HideRule) => void;
-}) {
-  const extra = [filters.salaryOnly, filters.showOld, filters.showFailed, filters.showClosed, filters.showHidden, filters.olderIndex].filter(Boolean).length + filters.ats.length;
-  return (
-    <FacetMenu
-      label={extra ? `More · ${extra}` : "More"}
-      options={ats.length > 1 ? ats : []}
-      optionsLabel="Hiring system"
-      selected={filters.ats}
-      onChange={(v) => setFilters({ ats: v })}
-      footer={
-        <div className="mt-1 border-t border-line pt-1">
-          <MoreToggles filters={filters} setFilters={setFilters} olderCount={olderCount} />
-          {hiddenCompanies.length > 0 && (
-            <div className="mt-1 border-t border-line px-2 pt-2">
-              <p className="mb-1 type-label">Hidden companies</p>
-              <ul className="space-y-0.5">
-                {hiddenCompanies.map((c) => (
-                  <li key={c} className="flex items-center justify-between type-small">
-                    <span className="truncate">{c}</span>
-                    <Button size="sm" variant="ghost" onClick={() => onUnhide(c)} aria-label={`Show ${c} again`}>
-                      Show
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {hideRules.length > 0 && (
-            <div className="mt-1 border-t border-line px-2 pt-2">
-              <p className="mb-1 type-label">Hidden by your Not interested rules</p>
-              <ul className="space-y-0.5">
-                {hideRules.map((r) => (
-                  <li key={ruleKey(r)} className="flex items-center justify-between gap-2 type-small">
-                    <span className="min-w-0 truncate">{ruleLabel(r)}</span>
-                    <Button size="sm" variant="ghost" onClick={() => onRemoveRule(r)} aria-label={`Show ${offerWhat({ kind: "rule", rule: r })} again`}>
-                      Show
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      }
-    />
-  );
-}
-
-// ---------- phone filter sheet ----------
-
-function FilterSheet({ children, count, onClose, onClear }: { children: ReactNode; count: number; onClose: () => void; onClear: () => void }) {
-  return (
-    <Dialog open onClose={onClose} labelledBy="filter-sheet-title" placement="bottom">
-      <div className="flex max-h-[85dvh] flex-col rounded-t-md border border-line bg-raised shadow-l3 sm:rounded-md">
-        <header className="flex items-center justify-between border-b border-line px-4 py-3">
-          <h2 id="filter-sheet-title" className="type-body font-semibold">
-            Filters
-          </h2>
-          <div className="flex items-center gap-1">
-            <Button size="sm" variant="ghost" onClick={onClear}>
-              Clear all
-            </Button>
-            <IconButton label="Close" onClick={onClose}>
-              <X className="size-4" />
-            </IconButton>
-          </div>
-        </header>
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">{children}</div>
-        <footer className="border-t border-line p-3">
-          <Button variant="primary" className="w-full" onClick={onClose}>
-            Show {count} {count === 1 ? "job" : "jobs"}
-          </Button>
-        </footer>
-      </div>
-    </Dialog>
-  );
-}
-
-/** The sort choices in the phone filter sheet: one always picked, styled like the single-choice filters. */
-function SortOptions({ sort, onChange }: { sort: Sort; onChange: (s: Sort) => void }) {
-  return (
-    <ul>
-      {SORTS.map((s) => {
-        const on = s.value === sort;
-        return (
-          <li key={s.value}>
-            <button
-              type="button"
-              aria-pressed={on}
-              onClick={() => onChange(s.value)}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left type-small hover:bg-inset"
-            >
-              <span className={cx("flex size-4 shrink-0 items-center justify-center rounded-dot border", on ? "border-ink bg-ink text-raised" : "border-control")}>
-                {on && <Check className="size-3" />}
-              </span>
-              {s.label}
-            </button>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-function SheetSection({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <section>
-      <h3 className="mb-1 type-label">{label}</h3>
-      {children}
-    </section>
-  );
-}
-
-// ---------- your profile ----------
-
-/**
- * What your profile searches for, always visible, with Edit. When the place or industry filters
- * differ from it: Reset, or Save to my profile (updates Settings and rescans).
- */
-function ProfileBar({
-  profile,
-  placeFilter,
-  everywhere,
-  onEverywhere,
-  changed,
-  onEdit,
-  onReset,
-  onSave,
-}: {
-  profile: Profile;
-  /** The place filter your profile puts on the Radar ("Germany", "Remote"). */
-  placeFilter: string[];
-  /** "Show everywhere" is on: the place filter is off. */
-  everywhere: boolean;
-  onEverywhere: (on: boolean) => void;
-  changed: boolean;
-  onEdit: () => void;
-  onReset: () => void;
-  onSave?: () => Promise<string | null>;
-}) {
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const regions = profile.locations.remote_ok.filter((r) => r !== "remote");
-  // The places you actually picked ("Berlin"), not the countries we filter by.
-  const yourPlaces = profile.locations.include.map(displayPlace);
-  const parts = [
-    profile.titles.include.slice(0, 3).join(", ") + (profile.titles.include.length > 3 ? ` +${profile.titles.include.length - 3}` : ""),
-    yourPlaces.length ? yourPlaces.slice(0, 4).join(", ") + (yourPlaces.length > 4 ? ` +${yourPlaces.length - 4}` : "") : null,
-    profile.locations.remote_ok.length ? (regions.length ? `Remote in ${regions.slice(0, 3).map((r) => (r.length <= 4 ? r.toUpperCase() : displayPlace(r))).join(", ")}` : "Remote") : null,
-    profile.industries.length ? profile.industries.map((i) => INDUSTRY_BY_ID.get(i)?.label ?? i).join(", ") : null,
-  ].filter(Boolean);
-
-  const save = async () => {
-    if (!onSave) return;
-    setSaving(true);
-    setError(null);
-    const err = await onSave();
-    setSaving(false);
-    setError(err);
-  };
-
-  const places = placeFilter.map((c) => (c === REMOTE ? "Remote" : displayPlace(c))).join(", ");
-  return (
-    <div className={cx("rounded-md border px-3 py-2 type-small", changed ? "border-warning bg-warning-subtle" : "border-line bg-raised")}>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <UserRound className="rj-icon hidden text-muted sm:block" aria-hidden />
-        {/* One line: what your profile searches for, truncated; the full text is in Settings. On phones the
-            buttons wrap below it. */}
-        <p className="min-w-0 basis-full truncate sm:flex-1 sm:basis-0" title={parts.join(" · ")}>
-          <span className="font-medium">Your profile:</span> <span className="text-muted">{parts.join(" · ")}</span>
-        </p>
-        {placeFilter.length > 0 && !changed && (
-          <Button size="sm" variant="ghost" className="shrink-0" onClick={() => onEverywhere(!everywhere)} title={everywhere ? "Showing jobs everywhere" : `Showing your places: ${places}`}>
-            {everywhere ? <MapPin className="rj-icon" aria-hidden /> : <Globe className="rj-icon" aria-hidden />}
-            {everywhere ? "Only my places" : "Show everywhere"}
-          </Button>
-        )}
-        <Button size="sm" variant="ghost" className="shrink-0" onClick={onEdit}>
-          <Pencil className="rj-icon" aria-hidden /> Edit
-        </Button>
-      </div>
-      {changed && (
-        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-hairline pt-2">
-          <p className="min-w-0 flex-1 type-small text-ink">
-            Your place filters differ from your profile. This only changes what you see here; your scans and alerts still use your profile.
-          </p>
-          <Button size="sm" variant="ghost" onClick={onReset} disabled={saving}>
-            Reset to my profile
-          </Button>
-          {onSave && (
-            <Button size="sm" variant="primary" onClick={() => void save()} disabled={saving}>
-              {saving ? <LoaderCircle className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
-              {saving ? "Saving…" : "Save to my profile"}
-            </Button>
-          )}
-        </div>
-      )}
-      {error && <p className="mt-1.5 type-small text-danger-text">{error}</p>}
     </div>
   );
 }

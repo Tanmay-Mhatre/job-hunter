@@ -1,8 +1,8 @@
 import { Bookmark, Star, X } from "lucide-react";
 import { forwardRef, type ReactNode } from "react";
 import type { JobGroup } from "../../lib/filters";
-import { atsLabel } from "../../lib/filters";
-import { formatSalary, placeSummary, postedOrSeen, shortAge } from "../../lib/format";
+import { atsLabel, evergreenReason, isOlder } from "../../lib/filters";
+import { formatSalary, placeSummary, postedOrSeen, shortAge, timeAgo } from "../../lib/format";
 import { STATUS_LABEL, type Entry, type Status } from "../../lib/userState";
 import { IconButton, ScoreBadge, SourceTag } from "../primitives";
 import { cx } from "../ui";
@@ -62,6 +62,9 @@ export const JobCard = forwardRef<HTMLLIElement, Props>(function JobCard({ group
   if (WORKPLACE[job.workplace]) meta.push(WORKPLACE[job.workplace]);
   if (salary) meta.push(salary);
   if (status && status !== "dismissed") meta.push(<span className="text-ink">{STATUS_LABEL[status]}</span>);
+  const evergreen = evergreenReason(job);
+  if (evergreen === "pool") meta.push(<span className="text-warning-text" title="A talent pool or open application: it collects applications rather than filling one role">Talent pool</span>);
+  if (evergreen === "reposted") meta.push(<span className="text-warning-text" title="Taken down and posted again: dated from the first posting">Reposted</span>);
   if (job.status === "closed") meta.push(<span className="text-danger-text">Closed</span>);
   if (job.why.gate) meta.push(<span className="text-warning-text">Failed your {job.why.gate} filter</span>);
 
@@ -89,7 +92,9 @@ export const JobCard = forwardRef<HTMLLIElement, Props>(function JobCard({ group
             <X className="rj-icon" aria-hidden />
           </IconButton>
         </span>
-        <SourceTag source={atsLabel(job.ats)} age={shortAge(postedOrSeen(job))} isNew={isNew} />
+        <SourceTag
+          title={job.estimated || job.status !== "open" ? undefined : `Still listed on the careers page · checked ${timeAgo(job.lastSeen)}`}
+          source={atsLabel(job.ats)} age={shortAge(postedOrSeen(job))} isNew={isNew} older={isOlder(job)} />
       </span>
     </li>
   );

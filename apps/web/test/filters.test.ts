@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { Job } from "../src/lib/data";
 import {
+  evergreenReason,
+  isOlder,
   activeChips,
   applyFilters,
   hasNewTag,
@@ -86,7 +88,7 @@ describe("facetCounts", () => {
     // Countries ignore the country pick but apply "past week": a (UAE) and c (Remote) remain.
     expect(Object.fromEntries(counts.countries.map((o) => [o.value, o.count]))).toEqual({ "United Arab Emirates": 1, Remote: 1, "United Kingdom": 0 });
     // Posted ignores the posted pick but applies the UK pick: only b, posted 20 days ago.
-    expect(Object.fromEntries(counts.posted.map((o) => [o.value, o.count]))).toEqual({ "1": 0, "3": 0, "7": 0, "30": 1 });
+    expect(Object.fromEntries(counts.posted.map((o) => [o.value, o.count]))).toEqual({ "1": 0, "3": 0, "7": 0, "14": 0, "30": 1, "90": 1 });
   });
 });
 
@@ -224,10 +226,40 @@ describe("your companies and directory jobs", () => {
     expect(isNewJob(job({ firstSeen: hoursAgo(1), status: "closed" }), ctx)).toBe(false);
   });
 
-  it("hides postings older than about 6 months unless asked", () => {
-    const old = job({ id: "old", postedAt: daysAgo(200), firstSeen: daysAgo(200) });
+  it("hides postings older than 3 months unless asked, or your own limit", () => {
+    const old = job({ id: "old", postedAt: daysAgo(100), firstSeen: daysAgo(100) });
     expect(applyFilters([old], f(), ctx)).toEqual([]);
     expect(applyFilters([old], f({ showOld: true }), ctx)).toHaveLength(1);
+    expect(applyFilters([old], f(), { ...ctx, maxAgeDays: 180 })).toHaveLength(1);
+    expect(applyFilters([old], f(), { ...ctx, maxAgeDays: 0 })).toHaveLength(1);
+    expect(applyFilters([job({ postedAt: daysAgo(40) })], f(), { ...ctx, maxAgeDays: 30 })).toEqual([]);
+  });
+
+  it("never hides a job you saved or applied to for its age, and keeps closed ones in those views", () => {
+    const old = job({ id: "old", postedAt: daysAgo(200), firstSeen: daysAgo(200) });
+    const closed = job({ id: "gone", status: "closed" });
+    const mine = { ...ctx, user: { old: { status: "saved" as const, updatedAt: daysAgo(1) }, gone: { status: "applied" as const, updatedAt: daysAgo(1) } } };
+    expect(applyFilters([old], f(), mine)).toHaveLength(1);
+    expect(applyFilters([closed], f({ status: "applied" }), mine)).toHaveLength(1);
+    // Closed jobs stay out of the main list.
+    expect(applyFilters([closed], f(), mine)).toEqual([]);
+  });
+
+  it("spots talent pools and reposts, ranks them lower, and can hide them", () => {
+    expect(evergreenReason({ title: "Join our Talent Community!" })).toBe("pool");
+    expect(evergreenReason({ title: "Investment Advisor (For Future Openings)" })).toBe("pool");
+    expect(evergreenReason({ title: "Open Application" })).toBe("pool");
+    expect(evergreenReason({ title: "Product Manager", repostedAt: daysAgo(1) })).toBe("reposted");
+    expect(evergreenReason({ title: "Senior Product Manager, Payments" })).toBeUndefined();
+    const pool = job({ id: "pool", title: "Product Talent Pool", score: 80 });
+    const real = job({ id: "real", title: "Product Manager", score: 70 });
+    expect(sortJobs([pool, real], "best", undefined, NOW).map((j) => j.id)).toEqual(["real", "pool"]);
+    expect(applyFilters([pool, real], f({ hideEvergreen: true }), ctx).map((j) => j.id)).toEqual(["real"]);
+  });
+
+  it("marks postings over two months old", () => {
+    expect(isOlder(job({ postedAt: daysAgo(61) }), NOW)).toBe(true);
+    expect(isOlder(job({ postedAt: daysAgo(59) }), NOW)).toBe(false);
   });
 
   it("round-trips the new filters through the URL", () => {

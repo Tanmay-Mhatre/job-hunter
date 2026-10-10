@@ -17,6 +17,16 @@ export type RunResult = {
 /** Description fetches per company per run, for ATSs that need one request per job. */
 const MAX_DESCRIBE_PER_COMPANY = 40;
 
+/**
+ * A posting's date only ever moves earlier. Boards that give relative dates ("Posted 30+ Days Ago")
+ * would otherwise be worked out afresh every scan and never age; boards that send an "updated" date
+ * would look new after every edit. Nor can a job be posted after we first saw it.
+ */
+export function earliestPosted(posted: string | undefined, prev: Pick<Job, "postedAt" | "firstSeen"> | undefined): string | undefined {
+  const dates = [posted, prev?.postedAt, prev && posted ? prev.firstSeen : undefined].filter((d): d is string => !!d && !Number.isNaN(Date.parse(d)));
+  return dates.length ? dates.reduce((a, b) => (Date.parse(b) < Date.parse(a) ? b : a)) : undefined;
+}
+
 export type RunOptions = {
   http?: HttpClient;
   now?: Date;
@@ -114,7 +124,7 @@ export async function runRadar(config: Config, opts: RunOptions = {}): Promise<R
           ({ score, why } = scoreJob(base, config.profile, fit));
         }
         // Your companies keep every job (the Radar can show the rest); extra checks only matches.
-        if (!extra || !why.gate) kept.push({ ...base, firstSeen, lastSeen: nowIso, status: "open", score, why });
+        if (!extra || !why.gate) kept.push({ ...base, postedAt: earliestPosted(base.postedAt, prev), firstSeen, lastSeen: nowIso, status: "open", score, why });
         if (!why.gate) h.matches++;
       }
       h.jobsFound = recent?.length ?? raws.length;

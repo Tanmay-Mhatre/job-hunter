@@ -191,3 +191,30 @@ companies:
     expect(readJobs(dir).map((j) => j.id)).toEqual(["greenhouse:acme:9"]);
   });
 });
+
+describe("mergeHistory: reposts", () => {
+  it("a job taken down and posted again under a new id keeps its dates and isn't new", () => {
+    const old = job("1", { title: "Product Manager", postedAt: "2026-07-01T00:00:00.000Z" });
+    const again = job("2", { title: "Product Manager", postedAt: T1, firstSeen: T1, lastSeen: T1 });
+    const m = mergeHistory([old], run(T1, [again]), companies);
+    expect(m.newIds.size).toBe(0);
+    expect(m.jobs).toHaveLength(1);
+    expect(m.jobs[0]).toMatchObject({ id: again.id, firstSeen: T0, postedAt: "2026-07-01T00:00:00.000Z", repostedAt: T1 });
+  });
+
+  it("a new opening in another place, or one still listed, is a new job", () => {
+    const old = job("1", { title: "Product Manager" });
+    const elsewhere = job("2", { title: "Product Manager", location: "London", firstSeen: T1, lastSeen: T1 });
+    expect(mergeHistory([old], run(T1, [elsewhere]), companies).newIds.has(elsewhere.id)).toBe(true);
+    const twin = job("3", { title: "Product Manager", firstSeen: T1, lastSeen: T1 });
+    const m = mergeHistory([old], run(T1, [{ ...old, lastSeen: T1 }, twin]), companies);
+    expect(m.newIds.has(twin.id)).toBe(true);
+    expect(m.jobs.find((j) => j.id === twin.id)?.repostedAt).toBeUndefined();
+  });
+
+  it("a job gone for over two months comes back as new", () => {
+    const old = job("1", { title: "Product Manager", lastSeen: "2026-07-01T00:00:00.000Z", status: "closed" });
+    const again = job("2", { title: "Product Manager", firstSeen: T1, lastSeen: T1 });
+    expect(mergeHistory([old], run(T1, [again]), companies).newIds.has(again.id)).toBe(true);
+  });
+});

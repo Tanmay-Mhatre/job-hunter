@@ -28,11 +28,18 @@ describe("digest", () => {
     expect(digest([], { minScore: 70 })).toBeUndefined();
   });
 
-  it("lists the best first with stars for strong ones, links, escaped text and the first place only", () => {
+  it("lists the best first, labels strong fits, links, escaped text and the first place only", () => {
     const text = digest([job("PM", 60), job("Head of Product", 85)], { minScore: 70, scopeLabel: "My companies + my industries" })!;
     expect(text.startsWith("<b>2 new jobs for you</b> · 1 strong\n<i>My companies + my industries</i>")).toBe(true);
     expect(text.indexOf("Head of Product")).toBeLessThan(text.indexOf(">PM<"));
-    expect(text).toContain('⭐ <a href="https://example.com/Head%20of%20Product">Head of Product</a>\nCo &lt;&amp;&gt; · Dubai, UAE · score 85/100');
+    expect(text).toContain('\n\n<a href="https://example.com/Head%20of%20Product">Head of Product</a>\nCo &lt;&amp;&gt; · Dubai, UAE · score 85/100 · strong fit');
+    expect(text).not.toContain("⭐");
+  });
+
+  it("stars jobs at your companies, as the Radar does", () => {
+    const text = digest([job("Yours", 50, { id: "greenhouse:acme:1" }), job("Other", 50, { id: "lever:else:1" })], { minScore: 70, yours: new Set(["greenhouse:acme"]) })!;
+    expect(text).toContain('⭐ <a href="https://example.com/Yours">Yours</a>');
+    expect(text).toContain('\n\n<a href="https://example.com/Other">Other</a>');
   });
 
   it("uses the Radar's best-match order: a slightly lower job posted today beats an older one", () => {
@@ -68,7 +75,7 @@ describe("finishedMessage", () => {
     ];
     const text = finishedMessage({ scopeLabel: "My companies + my industries", matches: 384, newJobs, minScore: 70, yours: new Set(["greenhouse:acme"]) });
     expect(text).toContain(
-      "<b>5 new jobs</b>\n🏢 2 from your companies (1 strong fit)\n⭐ 1 strong fit (score 70+) from other companies\n• 2 other matches\n\n⭐ <a href=\"https://example.com/Yours%20strong\">Yours strong</a>\nCo &lt;&amp;&gt; · Dubai, UAE · score 90/100",
+      "<b>5 new jobs</b>\n⭐ 2 from your companies (1 strong fit)\n🎯 1 strong fit (score 70+) from other companies\n• 2 other matches\n\n⭐ <a href=\"https://example.com/Yours%20strong\">Yours strong</a>\nCo &lt;&amp;&gt; · Dubai, UAE · score 90/100 · strong fit",
     );
     expect(text.match(/<a /g)).toHaveLength(5);
     expect(text.endsWith("\n\n💻 Open RawJobs on your laptop to see every job: http://127.0.0.1:5173")).toBe(true);

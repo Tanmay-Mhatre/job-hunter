@@ -17,7 +17,7 @@ export type StatusView = "" | "new" | "saved" | "applied";
 export type Filters = {
   q: string;
   /** Posted (or first seen) within this many days; 0 = any time. */
-  posted: 0 | 1 | 3 | 7 | 30;
+  posted: 0 | 1 | 3 | 7 | 14 | 30 | 90;
   /** Country display names; "Remote" means remote jobs. */
   countries: string[];
   /** Cities, as "City, Country". */
@@ -30,6 +30,8 @@ export type Filters = {
   ats: string[];
   match: "all" | "good" | "strong";
   salaryOnly: boolean;
+  /** Leave out talent pools, open applications and reposts (evergreenReason). */
+  hideEvergreen: boolean;
   status: StatusView;
   showFailed: boolean;
   showClosed: boolean;
@@ -38,14 +40,42 @@ export type Filters = {
   mine: boolean;
   /** Include directory jobs posted more than INDEX_MAX_AGE_DAYS ago (often filled already). */
   olderIndex: boolean;
-  /** Include postings older than OLD_POSTING_DAYS (hidden by default: usually filled long ago). */
+  /** Include postings older than your age limit (ctx.maxAgeDays; hidden by default: usually filled). */
   showOld: boolean;
 };
 
 /** Directory jobs older than this are hidden unless asked for: the index is a week old at most, and old postings are often filled. */
 export const INDEX_MAX_AGE_DAYS = 30;
-/** Postings older than this (about 6 months) are hidden unless asked for. */
-export const OLD_POSTING_DAYS = 180;
+/**
+ * Postings older than this are hidden unless asked for (Settings › Job list can change it). Most roles are
+ * filled in 45-60 days; senior ones can take three months, so three months keeps those and drops the stale tail.
+ */
+export const DEFAULT_MAX_AGE_DAYS = 90;
+/** Postings older than this are still shown, but marked as maybe filled. */
+export const OLDER_DAYS = 60;
+/** Titles of postings that collect applications rather than fill a role. */
+const EVERGREEN_TITLE =
+  /talent (pool|community|network|pipeline)|general application|open application|spontaneous application|expression of interest|speculative application|(for )?future (opportunit|openings?|roles?)|always hiring|interest form/i;
+
+/**
+ * Why a job may not be a live opening, if it may not: a talent pool or open application ("Join our
+ * Talent Community"), or the same role taken down and posted again. Shown on the job, ranked lower in
+ * Best match, and can be hidden (More › No talent pools or reposts).
+ */
+export function evergreenReason(j: Pick<Job, "title" | "repostedAt">): "pool" | "reposted" | undefined {
+  if (EVERGREEN_TITLE.test(j.title)) return "pool";
+  if (j.repostedAt) return "reposted";
+  return undefined;
+}
+/** Best match: what each kind costs. A talent pool is rarely what you're looking for; a repost may well be. */
+const EVERGREEN_RANK = { pool: 15, reposted: 5 } as const;
+const evergreenCost = (j: Job) => {
+  const r = evergreenReason(j);
+  return r ? EVERGREEN_RANK[r] : 0;
+};
+
+/** "older" past OLDER_DAYS: worth a word before you spend time on it. */
+export const isOlder = (j: Job, now = Date.now()) => ageDays(postedOrSeen(j), now) > OLDER_DAYS;
 
 export const DEFAULT_FILTERS: Filters = {
   q: "",
@@ -60,6 +90,7 @@ export const DEFAULT_FILTERS: Filters = {
   ats: [],
   match: "all",
   salaryOnly: false,
+  hideEvergreen: false,
   status: "",
   showFailed: false,
   showClosed: false,
@@ -87,6 +118,8 @@ export type Ctx = {
   mine?: { countries: ReadonlySet<string>; locations: ReadonlySet<string>; industries: ReadonlySet<string> };
   /** Only one scan so far: everything is "new", so nothing is tagged New. */
   firstScan?: boolean;
+  /** Hide postings older than this many days (0: never). Default DEFAULT_MAX_AGE_DAYS. */
+  maxAgeDays?: number;
   /** When the previous scan finished (ms): jobs first found after it are "new to you". */
   newSince?: number;
   now?: number;
@@ -118,17 +151,21 @@ const countriesOf = (j: Job) => (isRemoteLike(j) ? [...j.countries, REMOTE] : j.
 function passes(j: Job, f: Filters, ctx: Ctx, terms: string[], skip?: FacetKey): boolean {
   const entry = ctx.user[j.id];
   if (!f.showFailed && j.why.gate) return false;
-  if (!f.showClosed && j.status === "closed") return false;
   if (!f.showHidden && (entry?.status === "dismissed" || ctx.hiddenCompanies.has(j.company))) return false;
   // A rule never hides a job you saved or applied to: you picked that one yourself.
   if (!f.showHidden && !entry?.status && hiddenByRules(j, ctx.hideRules)) return false;
   if (f.mine && !ctx.isYours?.(j)) return false;
-  if (!f.olderIndex && j.estimated && ageDays(postedOrSeen(j), ctx.now) > INDEX_MAX_AGE_DAYS) return false;
-  if (!f.showOld && ageDays(postedOrSeen(j), ctx.now) > OLD_POSTING_DAYS) return false;
+  // Age never hides a job you saved or applied to, and the Saved and Applied views keep closed ones too:
+  // you need to find those again however old they get.
+  const yours = entry?.status === "saved" || (!!entry?.status && APPLIED_STAGES.includes(entry.status));
+  if (!f.showClosed && j.status === "closed" && !(yours && (f.status === "saved" || f.status === "applied"))) return false;
+  if (!yours && !f.olderIndex && j.estimated && ageDays(postedOrSeen(j), ctx.now) > INDEX_MAX_AGE_DAYS) return false;
+  if (!yours && !f.showOld && tooOld(j, ctx)) return false;
   if (f.status === "new" && !isNewJob(j, ctx)) return false;
   if (f.status === "saved" && entry?.status !== "saved") return false;
   if (f.status === "applied" && !(entry?.status && APPLIED_STAGES.includes(entry.status))) return false;
   if (f.salaryOnly && !j.salary) return false;
+  if (f.hideEvergreen && evergreenReason(j)) return false;
   if (skip !== "match" && f.match !== "all" && j.score < (f.match === "strong" ? ctx.min : Math.max(0, ctx.min - 20))) return false;
   if (skip !== "posted" && f.posted && ageDays(postedOrSeen(j), ctx.now) > f.posted) return false;
   if (skip !== "countries" && f.countries.length && !countriesOf(j).some((c) => f.countries.includes(c))) return false;
@@ -145,6 +182,10 @@ function passes(j: Job, f: Filters, ctx: Ctx, terms: string[], skip?: FacetKey):
   }
   return true;
 }
+
+const maxAge = (ctx: Pick<Ctx, "maxAgeDays">) => ctx.maxAgeDays ?? DEFAULT_MAX_AGE_DAYS;
+/** Past your age limit (Settings › Job list). */
+const tooOld = (j: Job, ctx: Pick<Ctx, "now" | "maxAgeDays">) => maxAge(ctx) > 0 && ageDays(postedOrSeen(j), ctx.now) > maxAge(ctx);
 
 const termsOf = (q: string) => q.toLowerCase().split(/\s+/).filter(Boolean);
 
@@ -165,7 +206,9 @@ const POSTED_OPTIONS: { value: Filters["posted"]; label: string }[] = [
   { value: 1, label: "Past 24 hours" },
   { value: 3, label: "Past 3 days" },
   { value: 7, label: "Past week" },
+  { value: 14, label: "Past 2 weeks" },
   { value: 30, label: "Past month" },
+  { value: 90, label: "Past 3 months" },
 ];
 const WORKPLACE_LABEL: Record<Workplace, string> = { remote: "Remote", hybrid: "Hybrid", onsite: "On-site", unknown: "Not stated" };
 const SENIORITY_LABEL = Object.fromEntries(SENIORITY_LEVELS.map((s) => [s.id, s.label])) as Record<Seniority, string>;
@@ -222,7 +265,10 @@ const salaryOf = (j: Job) => j.salary?.max ?? j.salary?.min ?? -1;
  * `isYours` gives them a nudge (rankScore), and freshness counts, worked out at `now`.
  */
 export function sortJobs(jobs: Job[], sort: Sort, isYours?: (j: Job) => boolean, now = Date.now()): Job[] {
-  const rank = sort === "best" ? new Map(jobs.map((j) => [j, rankScore(j.score, postedOrSeen(j), now, !!isYours?.(j))])) : undefined;
+  const rank =
+    sort === "best"
+      ? new Map(jobs.map((j) => [j, rankScore(j.score, postedOrSeen(j), now, !!isYours?.(j)) - evergreenCost(j)]))
+      : undefined;
   const by: Record<Sort, (a: Job, b: Job) => number> = {
     // Equal ranks go to the one mentioning more of your topics, then the newer.
     best: (a, b) => rank!.get(b)! - rank!.get(a)! || b.why.keywords.length - a.why.keywords.length || postedOrSeen(b).localeCompare(postedOrSeen(a)),
@@ -306,6 +352,7 @@ function chipsOf(f: Filters, ctx: Pick<Ctx, "min">): { key: string; label: strin
   list("ats", (v) => `Hiring system: ${atsLabel(v)}`);
   if (f.match !== "all") chips.push({ key: "match", label: f.match === "strong" ? `Strong matches (${ctx.min}+)` : `Good matches (${Math.max(0, ctx.min - 20)}+)`, remove: { match: "all" } });
   if (f.salaryOnly) chips.push({ key: "salary", label: "Salary listed", remove: { salaryOnly: false } });
+  if (f.hideEvergreen) chips.push({ key: "evergreen", label: "No talent pools or reposts", remove: { hideEvergreen: false } });
   if (f.showFailed) chips.push({ key: "failed", label: "Including jobs that failed your filters", remove: { showFailed: false } });
   if (f.showClosed) chips.push({ key: "closed", label: "Including closed", remove: { showClosed: false } });
   if (f.showHidden) chips.push({ key: "hidden", label: "Including hidden", remove: { showHidden: false } });
