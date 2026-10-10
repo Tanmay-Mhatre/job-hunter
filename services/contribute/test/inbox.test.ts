@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import worker, { type Env } from "../src/index";
+import { ATS_TYPES } from "../../../packages/core/src/schema";
+import { cleanBoard } from "../../../scripts/catalog/contributions";
+import worker, { SCANNABLE, type Env } from "../src/index";
 
 function fakeEnv(limitOk = true, extra: Partial<Env> = {}): Env & { store: Map<string, string> } {
   const store = new Map<string, string>();
@@ -42,6 +44,48 @@ describe("contribution inbox", () => {
       { ats: "lever", slug: "other" },
     ]);
     expect(Object.keys(stored!).sort()).toEqual(["boards", "received_at"]);
+  });
+
+  it("takes every hiring system the directory takes, not only the first five", async () => {
+    // Was greenhouse/lever/ashby/smartrecruiters/workday only: a Workable board added by link got a 400
+    // and the app dropped it, while it said "added to the directory".
+    expect([...SCANNABLE].sort()).toEqual([...ATS_TYPES].sort());
+    const env = fakeEnv();
+    const res = await post(env, "/v1/contributions", {
+      boards: [
+        { ats: "workable", slug: "huggingface", name: "Hugging Face" },
+        { ats: "oracle", slug: "x", shard: "eeho" },
+        { ats: "taleo", slug: "acme", site: "careersection" },
+        { ats: "hackernews", slug: "jobs" },
+      ],
+    });
+    expect(await res.json()).toEqual({ received: 3, duplicates: 0 });
+    expect(contributions(env)[0]!.boards).toEqual([
+      { ats: "workable", slug: "huggingface", name: "Hugging Face" },
+      { ats: "oracle", slug: "x", shard: "eeho" },
+      { ats: "taleo", slug: "acme", site: "careersection" },
+    ]);
+  });
+
+  it("accepts and refuses the same boards as the directory workflow", async () => {
+    const boards = [
+      { ats: "workable", slug: "acme" },
+      { ats: "recruitee", slug: "acme", site: "jobs" },
+      { ats: "workday", slug: "bank" },
+      { ats: "workday", slug: "bank", shard: "wd3", site: "External" },
+      { ats: "oracle", slug: "x" },
+      { ats: "oracle", slug: "x", shard: "BAD SHARD" },
+      { ats: "successfactors", slug: "x", shard: "career5.successfactors.eu" },
+      { ats: "lever", slug: "acme", shard: "wd1" },
+      { ats: "taleo", slug: "acme" },
+      { ats: "comeet", slug: "acme", site: "bad site" },
+      { ats: "remotive", slug: "all" },
+    ];
+    for (const b of boards) {
+      const env = fakeEnv();
+      const res = await post(env, "/v1/contributions", { boards: [b] });
+      expect([b, res.status === 202], JSON.stringify(b)).toEqual([b, typeof cleanBoard(b) !== "string"]);
+    }
   });
 
   it("keeps the client field only when it is the app name and version", async () => {
