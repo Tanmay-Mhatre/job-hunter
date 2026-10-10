@@ -95,30 +95,68 @@ const MAX_LINES = 10;
  */
 export function digest(jobs: readonly Job[], opts: { minScore: number; scopeLabel?: string; dashboardHint?: boolean; now?: number }): string | undefined {
   if (!jobs.length) return undefined;
-  // The Radar's best-match order (fit plus freshness), so an alert lists jobs the way the Radar shows them.
-  const now = opts.now ?? Date.now();
-  const rank = new Map(jobs.map((j) => [j, rankScore(j.score, j.postedAt ?? j.firstSeen, now)]));
-  const sorted = [...jobs].sort((a, b) => rank.get(b)! - rank.get(a)! || (b.postedAt ?? b.firstSeen).localeCompare(a.postedAt ?? a.firstSeen));
-  const strong = sorted.filter((j) => j.score >= opts.minScore).length;
-  const head = `<b>${sorted.length} new job${sorted.length === 1 ? "" : "s"} for you</b>${strong ? ` · ${strong} strong` : ""}${opts.scopeLabel ? `\n<i>${esc(opts.scopeLabel)}</i>` : ""}`;
-  const lines = sorted.slice(0, MAX_LINES).map((j) => {
-    const star = j.score >= opts.minScore ? "⭐ " : "";
-    const where = j.location ? ` · ${esc(j.location.split(/[;|]/)[0]!.trim())}` : "";
-    return `${star}<b>${j.score}</b> <a href="${esc(j.url)}">${esc(j.title)}</a>\n${esc(j.company)}${where}`;
-  });
-  const more = sorted.length > MAX_LINES ? `\n…and ${sorted.length - MAX_LINES} more on your Radar.` : opts.dashboardHint ? "\nSee them all on your Radar." : "";
-  return `${head}\n\n${lines.join("\n\n")}${more}`;
+  const strong = jobs.filter((j) => j.score >= opts.minScore).length;
+  const head = `<b>${jobs.length} new job${jobs.length === 1 ? "" : "s"} for you</b>${strong ? ` · ${strong} strong` : ""}${opts.scopeLabel ? `\n<i>${esc(opts.scopeLabel)}</i>` : ""}`;
+  const more = jobs.length > MAX_LINES ? `\n…and ${jobs.length - MAX_LINES} more on your Radar.` : opts.dashboardHint ? "\nSee them all on your Radar." : "";
+  return `${head}\n\n${jobLines(jobs, opts.minScore, opts.now)}${more}`;
 }
 
+/** The first 10 jobs, best first, one link each. */
+function jobLines(jobs: readonly Job[], minScore: number, now = Date.now()): string {
+  // The Radar's best-match order (fit plus freshness), so an alert lists jobs the way the Radar shows them.
+  const rank = new Map(jobs.map((j) => [j, rankScore(j.score, j.postedAt ?? j.firstSeen, now)]));
+  const sorted = [...jobs].sort((a, b) => rank.get(b)! - rank.get(a)! || (b.postedAt ?? b.firstSeen).localeCompare(a.postedAt ?? a.firstSeen));
+  return sorted
+    .slice(0, MAX_LINES)
+    .map((j) => {
+      const star = j.score >= minScore ? "⭐ " : "";
+      const where = j.location ? ` · ${esc(j.location.split(/[;|]/)[0]!.trim())}` : "";
+      return `${star}<b>${j.score}</b> <a href="${esc(j.url)}">${esc(j.title)}</a>\n${esc(j.company)}${where}`;
+    })
+    .join("\n\n");
+}
+
+/** Where the dashboard runs (apps/web/vite.config.ts): on the user's own computer, not reachable from the phone. */
+export const DASHBOARD_URL = "http://127.0.0.1:5173";
+
+/** "greenhouse:acme" from a job id ("{ats}:{slug}:{atsJobId}"): matches a company in the config. */
+const companyKey = (j: Job) => j.id.split(":", 2).join(":").toLowerCase();
+
 /**
- * The message for "tell me when this scan is done" (asked for during a long scan): always sent,
- * with the totals, then the new jobs (as in `digest`) or a line saying there were none.
+ * The message for "tell me when this scan is done": always sent. Says the scan is complete, then
+ * splits the new jobs three ways that add up (your companies, strong fits elsewhere, the rest),
+ * lists them, and points to the dashboard on the user's computer.
  */
-export function finishedMessage(o: { scopeLabel: string; matches: number; newJobs: readonly Job[]; minScore: number; stopped?: boolean; done?: number; total?: number }): string {
+export function finishedMessage(o: {
+  scopeLabel: string;
+  matches: number;
+  newJobs: readonly Job[];
+  minScore: number;
+  /** Companies in the user's config, as lowercase "ats:slug". */
+  yours?: ReadonlySet<string>;
+  stopped?: boolean;
+  done?: number;
+  total?: number;
+  now?: number;
+}): string {
   const head = o.stopped
-    ? `⏸ <b>${esc(o.scopeLabel)} scan stopped</b>${o.done && o.total ? ` at ${o.done.toLocaleString()} of ${o.total.toLocaleString()} companies` : ""}. Start it again to carry on where it stopped.`
-    : `✅ <b>${esc(o.scopeLabel)} scan finished</b>${o.total ? `: ${o.total.toLocaleString()} companies checked` : ""}.`;
-  const totals = `${o.matches} job${o.matches === 1 ? "" : "s"} match you, ${o.newJobs.length} new.`;
-  const list = digest(o.newJobs, { minScore: o.minScore });
-  return `${head}\n${totals}${list ? `\n\n${list}` : "\nNo new jobs this time."}`;
+    ? `⏸ <b>Scan stopped</b> · ${esc(o.scopeLabel)}\n${o.done && o.total ? `Got to ${o.done.toLocaleString()} of ${o.total.toLocaleString()} companies. ` : ""}Start it again to carry on where it stopped.`
+    : `✅ <b>Scan complete</b> · ${esc(o.scopeLabel)}${o.total ? `\n${o.total.toLocaleString()} companies checked.` : ""}`;
+  const plural = (n: number, one: string, many: string) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
+  const totals = `${plural(o.matches, "job matches", "jobs match")} you.`;
+  const footer = `💻 Open RawJobs on your laptop to see every job: ${DASHBOARD_URL}`;
+  if (!o.newJobs.length) return `${head}\n${totals}\n\nNo new jobs this time.\n\n${footer}`;
+
+  const isYours = (j: Job) => !!o.yours?.has(companyKey(j));
+  const yours = o.newJobs.filter(isYours);
+  const yoursStrong = yours.filter((j) => j.score >= o.minScore).length;
+  const strong = o.newJobs.filter((j) => !isYours(j) && j.score >= o.minScore).length;
+  const rest = o.newJobs.length - yours.length - strong;
+  const breakdown = [
+    `🏢 ${yours.length.toLocaleString()} from your companies${yoursStrong ? ` (${yoursStrong} strong fit)` : ""}`,
+    `⭐ ${plural(strong, "strong fit", "strong fits")} (score ${o.minScore}+) from other companies`,
+    `• ${plural(rest, "other match", "other matches")}`,
+  ].join("\n");
+  const more = o.newJobs.length > MAX_LINES ? `\n…and ${o.newJobs.length - MAX_LINES} more.` : "";
+  return `${head}\n${totals}\n\n<b>${plural(o.newJobs.length, "new job", "new jobs")}</b>\n${breakdown}\n\n${jobLines(o.newJobs, o.minScore, o.now)}${more}\n\n${footer}`;
 }

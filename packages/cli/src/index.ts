@@ -552,7 +552,7 @@ async function notifyFinished(config: Config, matches: number, newJobs: Job[], s
   const secrets = telegramSecrets();
   if (!secrets.token || !secrets.chatId) return "off";
   try {
-    await sendTelegram(finishedMessage({ scopeLabel: scope === "all" ? "All companies" : "My companies + my industries", matches, newJobs, minScore: config.profile.min_score, ...o }), secrets);
+    await sendTelegram(finishedMessage({ scopeLabel: scope === "all" ? "All companies" : "My companies + my industries", matches, newJobs, minScore: config.profile.min_score, yours: new Set(config.companies.map((c) => `${c.ats}:${c.slug}`.toLowerCase())), ...o }), secrets);
     return "sent";
   } catch (err) {
     return `failed: ${(err as Error).message}`;
