@@ -115,7 +115,8 @@ Light-mode shadows stay under 8% opacity. A list is never bare text on the canva
 - **Geist** for the interface, weights 400, 500 and 600 only. **Geist Mono** only for what came from a machine: hiring system names, slugs, URLs, keys, CLI.
 - Dashboard sizes follow a Major Second scale from a 16px body: `title` 24, `heading` 20, `subheading` 18, `body` and `body-strong` 16, `small` and `label` 14, `meta` 12. Nothing smaller than 12px, and 12px is never primary content: help and error text are 14px.
 - Type styles compile to `--text-<style>` font shorthands, so no style may share a name with a `text-*` color token. The token build fails if one does.
-- Marketing pages add `display` (48px) and `lede` (20px). They never appear in the dashboard.
+- Sizes are written in px in `tokens.json` and compiled to rem, so text grows with the reader's browser font size.
+- Marketing pages add `display-xl` (the hero headline only, 40 to 88px), `display` (36 to 48px: the closing headline and big numbers), `section` (28 to 40px section headings) and `lede` (20px). They scale with the window and never appear in the dashboard.
 - Scores, counts and dates use tabular figures (`font-variant-numeric: tabular-nums`) so columns line up.
 - Running text stops at `prose-max` (70ch). Headings get `text-wrap: balance`.
 
@@ -135,6 +136,7 @@ Light-mode shadows stay under 8% opacity. A list is never bare text on the canva
 - Exits: set `data-state="closing"` on the drawer, scrim, menu or toast and remove it on `animationend`.
 - The 1.4s skeleton shimmer is the one exception to the four durations, and the only loop.
 - Under `prefers-reduced-motion`, slides become fades and the loading shimmer stops.
+- **Marketing pages** follow the same rules, with one documented exception: `duration-story` (380ms) for a step of a story the eye has to follow, used only by the hero's load and the "where your resume goes" route animation. Everything else on the site (row arrivals, reveals, bars, feedback) uses the four durations above, and nothing loops: example feeds tick a fixed number of times and stop.
 
 ## Interaction
 
@@ -151,7 +153,7 @@ Lucide at 16px with a 1.5 stroke, in `text-primary` or `text-secondary`. Icons s
 
 ## Logo
 
-**rawjobs** in lowercase Geist Mono, outlined, followed by a solid signal block cursor: a live feed, still streaming. Use `rawjobs-wordmark-ink.svg` on light grounds and `rawjobs-wordmark-paper.svg` on dark. The cursor on an ink square (`rawjobs-mark.svg`) is the app icon and favicon. Keep clear space equal to the cursor width on every side. Never recolor the cursor or animate it inside the product.
+**rawjobs** in lowercase Geist Mono, outlined, followed by a solid signal block cursor: a live feed, still streaming. Use `rawjobs-wordmark-ink.svg` on light grounds and `rawjobs-wordmark-paper.svg` on dark. The cursor on an ink square (`rawjobs-mark.svg`) is the app icon and favicon. Keep clear space equal to the cursor width on every side. Never recolor the cursor or animate it inside the product. The cursor is always `brand-signal`, in every theme, including increased contrast: it's a logo, so contrast rules don't apply. Interactive orange (the primary button, focus, the star, the new dot) uses the accent tokens, which follow the theme.
 
 ## Consuming
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lintText } from "./lint";
+import { lintText, RULES, SITE_RULES } from "./lint";
 
 const rules = (line: string) => lintText(line, "x.tsx").map((f) => f.rule);
 
@@ -39,5 +39,16 @@ describe("design lint", () => {
   it("leaves URLs, hash routes and opted-out lines alone", () => {
     expect(rules(`href="#add" href="#/radar" "https://x.test/#abc"`)).toEqual([]);
     expect(rules(`fill="#151412" // design-lint-ignore: logo asset`)).toEqual([]);
+  });
+
+  it("checks the marketing site's plain CSS for accent, durations and px type", () => {
+    const site = (line: string) => lintText(line, "index.html", [...RULES, ...SITE_RULES]).map((f) => f.rule);
+    expect(site(`.token { background: var(--accent-solid); color: var(--on-accent); }`)).toEqual(["site-accent"]);
+    expect(site(`.st { color: var(--accent-mark); } .cursor { background: var(--brand-signal); }`)).toEqual([]);
+    expect(site(`.x { animation: rise 520ms var(--ease-enter); }`)).toEqual(["site-duration"]);
+    expect(site(`.x { animation: rise var(--duration-slow) var(--ease-enter); animation-delay: calc(var(--i) * 40ms); }`)).toEqual([]);
+    expect(site(`.x { font: 600 44px/1.1 var(--font-sans); }`)).toEqual(["site-font-px"]);
+    expect(site(`.x { font: var(--text-section); letter-spacing: -0.03em; }`)).toEqual([]);
+    expect(site(`.x { text-transform: uppercase; }`)).toEqual(["uppercase"]);
   });
 });

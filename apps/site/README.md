@@ -4,11 +4,15 @@ The marketing page at <https://www.rawjobs.workers.dev>. One static HTML page bu
 
 - tokens, fonts and logos from `apps/web/src/design`
 - components (`rj-*` classes) from `design/components/bundle.css`
-- page content in `src/index.html`; static files (share image, 404) in `public/`
+- page content in `src/index.html`, the 404 page in `src/404.html` (both get the tokens and the theme script at build time), static files (the share image) in `public/`
+- the share image, `public/og.png`, is rendered from `src/og.html`: run `pnpm site:og` after changing it
+
+`pnpm design:lint` checks `src/` too, with CSS-aware rules: no accent tokens outside their four jobs, durations only from the motion tokens, no px type sizes.
 
 ```bash
 pnpm site:build     # writes apps/site/dist
 pnpm site:dev       # build, then serve it locally with wrangler
+pnpm site:og        # re-render public/og.png from src/og.html (uses the system Edge)
 ```
 
 `build.mjs` needs only Node, no install. It reads these optional environment variables:

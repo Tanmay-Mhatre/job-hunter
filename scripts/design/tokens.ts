@@ -70,6 +70,11 @@ export function validate(t: Tokens): string[] {
 }
 
 const css = (v: string) => v.replace(ALIAS, "var(--$1)");
+/**
+ * Type sizes are written in px in tokens.json (easy to read and compare) and compiled to rem, so text
+ * follows the reader's browser font size. 16px = 1rem; unitless line heights and vw stay as they are.
+ */
+export const rem = (v: string) => v.replace(/(\d*\.?\d+)px/g, (_, n: string) => `${Number(n) / 16}rem`);
 const decl = (name: string, v: string) => `  --${name}: ${css(v)};`;
 
 export function tokensCss(t: Tokens): string {
@@ -91,7 +96,7 @@ export function tokensCss(t: Tokens): string {
   for (const g of [t.spacing, t.radius, t.duration, t.easing, t.size, t.zIndex]) for (const tok of g.tokens) out.push(decl(tok.name, tok.value as string));
   for (const [f, stack] of Object.entries(t.type.families)) out.push(decl(`font-${f}`, stack));
   for (const g of t.type.groups) {
-    for (const s of g.styles) out.push(decl(`text-${s.name}`, `${s.fontWeight} ${s.fontSize}/${s.lineHeight} var(--font-${g.family})`));
+    for (const s of g.styles) out.push(decl(`text-${s.name}`, `${s.fontWeight} ${rem(s.fontSize)}/${rem(s.lineHeight)} var(--font-${g.family})`));
   }
   out.push("}");
   return `${out.join("\n")}\n`;
@@ -110,8 +115,8 @@ export function utilitiesCss(t: Tokens): string {
       out.push(
         `@utility type-${s.name} {`,
         `  font-family: var(--font-${g.family});`,
-        `  font-size: ${s.fontSize};`,
-        `  line-height: ${s.lineHeight};`,
+        `  font-size: ${rem(s.fontSize)};`,
+        `  line-height: ${rem(s.lineHeight)};`,
         `  font-weight: ${s.fontWeight};`,
         `  letter-spacing: ${s.letterSpacing ?? "normal"};`,
         "}",

@@ -2,7 +2,7 @@ The score breakdown shows why a job scored what it did. It is the visual proof t
 
 ## Use
 - `rj-breakdown` containing `rj-breakdown__bar` (four `rj-breakdown__seg`, each with an `<i>` scaled to the share earned via `transform: scaleX(earned / max)`), `rj-breakdown__legend` and an optional `rj-breakdown__why` line with matched keywords in `<mark>`.
-- Segments are sized to their maximum points: title 30, place 20, keywords 40, fresh 10. They always sum to 100.
+- Segments are sized to their maximum points: title 30, place 20, keywords 40, industry 10. They always sum to 100.
 - The bar gets `role="img"` and an `aria-label` that reads every value; the legend is `aria-hidden`.
 
 ## Rules
