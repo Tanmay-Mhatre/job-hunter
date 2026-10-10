@@ -10,6 +10,7 @@ import { atsLabel, INDEX_MAX_AGE_DAYS } from "../lib/filters";
 import { load, save } from "../lib/storage";
 import { PIPELINE, STATUS_LABEL, type Entry, type Status } from "../lib/userState";
 import { Dialog } from "./Dialog";
+import { ReasonPicker, useNotForMe } from "./NotForMe";
 import { Button, buttonClass, Chip, ChipGroup, IconButton, ScoreBadge, scoreBandOf, ScoreBreakdown, scoreParts, SourceTag } from "./primitives";
 import { cx } from "./ui";
 
@@ -78,6 +79,7 @@ export function JobDetail(p: JobDetailProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const salary = formatSalary(job.salary);
   const status = entry?.status;
+  const notForMe = useNotForMe();
   const source = atsLabel(job.ats);
 
   useEffect(() => {
@@ -202,11 +204,21 @@ export function JobDetail(p: JobDetailProps) {
             {/* The one place to set any status; Save in the foot is a shortcut for "Saved". */}
             <ChipGroup label="Your status">
               {[...PIPELINE, "dismissed" as const].map((s) => (
-                <Chip key={s} pressed={status === s} onClick={() => p.onUpdate({ status: status === s ? undefined : s })}>
+                <Chip
+                  key={s}
+                  pressed={status === s}
+                  onClick={() => {
+                    const next = status === s ? undefined : s;
+                    p.onUpdate({ status: next });
+                    // Beside the list the job leaves at once, so the reasons go in a toast; in a drawer they're right below.
+                    if (next === "dismissed" && !p.onClose) notForMe?.askWhy(job, status);
+                  }}
+                >
                   {STATUS_LABEL[s]}
                 </Chip>
               ))}
             </ChipGroup>
+            {status === "dismissed" && <ReasonPicker key={`why:${job.id}`} job={job} label="Why not? Optional." live />}
             <NotesField key={job.id} id={`notes-${job.id}`} note={entry?.note ?? ""} onSave={(note) => p.onUpdate({ note: note || undefined })} />
           </section>
 

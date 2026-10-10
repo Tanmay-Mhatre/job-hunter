@@ -1,0 +1,25 @@
+# Invented candidate. No real person.
+id: b2b-ae
+summary: Account executive, mid-market SaaS new business, Dubai / GCC, 5 years
+about: |
+  B2B sales with 5 years: 2 as SDR then 3 as Account Executive selling HR and payroll SaaS to
+  mid-market companies across the UAE and Saudi Arabia. Closes new business, 110-130% of quota
+  the last two years, uses MEDDIC and Salesforce, cycles of 2-4 months, ACVs of USD 20-80k.
+  Level: mid-market AE, ready for Senior AE / Enterprise AE. Has not managed a team.
+  Location: Dubai, UAE resident (visa through the employer). Arabic and English.
+  Will travel across the GCC; won't relocate.
+  Salary floor: AED 25k/month base (OTE about AED 50k/month).
+  Dealbreakers: SDR/BDR roles, commission-only, retail or insurance sales, roles outside the GCC.
+profile:
+  name: SaaS account executive
+  titles:
+    include: [account executive, account manager, sales manager, business development manager]
+    exclude: [sdr, bdr, sales development, intern]
+  seniority_boost: [senior, enterprise]
+  locations:
+    include: [dubai, uae, united arab emirates]
+    remote_ok: [gcc, mena, middle east]
+    remote_exclude: []
+  industries: [saas, hrtech, fintech]
+  keywords: { saas: 5, new business: 4, mid-market: 4, quota: 3, meddic: 3, gcc: 3, salesforce: 2 }
+  min_score: 70

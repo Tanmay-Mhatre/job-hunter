@@ -1,0 +1,120 @@
+[
+  {
+    "id": "pm-01",
+    "title": "Senior Product Manager, Payments",
+    "company": "Ledgerline",
+    "industries": ["payments", "fintech"],
+    "location": "London, United Kingdom",
+    "workplace": "hybrid",
+    "salary": { "min": 100000, "max": 120000, "currency": "GBP", "period": "year" },
+    "postedAt": "2026-10-06",
+    "description": "Ledgerline moves money for 40,000 merchants across Europe. We're building the financial operating system for ambitious businesses, powered by AI, real-time data and a world-class team.\n\nAbout the role\nAs Senior Product Manager for Payments you will own our card acceptance and payouts roadmap: authorisation rates, 3DS flows, refunds and disputes, and how merchants get paid. You'll work with a team of eight engineers, a designer and a data analyst, and partner closely with Risk, Compliance and our scheme relationships.\n\nWhat you'll do\n- Set the strategy for card payments and payouts and turn it into a roadmap the team believes in\n- Dig into authorisation and decline data to find the next point of conversion\n- Write clear specs for our public payments API and work with merchants on early releases\n- Work with Compliance on KYC and onboarding changes that affect payment limits\n\nWhat we're looking for\n- 6+ years in product management, at least 3 in payments or cards\n- Experience with B2B products and APIs\n- Comfortable with SQL or happy to learn\n- Excellent written communication\n\nNice to have\n- Experience with card schemes or acquiring\n- Open banking or account-to-account payments\n\nWe offer hybrid working (two days a week in our Shoreditch office), 30 days holiday and private health cover.\n\nLedgerline is an equal opportunity employer. We welcome applicants of all backgrounds and do not discriminate on the basis of race, religion, gender, sexual orientation, age or disability."
+  },
+  {
+    "id": "pm-02",
+    "title": "Product Manager, Payments",
+    "company": "Ledgerline",
+    "industries": ["payments", "fintech"],
+    "location": "London, United Kingdom",
+    "workplace": "hybrid",
+    "salary": { "min": 70000, "max": 85000, "currency": "GBP", "period": "year" },
+    "postedAt": "2026-10-06",
+    "description": "Ledgerline moves money for 40,000 merchants across Europe. We're building the financial operating system for ambitious businesses, powered by AI, real-time data and a world-class team.\n\nAbout the role\nWe're looking for a Product Manager to join our Payments team and own refunds and disputes. You'll work with a squad of five engineers and report to the Senior Product Manager for Payments.\n\nWhat you'll do\n- Own the refunds and chargeback experience for merchants, end to end\n- Talk to merchants every week and turn what you hear into well-scoped work\n- Track dispute win rates and refund times and improve them\n- Work with Operations on manual dispute handling and automate the painful parts\n\nWhat we're looking for\n- 2-4 years of product management experience, ideally in fintech or payments\n- Curious about data; SQL is a plus\n- Strong communication skills\n\nNice to have\n- Knowledge of card scheme dispute rules\n- B2B SaaS experience\n\nHybrid working, two days a week in Shoreditch. 30 days holiday.\n\nLedgerline is an equal opportunity employer and does not discriminate on the basis of any protected characteristic."
+  },
+  {
+    "id": "pm-03",
+    "title": "Director of Product, Payments",
+    "company": "Ledgerline",
+    "industries": ["payments", "fintech"],
+    "location": "London, United Kingdom",
+    "workplace": "hybrid",
+    "salary": { "min": 160000, "max": 190000, "currency": "GBP", "period": "year" },
+    "postedAt": "2026-10-04",
+    "description": "Ledgerline moves money for 40,000 merchants across Europe. We're building the financial operating system for ambitious businesses, powered by AI, real-time data and a world-class team.\n\nAbout the role\nAs Director of Product, Payments, you will lead a group of six product managers across card acceptance, payouts, disputes and our payments API. You'll report to the CPO and sit on the payments leadership team with Engineering, Risk and Commercial.\n\nResponsibilities\n- Hire, coach and grow a team of senior and mid-level product managers\n- Own the multi-year payments strategy, including new markets and new payment methods\n- Run quarterly planning across four squads and manage cross-team dependencies\n- Represent Payments to the executive team and board\n\nRequirements\n- 12+ years in product, with at least 5 years managing product managers\n- Deep payments expertise: acquiring, card schemes, local payment methods, KYC\n- Track record of leading product organisations through scale\n- Experience presenting to executives and boards\n\nHybrid working from our Shoreditch office. Equity, 30 days holiday, private health.\n\nLedgerline is an equal opportunity employer."
+  },
+  {
+    "id": "pm-04",
+    "title": "Associate Product Manager, Payments",
+    "company": "Ledgerline",
+    "industries": ["payments", "fintech"],
+    "location": "London, United Kingdom",
+    "workplace": "onsite",
+    "salary": { "min": 48000, "max": 55000, "currency": "GBP", "period": "year" },
+    "postedAt": "2026-10-02",
+    "description": "Ledgerline moves money for 40,000 merchants across Europe. We're building the financial operating system for ambitious businesses.\n\nOur Associate Product Manager programme is a two-year rotation for early-career product people. You'll spend your first year in Payments, working on card payments, onboarding and KYC checks, alongside an experienced PM who will mentor you.\n\nWhat you'll do\n- Write user stories and acceptance criteria\n- Run user interviews with merchants\n- Analyse payments funnel data and share insights\n- Support releases and gather feedback\n\nWho you are\n- 0-2 years of experience, in product, consulting, engineering or analytics\n- A degree in a numerate subject or equivalent experience\n- Eager to learn about payments and fintech\n\nThe programme is office-based in Shoreditch, five days a week for the first six months.\n\nLedgerline is an equal opportunity employer."
+  },
+  {
+    "id": "pm-05",
+    "title": "Senior Product Manager, Card Issuing",
+    "company": "Kroonpay",
+    "industries": ["payments", "fintech"],
+    "location": "Amsterdam, Netherlands, EMEA",
+    "workplace": "onsite",
+    "salary": { "min": 95000, "max": 115000, "currency": "EUR", "period": "year" },
+    "postedAt": "2026-10-05",
+    "description": "Kroonpay is a European card issuing platform. Fintechs, marketplaces and banks use our APIs to launch debit, prepaid and corporate cards in weeks.\n\nThe role\nYou'll own our card issuing product: card programme setup, card controls, tokenisation for wallets, and the developer experience of our issuing API. You will work with a team of ten engineers in Amsterdam.\n\nYou will\n- Own the issuing roadmap and its outcomes\n- Work with scheme partners and our BIN sponsors on new card products\n- Shape KYC and onboarding for cardholders with our Compliance team\n- Talk to customers weekly\n\nYou have\n- 5+ years of product management, at least 2 in cards or payments\n- Experience building B2B API products\n- Fluency with data and experimentation\n\nLocation\nThis role is based in our Amsterdam office five days a week; we believe issuing is a team sport. You must already live in the Netherlands and have the right to work here. We are not able to offer relocation or visa sponsorship for this role.\n\nKroonpay is an equal opportunity employer."
+  },
+  {
+    "id": "pm-06",
+    "title": "Payments Operations Specialist",
+    "company": "Quidpay",
+    "industries": ["payments", "fintech"],
+    "location": "London, United Kingdom",
+    "workplace": "onsite",
+    "salary": { "min": 38000, "max": 45000, "currency": "GBP", "period": "year" },
+    "postedAt": "2026-10-07",
+    "description": "Quidpay is the payments platform for UK small businesses: cards, open banking payments and instant payouts in one app.\n\nAs a Payments Operations Specialist you'll keep our payments running smoothly every day. You'll investigate failed payments, handle payment exceptions, reconcile card settlement files and payouts, and escalate issues to our payments partners and card schemes.\n\nResponsibilities\n- Monitor payments queues and resolve exceptions within SLA\n- Investigate chargebacks and prepare evidence for card disputes\n- Reconcile daily settlement and payout reports\n- Support KYC and onboarding checks for new merchants when volumes spike\n- Suggest process improvements to the payments product team\n\nRequirements\n- 1-3 years in payments operations, banking operations or a similar role\n- High attention to detail and comfortable with Excel\n- Knowledge of Faster Payments, Bacs and card payments is a plus\n\nThis role is office-based in Manchester Street, London, Monday to Friday, with occasional weekend cover.\n\nQuidpay is committed to equality of opportunity for all."
+  },
+  {
+    "id": "pm-07",
+    "title": "Product Owner, Open Banking",
+    "company": "Sterling & Moor Bank",
+    "industries": ["banking", "fintech"],
+    "location": "London, United Kingdom",
+    "workplace": "hybrid",
+    "salary": { "min": 90000, "max": 105000, "currency": "GBP", "period": "year" },
+    "postedAt": "2026-10-03",
+    "description": "Sterling & Moor is a 150-year-old UK bank with a digital-first future. Our Open Banking team builds the APIs and journeys that let customers connect their accounts and make account-to-account payments.\n\nThe role\nAs Product Owner for Open Banking you'll set the vision and own the backlog for our open banking APIs and our pay-by-bank product. You'll lead a cross-functional squad of engineers, testers and a designer, working in two-week sprints.\n\nKey responsibilities\n- Define product strategy and roadmap for open banking and variable recurring payments\n- Own the backlog and prioritise with stakeholders across Payments, Risk and Legal\n- Work with third-party providers and fintech partners consuming our APIs\n- Ensure our journeys meet regulatory standards, including strong customer authentication and KYC\n\nAbout you\n- 5+ years in product ownership or product management in financial services\n- Experience with API products and payment journeys\n- Strong stakeholder management in a regulated environment\n- Understanding of PSD2 and the UK open banking standards\n\nHybrid working: three days a week in our City of London office. Bonus, pension and private healthcare.\n\nSterling & Moor is an inclusive employer. We are happy to talk about flexible working and reasonable adjustments."
+  },
+  {
+    "id": "pm-08",
+    "title": "Lead Product Manager, Payment Orchestration",
+    "company": "Tessellate",
+    "industries": ["payments", "saas"],
+    "location": "Remote (EMEA)",
+    "workplace": "remote",
+    "postedAt": "2026-10-08",
+    "description": "Tessellate is a payment orchestration platform: one integration that lets online businesses route every payment to the best acquirer, retry intelligently and see all their payment data in one place. We're remote-first, with 180 people across 25 countries.\n\nThe opportunity\nWe're hiring a Lead PM to own our core routing engine. You'll decide how we route each card payment across acquirers, how we handle 3-D Secure and network tokens, and how merchants configure their payment flows through our API and dashboard.\n\nIn this role you will\n- Set direction for routing, retries and authentication\n- Work with a team of twelve engineers across two squads\n- Partner with our largest merchants on their checkout performance\n- Mentor two product managers\n\nYou bring\n- 7+ years of product management, with deep experience in card acquiring or payment gateways\n- A track record shipping developer-facing products\n- Comfort with data: you'll live in our authorisation metrics\n\nBonus points\n- Experience with merchant onboarding and know-your-customer flows\n- Knowledge of local payment methods in Europe\n\nRemote within EMEA time zones. Competitive salary and equity, home office budget, two team offsites a year.\n\nTessellate does not discriminate on the basis of race, religion, colour, national origin, gender, sexual orientation, age, marital status or disability."
+  },
+  {
+    "id": "pm-09",
+    "title": "Senior Product Manager",
+    "company": "Ledgerline",
+    "industries": ["payments", "fintech"],
+    "location": "London, United Kingdom",
+    "workplace": "hybrid",
+    "postedAt": "2026-10-09"
+  },
+  {
+    "id": "pm-10",
+    "title": "Senior Product Manager, Ads Measurement",
+    "company": "Brightwave Media",
+    "industries": ["marketing", "media"],
+    "location": "London, United Kingdom",
+    "workplace": "hybrid",
+    "salary": { "min": 95000, "max": 110000, "currency": "GBP", "period": "year" },
+    "postedAt": "2026-10-01",
+    "description": "Brightwave helps 3,000 brands understand what their advertising actually does. Our measurement platform connects campaign data from every channel and uses machine learning to attribute sales to ads.\n\nThe role\nAs Senior PM for Ads Measurement you'll own our attribution and incrementality products. You'll work with data scientists, engineers and our partnerships team to integrate with ad platforms and build measurement products advertisers trust.\n\nWhat you'll do\n- Own the roadmap for multi-touch attribution and lift studies\n- Work with ad platform partners on data integrations and privacy changes\n- Make measurement understandable to marketers, not just analysts\n- Use data to prioritise and to show impact\n\nWhat you'll need\n- 5+ years in product management, ideally in adtech, martech or analytics\n- Understanding of digital advertising, attribution and privacy regulations\n- Experience with B2B SaaS and API integrations\n\nNice to have\n- Experience with clean rooms or identity solutions\n\nHybrid, two days a week in our King's Cross office. Brightwave is an equal opportunity employer."
+  },
+  {
+    "id": "pm-11",
+    "title": "Senior Product Manager, KYC & Onboarding",
+    "company": "Halcyon Bank",
+    "industries": ["banking", "digital-bank"],
+    "location": "London, United Kingdom",
+    "workplace": "hybrid",
+    "salary": { "min": 60000, "max": 72000, "currency": "GBP", "period": "year" },
+    "postedAt": "2026-10-05",
+    "description": "Halcyon is a digital bank for UK freelancers and sole traders, with 200,000 customers and growing.\n\nWe're looking for a Senior Product Manager to own how customers join Halcyon: identity verification, KYC and KYB checks, and the first week of using their account. Onboarding is our biggest lever for growth and for keeping fraud out.\n\nWhat you'll do\n- Own the onboarding funnel and its conversion\n- Work with our Financial Crime team on KYC policy and with vendors on identity checks\n- Reduce manual reviews without letting fraud in\n- Lead a squad of six engineers and a designer\n\nWhat you'll bring\n- 5+ years in product, including onboarding or KYC in financial services\n- Strong analytical skills\n- Experience balancing growth and risk\n\nSalary: GBP 60,000 - 72,000 plus share options. Hybrid, one day a week in our Old Street office.\n\nHalcyon welcomes applications from everyone."
+  }
+]

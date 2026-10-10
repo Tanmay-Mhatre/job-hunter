@@ -29,6 +29,7 @@ import {
   type JobGroup,
   type Sort,
 } from "../../lib/filters";
+import { offerWhat, ruleKey, ruleLabel, type HideRule } from "../../lib/notForMe";
 import type { Prefs, SavedView } from "../../lib/prefs";
 import type { FilterPicks } from "../../lib/profileSync";
 import { displayPlace, postedOrSeen, timeAgo } from "../../lib/format";
@@ -60,6 +61,8 @@ type Props = {
   /** Undo a delete: put the view back at its old position. */
   onRestoreView: (view: SavedView, index: number) => void;
   onHideCompany: (company: string, hidden: boolean) => void;
+  /** Turn a Not interested rule ("Senior roles") off, or back on (Undo). */
+  onSetRule: (rule: HideRule, on: boolean) => void;
   /** Is this job at one of your companies? Starred, nudged up in Best match, and in a strip on top. */
   isYours: (j: Job) => boolean;
   /** How many companies you've added. */
@@ -192,11 +195,12 @@ export function RadarPage(p: Props) {
         min,
         industriesOf: (c: string) => industriesByCompany.get(c) ?? [],
         hiddenCompanies: hidden,
+        hideRules: p.prefs.hideRules,
         isYours: p.isYours,
         mine: { countries: new Set([...places.countries, ...(places.remote ? ["Remote"] : [])]), locations: new Set(places.locations), industries: new Set(profile.industries) },
       };
     },
-    [p.user, min, industriesByCompany, hidden, profileKey, p.isYours, firstScan, newSince], // eslint-disable-line react-hooks/exhaustive-deps
+    [p.user, min, industriesByCompany, hidden, p.prefs.hideRules, profileKey, p.isYours, firstScan, newSince], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   // One list, in the order you picked: your companies are starred and nudged up in Best match, never pinned.
@@ -333,6 +337,10 @@ export function RadarPage(p: Props) {
         actionLabel: "Undo",
         onAction: () => p.onHideCompany(company, false),
       });
+  };
+  const removeRule = (rule: HideRule) => {
+    p.onSetRule(rule, false);
+    toast({ message: <>Showing {offerWhat({ kind: "rule", rule })} again.</>, actionLabel: "Undo", onAction: () => p.onSetRule(rule, true) });
   };
   const deleteView = (view: SavedView) => {
     const index = p.prefs.views.findIndex((v) => v.id === view.id);
@@ -490,7 +498,7 @@ export function RadarPage(p: Props) {
               <FacetMenu label="Company" searchable options={facet("companies")} selected={filters.companies} onChange={(v) => setFilters({ companies: v })} />
               {facet("topics").length > 0 && <FacetMenu label="Keywords" searchable options={facet("topics")} selected={filters.topics} onChange={(v) => setFilters({ topics: v })} />}
               <FacetMenu label="Match" single options={facet("match")} selected={filters.match === "all" ? [] : [filters.match]} onChange={(v) => setFilters({ match: (v[0] as Filters["match"]) ?? "all" })} />
-              <MoreMenu filters={filters} setFilters={setFilters} ats={facet("ats")} olderCount={olderCount} hiddenCompanies={p.prefs.hiddenCompanies} onUnhide={(c) => p.onHideCompany(c, false)} />
+              <MoreMenu filters={filters} setFilters={setFilters} ats={facet("ats")} olderCount={olderCount} hiddenCompanies={p.prefs.hiddenCompanies} onUnhide={(c) => p.onHideCompany(c, false)} hideRules={p.prefs.hideRules} onRemoveRule={removeRule} />
             </div>
           </div>
         )}
@@ -834,6 +842,8 @@ function MoreMenu({
   olderCount,
   hiddenCompanies,
   onUnhide,
+  hideRules,
+  onRemoveRule,
 }: {
   filters: Filters;
   setFilters: (p: Partial<Filters>) => void;
@@ -841,6 +851,8 @@ function MoreMenu({
   olderCount: number;
   hiddenCompanies: string[];
   onUnhide: (company: string) => void;
+  hideRules: HideRule[];
+  onRemoveRule: (rule: HideRule) => void;
 }) {
   const extra = [filters.salaryOnly, filters.showOld, filters.showFailed, filters.showClosed, filters.showHidden, filters.olderIndex].filter(Boolean).length + filters.ats.length;
   return (
@@ -861,6 +873,21 @@ function MoreMenu({
                   <li key={c} className="flex items-center justify-between type-small">
                     <span className="truncate">{c}</span>
                     <Button size="sm" variant="ghost" onClick={() => onUnhide(c)} aria-label={`Show ${c} again`}>
+                      Show
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {hideRules.length > 0 && (
+            <div className="mt-1 border-t border-line px-2 pt-2">
+              <p className="mb-1 type-label">Hidden by your Not interested rules</p>
+              <ul className="space-y-0.5">
+                {hideRules.map((r) => (
+                  <li key={ruleKey(r)} className="flex items-center justify-between gap-2 type-small">
+                    <span className="min-w-0 truncate">{ruleLabel(r)}</span>
+                    <Button size="sm" variant="ghost" onClick={() => onRemoveRule(r)} aria-label={`Show ${offerWhat({ kind: "rule", rule: r })} again`}>
                       Show
                     </Button>
                   </li>
