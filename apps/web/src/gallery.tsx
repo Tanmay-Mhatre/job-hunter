@@ -120,7 +120,7 @@ function Gallery() {
           <ScoreBadge score={68} estimated />
           <ScoreBadge score={56} estimated />
           <ScoreBadge score={21} estimated />
-          <Cap>estimated: title, place and date only</Cap>
+          <Cap>estimated: title, place and industry only</Cap>
         </Row>
         <Row>
           <ScoreBadge score={74} size="lg" />

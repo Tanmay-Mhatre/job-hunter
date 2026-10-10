@@ -96,3 +96,55 @@ describe("JobDetail", () => {
     expect(meta?.querySelectorAll(".rj-sep").length).toBeGreaterThan(2);
   });
 });
+
+describe("Why it matched", () => {
+  const scored = (over: Partial<Job> = {}) => job({ why: { title: 30, location: 20, keywords: ["payments"], keywordPoints: 14, industry: 10 }, ...over });
+  // The checklist sits behind Details (remembered once opened).
+  const why = () => {
+    const section = screen.getByRole("heading", { name: "Why it matched" }).closest("section")!;
+    const details = screen.queryByRole("button", { name: "Details" });
+    if (details) fireEvent.click(details);
+    return section.textContent!;
+  };
+
+  it("names the include term the scorer matched, even in a short or reordered title", () => {
+    renderDetail(scored({ title: "Sr. PM, Payments" }));
+    expect(why()).toContain("Title matches product manager");
+    cleanup();
+    renderDetail(scored({ title: "Manager, Product" }));
+    expect(why()).toContain("Title matches product manager");
+  });
+
+  it("says how close the level is", () => {
+    const senior = { ...profile, seniority_boost: ["senior"] } as Profile;
+    render(<JobDetail job={scored({ title: "Product Manager", why: { title: 25, location: 20, keywords: [], keywordPoints: 0, industry: 10 } })} profile={senior} onUpdate={() => {}} />);
+    expect(why()).toContain("one level from yours");
+  });
+
+  it("doesn't claim an industry match it never checked", () => {
+    renderDetail(scored());
+    expect(why()).toContain("No industries picked, so every company counts");
+    cleanup();
+    const fintech = { ...profile, industries: ["payments"] } as Profile;
+    render(<JobDetail job={scored()} profile={fintech} onUpdate={() => {}} yours />);
+    expect(why()).toContain("One of your companies");
+    cleanup();
+    render(<JobDetail job={scored({ industries: ["payments"] })} profile={fintech} onUpdate={() => {}} />);
+    expect(why()).toMatch(/In one of your industries: Payments/i);
+  });
+
+  it("lists your topics the posting doesn't mention, only when the posting was read", () => {
+    const two = { ...profile, keywords: { payments: 3, kyc: 5 } } as Profile;
+    render(<JobDetail job={scored({ hasDescription: true })} profile={two} onUpdate={() => {}} />);
+    expect(why()).toContain("Not found: kyc.");
+    cleanup();
+    render(<JobDetail job={scored({ hasDescription: false, estimated: true, why: { title: 30, location: 20, keywords: [], keywordPoints: 0, industry: 10 } })} profile={two} onUpdate={() => {}} />);
+    expect(why()).not.toContain("Not found");
+    expect(why()).toContain("Topics not checked yet");
+  });
+
+  it("keeps topics your industries added apart from yours", () => {
+    renderDetail(scored({ why: { title: 30, location: 20, keywords: ["payments", "kyc"], keywordPoints: 20, industry: 10 } }));
+    expect(why()).toContain("Mentions your topics: payments; also kyc from your industries");
+  });
+});

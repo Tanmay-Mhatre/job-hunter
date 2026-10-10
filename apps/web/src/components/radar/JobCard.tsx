@@ -67,7 +67,7 @@ export const JobCard = forwardRef<HTMLLIElement, Props>(function JobCard({ group
 
   return (
     <li ref={ref} className={cx("rj-row", muted && "opacity-60")} aria-current={selected ? "true" : undefined}>
-      <span title={job.estimated ? "Estimated: scored on title, place and date only, until the full posting is fetched" : undefined}>
+      <span title={job.estimated ? "Estimated: scored on title, place and industry only, until the full posting is fetched" : undefined}>
         <ScoreBadge score={job.score} threshold={min} estimated={job.estimated} />
       </span>
       <span className="rj-row__main">

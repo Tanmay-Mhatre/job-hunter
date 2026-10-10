@@ -25,7 +25,7 @@ export type ScoreBadgeProps = {
   score: number;
   /** The user's strong-match threshold (profile.min_score). */
   threshold?: number;
-  /** Scored on title, place and date only (a directory job not fetched yet): dashed, with "~". */
+  /** Scored on title, place and industry only (a directory job not fetched yet): dashed, with "~". */
   estimated?: boolean;
   /** lg in the job drawer. */
   size?: "md" | "lg";
