@@ -321,7 +321,8 @@ function TrackButton({ yours, onTrack }: { yours: boolean; onTrack: (on: boolean
         className="aria-pressed:border-ink aria-pressed:bg-active"
         title={yours ? "Remove from My companies" : "Add to My companies: scanned every time, its jobs listed first"}
       >
-        {yours ? "In My companies" : "Add to My companies"}
+        {/* Short enough for half a phone screen, and the same everywhere; the tooltip says the rest. */}
+        {yours ? "In My companies" : "Add company"}
       </Button>
       {error && (
         <p role="alert" className="col-span-full w-full type-small text-danger-text">
