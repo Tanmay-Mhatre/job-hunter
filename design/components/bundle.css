@@ -104,6 +104,7 @@
   color: var(--text-secondary);
 }
 .rj-source__age { font-family: var(--font-sans); letter-spacing: 0; text-transform: none; font-weight: 400; font-variant-numeric: tabular-nums; }
+.rj-source__age--older { color: var(--warning-text); }
 .rj-dot { width: 8px; height: 8px; border-radius: var(--radius-dot); background: var(--live-dot); display: inline-block; flex: none; }
 
 /* ---------- chip (interactive filters only) ---------- */

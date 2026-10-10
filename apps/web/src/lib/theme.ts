@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { DEFAULT_MAX_AGE_DAYS } from "./filters";
 
 /**
  * The four RawJobs themes (design/README.md, "Themes and contrast"). They follow the system's
@@ -84,6 +85,37 @@ export function useDensity(): Density {
   const [d, setD] = useState(densityChoice);
   useEffect(() => {
     const refresh = () => setD(densityChoice());
+    window.addEventListener(CHANGED, refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener(CHANGED, refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
+  return d;
+}
+
+/** How old a posting can be and still show on the Radar, in days; 0 shows every age. */
+export const MAX_AGE_CHOICES = [30, 60, 90, 180, 0] as const;
+export type MaxAge = (typeof MAX_AGE_CHOICES)[number];
+const MAX_AGE_KEY = "rawjobs.maxAge";
+
+export function maxAgeChoice(): MaxAge {
+  const v = read(MAX_AGE_KEY);
+  const n = v === null ? DEFAULT_MAX_AGE_DAYS : Number(v);
+  return (MAX_AGE_CHOICES as readonly number[]).includes(n) ? (n as MaxAge) : DEFAULT_MAX_AGE_DAYS;
+}
+
+export function setMaxAgeChoice(days: MaxAge): void {
+  write(MAX_AGE_KEY, days === DEFAULT_MAX_AGE_DAYS ? "system" : String(days));
+  window.dispatchEvent(new Event(CHANGED));
+}
+
+/** The Radar's age limit, kept in step with Settings. */
+export function useMaxAge(): MaxAge {
+  const [d, setD] = useState(maxAgeChoice);
+  useEffect(() => {
+    const refresh = () => setD(maxAgeChoice());
     window.addEventListener(CHANGED, refresh);
     window.addEventListener("storage", refresh);
     return () => {

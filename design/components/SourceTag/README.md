@@ -2,6 +2,7 @@ The source tag names the hiring system a job was read from and how old the posti
 
 ## Use
 - `rj-source` containing the hiring system name, then `rj-source__age` (e.g. `2d`). Prepend `rj-dot` for jobs first seen in the latest scan.
+- Postings over two months old add `rj-source__age--older` (`warning-text`) and say why in the tag's accessible name ("may be filled").
 - The name is set in the `source` style: Geist Mono 12px, uppercase, 0.04em tracking, `text-secondary`. The age is Geist with tabular figures.
 
 ## Rules

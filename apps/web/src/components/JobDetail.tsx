@@ -6,7 +6,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "
 import { copyText } from "../lib/clipboard";
 import { useDescription, type Job, type Profile } from "../lib/data";
 import { formatDate, formatSalary, placeSummary, postedOrSeen, timeAgo } from "../lib/format";
-import { atsLabel, INDEX_MAX_AGE_DAYS } from "../lib/filters";
+import { atsLabel, INDEX_MAX_AGE_DAYS, isOlder } from "../lib/filters";
 import { load, save } from "../lib/storage";
 import { PIPELINE, STATUS_LABEL, type Entry, type Status } from "../lib/userState";
 import { Dialog } from "./Dialog";
@@ -127,7 +127,15 @@ export function JobDetail(p: JobDetailProps) {
     places,
     ...(workplace ? [workplace] : []),
     SENIORITY_LABEL[job.seniority],
-    job.postedAt ? `Posted ${formatDate(job.postedAt)}` : `First seen ${formatDate(job.firstSeen)}`,
+    isOlder(job) && job.status === "open" ? (
+      <span className="text-warning-text" title="Most roles are filled within two months. It's still listed, but may no longer be hiring.">
+        {job.postedAt ? "Posted" : "First seen"} {age} ago · may be filled
+      </span>
+    ) : job.postedAt ? (
+      `Posted ${formatDate(job.postedAt)}`
+    ) : (
+      `First seen ${formatDate(job.firstSeen)}`
+    ),
     ...(salary ? [salary] : []),
     ...(job.status === "closed" ? ["Closed"] : []),
   ];
@@ -154,7 +162,7 @@ export function JobDetail(p: JobDetailProps) {
     <div ref={rootRef} className="flex h-full min-h-0 flex-col">
       <header className="rj-drawer__head">
         <div className="rj-drawer__top">
-          <SourceTag source={source} age={age} isNew={p.isNew} />
+          <SourceTag source={source} age={age} isNew={p.isNew} older={isOlder(job)} />
           <div className="flex shrink-0 items-center gap-1">
             {p.onClose && (
               <IconButton label="Back" title="Back (Esc)" aria-keyshortcuts="Escape" size="sm" onClick={p.onClose} className={p.expanded ? "hidden" : "lg:hidden"}>

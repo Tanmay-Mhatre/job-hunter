@@ -269,4 +269,12 @@ describe("rankScore", () => {
     expect(rankScore(60, daysAgo(0.4), t)).toBeGreaterThan(rankScore(60, daysAgo(3), t, false));
     expect(rankScore(45, daysAgo(0), t)).toBeLessThan(rankScore(70, daysAgo(10), t));
   });
+
+  it("takes a little off postings older than a month, up to 12 points", () => {
+    expect(rankScore(60, daysAgo(30), t)).toBeCloseTo(60, 0);
+    expect(rankScore(60, daysAgo(70), t)).toBeCloseTo(54, 1);
+    expect(rankScore(60, daysAgo(200), t)).toBeCloseTo(48, 1);
+    // A month-old job a few points better no longer beats a 5-month-old one only by being better.
+    expect(rankScore(70, daysAgo(5), t)).toBeGreaterThan(rankScore(75, daysAgo(150), t));
+  });
 });

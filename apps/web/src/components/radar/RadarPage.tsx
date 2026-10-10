@@ -12,7 +12,6 @@ import {
   groupJobs,
   INDEX_MAX_AGE_DAYS,
   hasNewTag,
-  OLD_POSTING_DAYS,
   REMOTE,
   isNewJob,
   profileFilters,
@@ -33,7 +32,7 @@ import { offerWhat, ruleKey, ruleLabel, type HideRule } from "../../lib/notForMe
 import type { Prefs, SavedView } from "../../lib/prefs";
 import type { FilterPicks } from "../../lib/profileSync";
 import { displayPlace, postedOrSeen, timeAgo } from "../../lib/format";
-import { useDensity } from "../../lib/theme";
+import { useDensity, useMaxAge } from "../../lib/theme";
 import { load, save } from "../../lib/storage";
 import type { Status, UserState } from "../../lib/userState";
 import { Dialog } from "../Dialog";
@@ -185,12 +184,17 @@ export function RadarPage(p: Props) {
   const fullRuns = p.meta.runs.filter((r) => !r.partial);
   const firstScan = fullRuns.length <= 1;
   const newSince = fullRuns[1] ? Date.parse(fullRuns[1].finishedAt) : undefined;
+  // One clock for filters, tags and order, moved on every hour.
+  const now = useHourlyNow();
+  const maxAgeDays = useMaxAge();
   const ctx: Ctx = useMemo(
     () => {
       const places = profilePlaces(profile);
       return {
         firstScan,
         newSince,
+        now,
+        maxAgeDays,
         user: p.user,
         min,
         industriesOf: (c: string) => industriesByCompany.get(c) ?? [],
@@ -200,11 +204,10 @@ export function RadarPage(p: Props) {
         mine: { countries: new Set([...places.countries, ...(places.remote ? ["Remote"] : [])]), locations: new Set(places.locations), industries: new Set(profile.industries) },
       };
     },
-    [p.user, min, industriesByCompany, hidden, p.prefs.hideRules, profileKey, p.isYours, firstScan, newSince], // eslint-disable-line react-hooks/exhaustive-deps
+    [p.user, min, industriesByCompany, hidden, p.prefs.hideRules, profileKey, p.isYours, firstScan, newSince, now, maxAgeDays], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   // One list, in the order you picked: your companies are starred and nudged up in Best match, never pinned.
-  const now = useHourlyNow();
   const visible = useMemo(() => sortJobs(applyFilters(pool, filters, ctx), sort, p.isYours, now), [pool, filters, ctx, sort, p.isYours, now]);
   const groups = useMemo(() => groupJobs(visible), [visible]);
   // One company can't fill the page ("+N more at …"), except in Newest (a plain date order) and when you've
@@ -217,7 +220,7 @@ export function RadarPage(p: Props) {
   const navGroups = useMemo(() => rows.flatMap((r) => (r.kind === "group" ? [r.group] : [])), [rows]);
   const counts = useMemo(() => facetCounts(pool, filters, ctx), [pool, filters, ctx]);
   const chips = activeChips(filters, ctx, base);
-  // Postings older than ~6 months that the other filters would show: "Show older jobs (N)".
+  // Postings past your age limit that the other filters would show: "Show older jobs (N)".
   const olderCount = useMemo(
     () => (filters.showOld ? 0 : applyFilters(pool, { ...filters, showOld: true }, ctx).length - visible.length),
     [pool, filters, ctx, visible.length],
@@ -498,7 +501,7 @@ export function RadarPage(p: Props) {
               <FacetMenu label="Company" searchable options={facet("companies")} selected={filters.companies} onChange={(v) => setFilters({ companies: v })} />
               {facet("topics").length > 0 && <FacetMenu label="Keywords" searchable options={facet("topics")} selected={filters.topics} onChange={(v) => setFilters({ topics: v })} />}
               <FacetMenu label="Match" single options={facet("match")} selected={filters.match === "all" ? [] : [filters.match]} onChange={(v) => setFilters({ match: (v[0] as Filters["match"]) ?? "all" })} />
-              <MoreMenu filters={filters} setFilters={setFilters} ats={facet("ats")} olderCount={olderCount} hiddenCompanies={p.prefs.hiddenCompanies} onUnhide={(c) => p.onHideCompany(c, false)} hideRules={p.prefs.hideRules} onRemoveRule={removeRule} />
+              <MoreMenu filters={filters} setFilters={setFilters} ats={facet("ats")} olderCount={olderCount} maxAgeDays={maxAgeDays} hiddenCompanies={p.prefs.hiddenCompanies} onUnhide={(c) => p.onHideCompany(c, false)} hideRules={p.prefs.hideRules} onRemoveRule={removeRule} />
             </div>
           </div>
         )}
@@ -517,7 +520,7 @@ export function RadarPage(p: Props) {
               </Button>
             )}
             {olderCount > 0 && (
-              <Button variant="ghost" size="sm" onClick={() => setFilters({ showOld: true })} title={`Postings older than ${OLD_POSTING_DAYS / 30} months are hidden: they're usually filled`}>
+              <Button variant="ghost" size="sm" onClick={() => setFilters({ showOld: true })} title={`Postings older than ${ageLimit(maxAgeDays)} are hidden: they're usually filled. Change this in Settings › Job list.`}>
                 Show older jobs ({olderCount})
               </Button>
             )}
@@ -690,7 +693,7 @@ export function RadarPage(p: Props) {
             <OptionList label="Company" searchable options={facet("companies")} selected={filters.companies} onChange={(v) => setFilters({ companies: v })} />
           </SheetSection>
           <SheetSection label="More">
-            <MoreToggles filters={filters} setFilters={setFilters} olderCount={olderCount} />
+            <MoreToggles filters={filters} setFilters={setFilters} olderCount={olderCount} maxAgeDays={maxAgeDays} />
           </SheetSection>
           {facet("ats").length > 1 && (
             <SheetSection label="Hiring system">
@@ -814,10 +817,13 @@ function NameInput({ value, onChange, onSubmit, onCancel }: { value: string; onC
 
 // ---------- "More" filters ----------
 
-function MoreToggles({ filters, setFilters, olderCount }: { filters: Filters; setFilters: (p: Partial<Filters>) => void; olderCount: number }) {
+/** "3 months", "1 month", "60 days". */
+const ageLimit = (days: number) => (days % 30 === 0 ? (days === 30 ? "1 month" : `${days / 30} months`) : `${days} days`);
+
+function MoreToggles({ filters, setFilters, olderCount, maxAgeDays }: { filters: Filters; setFilters: (p: Partial<Filters>) => void; olderCount: number; maxAgeDays: number }) {
   const rows: [keyof Filters, string][] = [
     ["salaryOnly", "Salary listed"],
-    ["showOld", `Show older jobs${olderCount ? ` (${olderCount})` : ""}: posted over ${OLD_POSTING_DAYS / 30} months ago`],
+    ...(maxAgeDays ? [["showOld", `Show older jobs${olderCount ? ` (${olderCount})` : ""}: posted over ${ageLimit(maxAgeDays)} ago`] as [keyof Filters, string]] : []),
     ["showFailed", "Include jobs that failed your filters"],
     ["showClosed", "Include closed jobs"],
     ["showHidden", "Include hidden jobs and companies"],
@@ -840,6 +846,7 @@ function MoreMenu({
   setFilters,
   ats,
   olderCount,
+  maxAgeDays,
   hiddenCompanies,
   onUnhide,
   hideRules,
@@ -849,6 +856,7 @@ function MoreMenu({
   setFilters: (p: Partial<Filters>) => void;
   ats: FacetOption[];
   olderCount: number;
+  maxAgeDays: number;
   hiddenCompanies: string[];
   onUnhide: (company: string) => void;
   hideRules: HideRule[];
@@ -864,7 +872,7 @@ function MoreMenu({
       onChange={(v) => setFilters({ ats: v })}
       footer={
         <div className="mt-1 border-t border-line pt-1">
-          <MoreToggles filters={filters} setFilters={setFilters} olderCount={olderCount} />
+          <MoreToggles filters={filters} setFilters={setFilters} olderCount={olderCount} maxAgeDays={maxAgeDays} />
           {hiddenCompanies.length > 0 && (
             <div className="mt-1 border-t border-line px-2 pt-2">
               <p className="mb-1 type-label">Hidden companies</p>

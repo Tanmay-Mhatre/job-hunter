@@ -172,18 +172,26 @@ export const RANK = {
   fresh: 15,
   /** ...halving every this many days. */
   halfLifeDays: 3,
+  /** Past this age a posting starts to lose rank: most roles are filled in 45-60 days... */
+  staleAfterDays: 30,
+  /** ...this much a day... */
+  stalePerDay: 0.15,
+  /** ...up to this much (reached at 110 days). */
+  staleCap: 12,
 } as const;
 
 /**
  * The "best match" order: fit, a nudge for your companies, and freshness that halves every three days,
  * so a strong job posted today beats an equal one from last week, and a weak one never leaps a strong one.
- *   rank = score + 10 (your company) + 15 x 0.5^(age in days / 3)
- * Worked out when the list is shown, so it never goes stale. Dates in the future count as today.
+ * After a month a posting loses rank a little each day, as it's more and more likely to be filled.
+ *   rank = score + 10 (your company) + 15 x 0.5^(age in days / 3) - min(12, 0.15 x (age - 30))
+ * Worked out when the list is shown, so it never goes stale. Dates in the future count as today; no date costs nothing.
  */
 export function rankScore(score: number, postedOrSeen: string | undefined, now: number, tracked = false): number {
   const t = postedOrSeen ? Date.parse(postedOrSeen) : NaN;
   const age = Number.isNaN(t) ? Infinity : Math.max(0, (now - t) / DAY_MS);
-  return score + (tracked ? RANK.tracked : 0) + RANK.fresh * 0.5 ** (age / RANK.halfLifeDays);
+  const stale = Number.isFinite(age) ? Math.min(RANK.staleCap, Math.max(0, age - RANK.staleAfterDays) * RANK.stalePerDay) : 0;
+  return score + (tracked ? RANK.tracked : 0) + RANK.fresh * 0.5 ** (age / RANK.halfLifeDays) - stale;
 }
 
 /** An on-site or hybrid job when the user only takes the other kind: fails the location gate. */

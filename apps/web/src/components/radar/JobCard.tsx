@@ -1,7 +1,7 @@
 import { Bookmark, Star, X } from "lucide-react";
 import { forwardRef, type ReactNode } from "react";
 import type { JobGroup } from "../../lib/filters";
-import { atsLabel } from "../../lib/filters";
+import { atsLabel, isOlder } from "../../lib/filters";
 import { formatSalary, placeSummary, postedOrSeen, shortAge } from "../../lib/format";
 import { STATUS_LABEL, type Entry, type Status } from "../../lib/userState";
 import { IconButton, ScoreBadge, SourceTag } from "../primitives";
@@ -89,7 +89,7 @@ export const JobCard = forwardRef<HTMLLIElement, Props>(function JobCard({ group
             <X className="rj-icon" aria-hidden />
           </IconButton>
         </span>
-        <SourceTag source={atsLabel(job.ats)} age={shortAge(postedOrSeen(job))} isNew={isNew} />
+        <SourceTag source={atsLabel(job.ats)} age={shortAge(postedOrSeen(job))} isNew={isNew} older={isOlder(job)} />
       </span>
     </li>
   );
