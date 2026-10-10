@@ -180,8 +180,8 @@ h3 {
 }
 
 /* The kit's phone footer: Apply on its own row, then two 1fr columns. A button won't shrink below its
-   label, so the columns may shrink (nothing pushes past the screen edge), and under 480px the company
-   button says "Add company" (JobDetail), which fits half of a 375px screen. Copy description, the
+   label, so the columns may shrink (nothing pushes past the screen edge); the company button says
+   "Add company" (JobDetail), which fits half of a 375px screen. Copy description, the
    quiet extra, takes a full row so it never sits alone in half of one. */
 @media (max-width: 720px) {
   .rj-drawer__foot {

@@ -142,7 +142,7 @@ const SCREENS: Screen[] = [
   {
     id: "radar-drawer-other",
     viewportOnly: true,
-    what: "Phone job drawer for a company that isn't yours: no footer button cuts its label (Add to My companies)",
+    what: "Phone job drawer for a company that isn't yours: no footer button cuts its label (Add company)",
     scenario: "demo",
     hash: "#radar",
     widths: [375],
