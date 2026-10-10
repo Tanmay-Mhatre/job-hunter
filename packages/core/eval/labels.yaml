@@ -42,6 +42,8 @@
 #        candidate has only done in part -> real gap (cap 2); not at all -> cap 1
 #   7. Combining: any number of minor gaps stays 3 (three or more -> 2); two real gaps -> 1.
 #      A partly met must-have is a minor gap; an unmet one is a real gap.
+#      Exception: in a neighbouring-function posting, the must-haves that define that function are judged by
+#      rule 6 (done only in part = real gap, cap 2).
 #
 # by: draft = labelled by Claude from the first rubric; by: reconciled = re-labelled under the rules above after
 # comparing with a blind second labeller; by: user = confirmed or corrected by a person.

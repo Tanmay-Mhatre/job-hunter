@@ -78,7 +78,9 @@ Each fact about a pair gives a cap; the label is the lowest cap. Apply them in t
    | adjacent function whose must-haves need years in that function, which the candidate has done in part | real gap, cap 2 (not at all: cap 1) |
 
 7. **Combining.** Any number of minor gaps stays 3 (three or more make it 2); two real gaps make it 1. A partly met
-   must-have is a minor gap; an unmet one is a real gap.
+   must-have is a minor gap; an unmet one is a real gap. Exception: when the posting is a neighbouring function, the
+   must-haves that define that function (its core years and work) are judged by rule 6, not here: done only in part is
+   a real gap (cap 2).
 
 ## Running it
 
