@@ -20,7 +20,7 @@ import { usePrefs } from "./lib/prefs";
 import { scanPrefs, useScan } from "./lib/scan";
 import { useResume } from "./lib/resume";
 import { profileFromPicks, type FilterPicks } from "./lib/profileSync";
-import { checkNow, draftFromConfig, draftToConfig, emptyDraft, rebaseDraft, saveConfig, setupProgress, STEP, STEP_COUNT, useSetupStatus, type Draft } from "./lib/setup";
+import { checkNow, draftFromConfig, draftToConfig, emptyDraft, rebaseDraft, resetSetup, saveConfig, setupProgress, STEP, STEP_COUNT, useSetupStatus, type Draft } from "./lib/setup";
 import { buildSuggestions } from "./lib/suggest";
 import { load, save } from "./lib/storage";
 import { timeAgo } from "./lib/format";
@@ -217,6 +217,18 @@ export function App() {
     if (notSetUp && wizardStep > (draft.furthestStep ?? 0)) update({ furthestStep: wizardStep });
   }, [notSetUp, wizardStep, draft.furthestStep, update]);
 
+  /** Settings "Start setup over": the config goes to a backup file, then the Welcome opens on an empty setup. */
+  const startOver = useCallback(async (): Promise<string | null> => {
+    const res = await resetSetup();
+    if (!res.ok) return res.errors;
+    save(DRAFT_KEY, null);
+    save(WELCOME_SEEN_KEY, null);
+    baseRef.current = null;
+    await setup.refresh();
+    setDraft(emptyDraft());
+    go({ setup: 0 });
+    return null;
+  }, [setup, go]);
   const exitSetup = useCallback(() => {
     save(WELCOME_SEEN_KEY, true);
     go({ tab: "radar" });
@@ -501,6 +513,7 @@ export function App() {
                 suggest={suggest}
                 resumeText={resume.text}
                 saveResume={saveResume}
+                onStartOver={canRunLocally && personal ? startOver : undefined}
               />
             )}
           </div>

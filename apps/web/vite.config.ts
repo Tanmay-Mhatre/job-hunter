@@ -92,7 +92,8 @@ function suggestions(body: string): Promise<string> {
  * Dev only: a small local API so the dashboard can set up and run RawJobs on this machine.
  *   GET  /api/setup           setup status (+ current config)
  *   POST /api/setup/config    validate and save rawjobs.config.local.yaml
- *   POST /api/setup/check     detect + live-check careers URLs
+ *   POST /api/setup/reset     start setup over: move the config to rawjobs.config.local.backup.yaml
+ *   POST /api/setup/check    detect + live-check careers URLs
  *   GET/POST /api/setup/resume  read / save the master resume (profile/resume.md, gitignored)
  *   GET  /api/directory       the shared company directory's local copy (and what's waiting to be shared)
  *   POST /api/directory/update download the latest shared directory and share waiting additions
@@ -121,6 +122,14 @@ function localApi(): Plugin {
         try {
           if (url === "/api/setup" && req.method === "GET") return await respondJson(res, ["setup", "status", "--data", dataDir]);
           if (url === "/api/setup/config" && req.method === "POST") return await respondJson(res, ["setup", "save"], await readBody(req));
+          if (url === "/api/setup/reset" && req.method === "POST") {
+            if (running) {
+              res.setHeader("content-type", "application/json");
+              res.end(JSON.stringify({ ok: false, errors: "A scan is running; try again when it's done." }));
+              return;
+            }
+            return await respondJson(res, ["setup", "reset"]);
+          }
           if (url === "/api/setup/resume" && req.method === "GET") return await respondJson(res, ["setup", "resume"]);
           if (url === "/api/setup/resume" && req.method === "POST") return await respondJson(res, ["setup", "resume", "save"], await readBody(req));
           if (url === "/api/setup/check" && req.method === "POST") return await respondJson(res, ["setup", "check", "--data", dataDir], await readBody(req));

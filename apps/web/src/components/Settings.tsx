@@ -1,6 +1,6 @@
 import { INDUSTRY_BY_ID } from "@rawjobs/core/catalog/industries";
 import { groupPlaces } from "@rawjobs/core/catalog/places";
-import { ArrowRight, Download, RefreshCw, Save, Upload, X } from "lucide-react";
+import { ArrowRight, Download, RefreshCw, RotateCcw, Save, Upload, X } from "lucide-react";
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { canRunLocally, useDirectorySize } from "../lib/data";
 import { displayPlace, roughCount } from "../lib/format";
@@ -33,6 +33,8 @@ type Props = {
   resumeText: string;
   saveResume: (text: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   toCompanies: () => void;
+  /** Clear the saved setup and open the wizard again; an error message, or null. Only on a saved local setup. */
+  onStartOver?: () => Promise<string | null>;
 };
 
 /** The sticky section nav. Each group is `#settings-{id}`; "#settings?section=…" deep-links to a group or a section in it. */
@@ -52,7 +54,7 @@ const sectionFromHash = () => new URLSearchParams(location.hash.split("?")[1] ??
 const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 /** Edit any part of the setup after the wizard, then save (and scan). */
-export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanning, user, prefs, onImport, suggest, resumeText, saveResume, toCompanies }: Props) {
+export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanning, user, prefs, onImport, suggest, resumeText, saveResume, toCompanies, onStartOver }: Props) {
   const [status, setStatus] = useState<{ tone: "ok" | "bad"; text: string; detail?: string; retry?: boolean } | null>(null);
   const [saving, setSaving] = useState(false);
   const lastSave = useRef(false);
@@ -199,6 +201,15 @@ export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanni
               </p>
             </div>
           </Section>
+          {onStartOver && (
+            <Section
+              id="reset"
+              title="Start setup over"
+              hint="Clears your setup answers: profile, roles, places, keywords and companies. Your tracked jobs, notes, saved views, resume and Telegram alerts stay."
+            >
+              <StartOver onStartOver={onStartOver} />
+            </Section>
+          )}
         </Group>
 
         <Group id="appearance" label="Appearance">
@@ -492,5 +503,57 @@ function TrackingData({ user, prefs, onImport }: { user: UserState; prefs: Prefs
         </Card>
       </Dialog>
     </Card>
+  );
+}
+
+export function StartOver({ onStartOver }: { onStartOver: () => Promise<string | null> }) {
+  const [asking, setAsking] = useState(false);
+  const [working, setWorking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const confirm = async () => {
+    setWorking(true);
+    setError(null);
+    const err = await onStartOver();
+    setWorking(false);
+    if (err) setError(err);
+    else setAsking(false);
+  };
+
+  return (
+    <>
+      <Button variant="danger" onClick={() => setAsking(true)}>
+        <RotateCcw className="size-4" /> Start setup over
+      </Button>
+      <Dialog open={asking} onClose={() => !working && setAsking(false)} labelledBy="start-over-title" initialFocus="[data-autofocus]">
+        <Card className="p-5 shadow-l3 sm:p-6">
+          <div className="flex items-start gap-3">
+            <h2 id="start-over-title" className="min-w-0 flex-1 type-subheading font-semibold">
+              Start setup over?
+            </h2>
+            <IconButton label="Close" className="-mr-2 -mt-1" onClick={() => setAsking(false)} disabled={working}>
+              <X className="size-4" />
+            </IconButton>
+          </div>
+          <p className="mt-1 type-small text-muted">
+            Your profile, roles, places, keywords and companies are cleared and setup opens from the start. Tracked jobs, notes, your resume and Telegram
+            alerts stay. A copy of your old setup is kept in <span className="font-mono">rawjobs.config.local.backup.yaml</span>.
+          </p>
+          {error && (
+            <p role="alert" className="mt-2 type-small text-danger-text">
+              {error}
+            </p>
+          )}
+          <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="ghost" onClick={() => setAsking(false)} disabled={working} data-autofocus>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={() => void confirm()} disabled={working}>
+              {working ? "Clearing…" : "Clear setup"}
+            </Button>
+          </div>
+        </Card>
+      </Dialog>
+    </>
   );
 }

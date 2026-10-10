@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
@@ -69,6 +69,18 @@ export function saveConfig(input: unknown, cwd = process.cwd()): SaveResult {
   const path = personalConfigPath(cwd);
   writeFileSync(path, configToYaml(parsed.data));
   return { ok: true, path };
+}
+
+/** Where a reset puts the old config, so it can be restored by hand. */
+export const CONFIG_BACKUP = "rawjobs.config.local.backup.yaml";
+
+/** Start setup over: move the personal config aside (replacing an older backup). Resume and secrets stay. */
+export function resetConfig(cwd = process.cwd()): { ok: true; backup: string | null } {
+  const path = personalConfigPath(cwd);
+  if (!existsSync(path)) return { ok: true, backup: null };
+  const backup = resolve(cwd, CONFIG_BACKUP);
+  renameSync(path, backup);
+  return { ok: true, backup };
 }
 
 export type CompanyCheck = {
