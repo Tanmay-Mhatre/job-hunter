@@ -608,7 +608,7 @@ const INDUSTRY_GROUPS: { label: string; ids: string[] }[] = [
   { label: "Payments & banking", ids: ["payments", "digital-bank", "banking", "lending", "fintech", "regtech", "insurtech"] },
   { label: "Trading, crypto & investing", ids: ["crypto-exchange", "crypto", "brokerage", "trading-tech", "market-making", "digital-assets", "tokenization", "wealth"] },
 ];
-const industryLabel = (id: string) => INDUSTRY_BY_ID.get(id)?.label ?? id;
+export const industryLabel = (id: string) => INDUSTRY_BY_ID.get(id)?.label ?? id;
 
 /** Industries that fit the resume or the chosen roles and topics, for ordering the groups. */
 function relevantIndustries(draft: Draft, fromResume: string[]): Set<string> {
@@ -627,7 +627,7 @@ export function IndustriesStep({ draft, update, suggest }: StepProps) {
     const ind = INDUSTRY_BY_ID.get(id);
     return !query || !ind || ind.label.toLowerCase().includes(query) || ind.terms.some((t) => t.includes(query)) || id.includes(query);
   };
-  // Topics the picked industries suggest, for the next step.
+  // Topics the picked industries suggest; topics are added in Settings.
   const topics = [...new Set(draft.industries.flatMap((id) => INDUSTRY_BY_ID.get(id)?.topics ?? []))].filter((t) => !(t in draft.keywords));
   const [showAll, setShowAll] = useState(false);
   // Groups that fit you come first (stable otherwise); the rest wait behind "Show all industries".
@@ -694,7 +694,7 @@ export function IndustriesStep({ draft, update, suggest }: StepProps) {
         {draft.industries.length === 0
           ? "None picked. That's OK: your jobs are found by your roles and places."
           : `${draft.industries.length} picked. Companies in ${draft.industries.length === 1 ? "this industry" : "these industries"} are scanned and suggested, and you can narrow your Radar to ${draft.industries.length === 1 ? "it" : "them"}.`}
-        {topics.length > 0 && <> The next step offers topics like {topics.slice(0, 5).join(", ")}.</>}
+        {topics.length > 0 && <> To rank jobs higher by topics like {topics.slice(0, 5).join(", ")}, add them under Settings, Topics.</>}
       </p>
     </div>
   );

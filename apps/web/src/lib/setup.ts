@@ -417,15 +417,15 @@ export const STEPS = [
   { id: 1, key: "resume", label: "Resume" },
   { id: 2, key: "roles", label: "Roles" },
   { id: 3, key: "locations", label: "Locations" },
-  { id: 4, key: "keywords", label: "Topics" },
+  { id: 4, key: "industries", label: "Industries" },
   { id: 5, key: "review", label: "Review" },
 ] as const;
 
 /** Step numbers by name, so screens never hard-code positions. */
-export const STEP = { welcome: 0, resume: 1, roles: 2, locations: 3, keywords: 4, review: 5 } as const;
+export const STEP = { welcome: 0, resume: 1, roles: 2, locations: 3, industries: 4, review: 5 } as const;
 export const STEP_COUNT = STEPS.length;
 
-/** Why the user can't continue yet, or null. Resume and Topics are optional. */
+/** Why the user can't continue yet, or null. Resume and Industries are optional. */
 export function stepBlocker(step: number, d: Draft): string | null {
   if (step === STEP.roles && d.include.length === 0) return "Pick at least one job title.";
   if (step === STEP.locations) {
@@ -444,11 +444,11 @@ export type SetupProgress = {
 
 export function setupProgress(d: Draft, hasResume = false): SetupProgress {
   const furthest = d.furthestStep ?? 0;
-  const started = furthest > 0 || hasResume || d.include.length > 0 || d.places.length > 0 || Object.keys(d.keywords).length > 0;
+  const started = furthest > 0 || hasResume || d.include.length > 0 || d.places.length > 0 || d.industries.length > 0 || Object.keys(d.keywords).length > 0;
   // Optional steps only send people back if they never got past them.
   if (furthest <= STEP.resume && !hasResume && d.include.length === 0) return { started, nextStep: STEP.resume };
   for (const s of [STEP.roles, STEP.locations]) if (stepBlocker(s, d)) return { started, nextStep: s };
-  if (furthest <= STEP.keywords && Object.keys(d.keywords).length === 0) return { started, nextStep: STEP.keywords };
+  if (furthest <= STEP.industries && d.industries.length === 0) return { started, nextStep: STEP.industries };
   return { started, nextStep: STEP.review };
 }
 
