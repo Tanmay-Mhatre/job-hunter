@@ -15,7 +15,7 @@ Three environment variables, read by the CLI and the dev server (`packages/core/
 | Variable | Default | What it is |
 |---|---|---|
 | `RAWJOBS_DIRECTORY_URL` | `https://github.com/Tanmay-Mhatre/rawjobs-directory/releases/latest/download` | Where `manifest.json`, `directory.json.gz` and `index.json.gz` are downloaded from. |
-| `RAWJOBS_CONTRIBUTE_URL` | `https://rawjobs-contribute.tanmay-jobhunter.workers.dev` | The contribution inbox that shared boards are sent to. Set it to an empty string to send nothing. |
+| `RAWJOBS_CONTRIBUTE_URL` | `https://rawjobs-contribute.rawjobs.workers.dev` | The contribution inbox that shared boards are sent to. Set it to an empty string to send nothing. |
 | `RAWJOBS_JOBS_URL` | `https://github.com/Tanmay-Mhatre/rawjobs-directory/releases/download/jobs` | The shared daily job feed that scans use to skip companies with nothing for you (`packages/core/src/job-feed.ts`). |
 
 For example:

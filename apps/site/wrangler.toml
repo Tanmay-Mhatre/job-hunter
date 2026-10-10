@@ -1,7 +1,7 @@
 # RawJobs marketing site: static files only, no Worker code, so every request is served as a
 # static asset (free, and not counted against the Workers request quota).
 # Deployed by .github/workflows/site.yml on every push to main. Build first: pnpm site:build
-name = "rawjobs"
+name = "www"
 compatibility_date = "2026-09-01"
 workers_dev = true
 preview_urls = false

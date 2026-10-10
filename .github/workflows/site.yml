@@ -1,6 +1,6 @@
 name: Site
 
-# Builds apps/site and deploys it to Cloudflare (Worker "rawjobs", static assets only).
+# Builds apps/site and deploys it to Cloudflare (Worker "www", static assets only).
 # Needs two repository secrets: CLOUDFLARE_API_TOKEN (a token with "Edit Cloudflare Workers"
 # permission) and CLOUDFLARE_ACCOUNT_ID. Optional repository variables: SITE_URL (once a custom
 # domain is connected) and CF_ANALYTICS_TOKEN (Cloudflare Web Analytics site token).

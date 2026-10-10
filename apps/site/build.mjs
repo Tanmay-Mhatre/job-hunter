@@ -1,6 +1,6 @@
 // Builds the RawJobs marketing site into apps/site/dist (served by Cloudflare, see wrangler.toml).
 //
-//   pnpm site:build                     # https://rawjobs.tanmay-jobhunter.workers.dev
+//   pnpm site:build                     # https://www.rawjobs.workers.dev
 //   SITE_URL=https://example.com pnpm site:build
 //
 // The page uses the app's own design files, so the site and the dashboard never drift:
@@ -15,7 +15,7 @@ const ROOT = join(SITE, "../..");
 const DS = join(ROOT, "apps/web/src/design");
 const DIST = join(SITE, "dist");
 
-const SITE_URL = (process.env.SITE_URL || "https://rawjobs.tanmay-jobhunter.workers.dev").replace(/\/$/, "");
+const SITE_URL = (process.env.SITE_URL || "https://www.rawjobs.workers.dev").replace(/\/$/, "");
 // Cloudflare Web Analytics site token (public, cookieless). Unset: no analytics script.
 const ANALYTICS_TOKEN = (process.env.CF_ANALYTICS_TOKEN || "").trim();
 

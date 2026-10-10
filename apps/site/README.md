@@ -1,6 +1,6 @@
 # RawJobs site
 
-The marketing page at <https://rawjobs.tanmay-jobhunter.workers.dev>. One static HTML page built from the app's own design files, so the site and the dashboard stay in sync:
+The marketing page at <https://www.rawjobs.workers.dev>. One static HTML page built from the app's own design files, so the site and the dashboard stay in sync:
 
 - tokens, fonts and logos from `apps/web/src/design`
 - components (`rj-*` classes) from `design/components/bundle.css`
@@ -15,12 +15,12 @@ pnpm site:dev       # build, then serve it locally with wrangler
 
 | Variable | Default | What it does |
 | --- | --- | --- |
-| `SITE_URL` | `https://rawjobs.tanmay-jobhunter.workers.dev` | Canonical URL, share image URL, sitemap, robots.txt. Set it when a custom domain is connected. |
+| `SITE_URL` | `https://www.rawjobs.workers.dev` | Canonical URL, share image URL, sitemap, robots.txt. Set it when a custom domain is connected. |
 | `CF_ANALYTICS_TOKEN` | unset | Cloudflare Web Analytics site token. Unset means no analytics script at all. |
 
 ## Deploy
 
-`.github/workflows/site.yml` builds on every pull request that touches the site, and deploys on every push to `main`. It deploys the `rawjobs` Worker, which is static assets only, so requests don't count against the Workers request quota.
+`.github/workflows/site.yml` builds on every pull request that touches the site, and deploys on every push to `main`. It deploys the `www` Worker, which is static assets only, so requests don't count against the Workers request quota.
 
 One-time setup, in the repo's **Settings → Secrets and variables → Actions**:
 
