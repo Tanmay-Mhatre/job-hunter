@@ -6,6 +6,7 @@ import { Check, ChevronDown, Plus, Search, X } from "lucide-react";
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Combobox, type ComboItem } from "../components/Combobox";
 import { ToggleChips } from "../components/ToggleChips";
+import { toast } from "../components/Toast";
 import { Button, cx, Toggle } from "../components/ui";
 import { useIndustryCounts } from "../lib/data";
 import { displayPlace } from "../lib/format";
@@ -22,15 +23,66 @@ function SectionHeading({ children }: { children: ReactNode }) {
   return <H className="type-small font-semibold">{children}</H>;
 }
 
-export function Field({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
+export function Field({ label, hint, action, children }: { label: string; hint?: ReactNode; action?: ReactNode; children: ReactNode }) {
   return (
     <div className="space-y-2">
-      <div>
-        <SectionHeading>{label}</SectionHeading>
-        {hint && <p className="mt-0.5 type-small text-muted">{hint}</p>}
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <SectionHeading>{label}</SectionHeading>
+          {hint && <p className="mt-0.5 type-small text-muted">{hint}</p>}
+        </div>
+        {action}
       </div>
       {children}
     </div>
+  );
+}
+
+/** A clear for these draft fields, and an undo that puts back what they hold now. */
+export function clearing(draft: Draft, update: (patch: Partial<Draft>) => void, patch: Partial<Draft>) {
+  const before = Object.fromEntries(Object.keys(patch).map((k) => [k, draft[k as keyof Draft]])) as Partial<Draft>;
+  return { onClear: () => update(patch), onUndo: () => update(before) };
+}
+
+/**
+ * "Clear" for a section with picks: empties it at once and offers Undo in a toast.
+ * Renders nothing when there's nothing to clear.
+ */
+export function ClearButton({
+  count,
+  noun,
+  onClear,
+  onUndo,
+  label = "Clear",
+  message,
+  name,
+}: {
+  count: number;
+  /** [one, many], e.g. ["title", "titles"]. */
+  noun: [string, string];
+  onClear: () => void;
+  onUndo: () => void;
+  label?: string;
+  /** Toast text, when "Cleared 3 titles." doesn't read well. */
+  message?: string;
+  /** Accessible name when several clears on a page share a noun, e.g. "Clear Payments & banking industries". */
+  name?: string;
+}) {
+  if (!count) return null;
+  const what = `${count} ${count === 1 ? noun[0] : noun[1]}`;
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      className="shrink-0"
+      aria-label={name ?? `${label} ${noun[1]}`}
+      onClick={() => {
+        onClear();
+        toast({ message: message ?? `Cleared ${what}.`, actionLabel: "Undo", onAction: onUndo });
+      }}
+    >
+      {label}
+    </Button>
   );
 }
 
@@ -124,6 +176,20 @@ export function RolesStep({ draft, update, suggest }: StepProps) {
     update({ family: id, include: d.include, exclude: d.exclude });
   };
 
+  /** Clear the family and its titles, and open the family list again. */
+  const family = clearing(draft, update, { family: undefined, include: [] });
+  const clearFamily = {
+    onClear: () => {
+      family.onClear();
+      setUndo(null);
+      setChoosing(true);
+    },
+    onUndo: () => {
+      family.onUndo();
+      setChoosing(false);
+    },
+  };
+
   const search = useCallback(
     (text: string): ComboItem[] => {
       const s = text.trim().toLowerCase();
@@ -148,9 +214,17 @@ export function RolesStep({ draft, update, suggest }: StepProps) {
         hint={undefined}
         action={
           fam && !choosing ? (
-            <Button size="sm" onClick={() => setChoosing(true)}>
-              Change
-            </Button>
+            <div className="flex shrink-0 gap-1">
+              <Button size="sm" onClick={() => setChoosing(true)}>
+                Change
+              </Button>
+              <ClearButton
+                count={1}
+                noun={["job family", "job family"]}
+                message="Cleared the job family and its titles."
+                {...clearFamily}
+              />
+            </div>
           ) : undefined
         }
       >
@@ -224,16 +298,14 @@ export function RolesStep({ draft, update, suggest }: StepProps) {
         title={fam ? `Titles in ${fam.label}` : "Job titles"}
         hint={undefined}
         action={
-          fam ? (
-            <div className="flex shrink-0 gap-1">
+          <div className="flex shrink-0 gap-1">
+            {fam && (
               <Button size="sm" variant="ghost" onClick={() => update({ include: union(fam.titles, extras) })} disabled={hasAll(draft.include, fam.titles)}>
                 Select all
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => update({ include: extras })} disabled={!draft.include.some((t) => famTitles.includes(t))}>
-                Clear
-              </Button>
-            </div>
-          ) : undefined
+            )}
+            <ClearButton count={draft.include.length} noun={["title", "titles"]} {...clearing(draft, update, { include: [] })} />
+          </div>
         }
       >
         <div className="space-y-4">
@@ -272,7 +344,11 @@ export function RolesStep({ draft, update, suggest }: StepProps) {
       </Section>
 
       <MoreOptions summary={[draft.exclude.length && `${draft.exclude.length} hidden`, draft.seniority.length && `${draft.seniority.length} seniority`].filter(Boolean).join(" · ")}>
-        <Field label="Never show me" hint="Hide titles with these words.">
+        <Field
+          label="Never show me"
+          hint="Hide titles with these words."
+          action={<ClearButton count={draft.exclude.length} noun={["hidden word", "hidden words"]} {...clearing(draft, update, { exclude: [] })} />}
+        >
         <ToggleChips
           label="Titles to hide"
           tone="bad"
@@ -282,7 +358,11 @@ export function RolesStep({ draft, update, suggest }: StepProps) {
           addPlaceholder="Add another…"
         />
         </Field>
-        <Field label="Seniority" hint="Titles with these words rank higher.">
+        <Field
+          label="Seniority"
+          hint="Titles with these words rank higher."
+          action={<ClearButton count={draft.seniority.length} noun={["seniority word", "seniority words"]} {...clearing(draft, update, { seniority: [] })} />}
+        >
         <ToggleChips
           label="Seniority words"
           tone="plain"
@@ -486,7 +566,16 @@ export function LocationsStep({ draft, update, suggest }: StepProps) {
 
   return (
     <div className="space-y-8">
-      <Field label="Work style">
+      <Field
+        label="Work style"
+        action={
+          <ClearButton
+            count={draft.office.length + (draft.remote ? 1 : 0)}
+            noun={["work style", "work styles"]}
+            {...clearing(draft, update, { office: [], remote: false })}
+          />
+        }
+      >
         <div className="flex flex-wrap gap-2">
           {WORK_STYLES.map((w) => (
             <PickButton key={w.id} active={w.id === "remote" ? draft.remote : draft.office.includes(w.id)} onClick={() => toggleStyle(w.id)}>
@@ -497,7 +586,10 @@ export function LocationsStep({ draft, update, suggest }: StepProps) {
       </Field>
 
       {office && (
-        <Field label={draft.office.length === 2 ? "Office locations" : draft.office[0] === "hybrid" ? "Hybrid locations" : "On-site locations"}>
+        <Field
+          label={draft.office.length === 2 ? "Office locations" : draft.office[0] === "hybrid" ? "Hybrid locations" : "On-site locations"}
+          action={<ClearButton count={groupPlaces(draft.places).length} noun={["place", "places"]} {...clearing(draft, update, { places: [] })} />}
+        >
           <Combobox
             label="Search places"
             placeholder="City or country, e.g. Dubai, London…"
@@ -544,7 +636,10 @@ export function LocationsStep({ draft, update, suggest }: StepProps) {
       )}
 
       {draft.remote && (
-        <Field label="Remote from">
+        <Field
+          label="Remote from"
+          action={<ClearButton count={groupPlaces(draft.remoteOk).length} noun={["remote region", "remote regions"]} {...clearing(draft, update, { remoteOk: [] })} />}
+        >
           <Combobox
             label="Search remote regions"
             placeholder="Region or country, e.g. EMEA, Germany…"
@@ -584,7 +679,11 @@ export function LocationsStep({ draft, update, suggest }: StepProps) {
           When I pick a country, also add its main cities
         </Toggle>
         {draft.remote && (
-          <Field label="Skip remote jobs limited to" hint="For example “Remote (US only)”.">
+          <Field
+            label="Skip remote jobs limited to"
+            hint="For example “Remote (US only)”."
+            action={<ClearButton count={draft.remoteExclude.length} noun={["remote limit", "remote limits"]} {...clearing(draft, update, { remoteExclude: [] })} />}
+          >
             <ToggleChips
               label="Remote regions to skip"
               tone="bad"
@@ -643,10 +742,18 @@ export function IndustriesStep({ draft, update, suggest }: StepProps) {
     <div className="space-y-6">
       {fromResume.length > 0 && (
         <div className="rounded-md border border-dashed border-line p-4">
-          <p className="mb-2 type-small">
-            <span className="font-semibold text-ink">{RESUME_LABEL(suggest)}</span>
-            <span className="text-muted">: click to add or remove</span>
-          </p>
+          <div className="mb-2 flex items-start gap-2">
+            <p className="min-w-0 flex-1 type-small">
+              <span className="font-semibold text-ink">{RESUME_LABEL(suggest)}</span>
+              <span className="text-muted">: click to add or remove</span>
+            </p>
+            <ClearButton
+              count={draft.industries.filter((id) => fromResume.includes(id)).length}
+              noun={["industry", "industries"]}
+              name="Clear industries from your resume"
+              {...clearing(draft, update, { industries: draft.industries.filter((id) => !fromResume.includes(id)) })}
+            />
+          </div>
           <ToggleChips
             label="Industries from your resume"
             options={fromResume}
@@ -658,22 +765,36 @@ export function IndustriesStep({ draft, update, suggest }: StepProps) {
         </div>
       )}
 
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted" />
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search industries, e.g. biotech, SaaS, energy…"
-          aria-label="Search industries"
-          className="h-9 w-full rounded-md border border-line bg-raised pl-9 pr-3 type-small placeholder:text-muted"
-        />
+      <div className="flex items-center gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search industries, e.g. biotech, SaaS, energy…"
+            aria-label="Search industries"
+            className="h-9 w-full rounded-md border border-line bg-raised pl-9 pr-3 type-small placeholder:text-muted"
+          />
+        </div>
+        <ClearButton label="Clear all" count={draft.industries.length} noun={["industry", "industries"]} {...clearing(draft, update, { industries: [] })} />
       </div>
 
       {visible.map((g) => {
         const ids = g.ids.filter(matches);
         if (!ids.length) return null;
         return (
-          <Field key={g.label} label={g.label}>
+          <Field
+            key={g.label}
+            label={g.label}
+            action={
+              <ClearButton
+                count={draft.industries.filter((id) => g.ids.includes(id)).length}
+                noun={["industry", "industries"]}
+                name={`Clear ${g.label} industries`}
+                {...clearing(draft, update, { industries: draft.industries.filter((id) => !g.ids.includes(id)) })}
+              />
+            }
+          >
             <ToggleChips
               label={g.label}
               options={ids}
@@ -751,11 +872,17 @@ export function KeywordsStep({ draft, update, suggest, resumeText = "" }: StepPr
   // Everything you picked that isn't offered above, so it can be removed here too.
   const shown = new Set([...(fam?.topics ?? []), ...resumeTopics]);
   const yours = entries.map(([k]) => k).filter((k) => !shown.has(k));
+  /** Clear for the picked topics among `options`. */
+  const clearTopics = (options: string[], name: string) => {
+    const picked = options.filter((k) => k in draft.keywords);
+    const keywords = Object.fromEntries(Object.entries(draft.keywords).filter(([k]) => !picked.includes(k)));
+    return { count: picked.length, noun: ["topic", "topics"] as [string, string], name, ...clearing(draft, update, { keywords }) };
+  };
 
   return (
     <div className="space-y-8">
       {fam && (
-        <Field label={`Suggested for ${fam.label}`}>
+        <Field label={`Suggested for ${fam.label}`} action={<ClearButton {...clearTopics(fam.topics, `Clear topics suggested for ${fam.label}`)} />}>
           <ToggleChips
             label={`Topics for ${fam.label}`}
             options={fam.topics}
@@ -766,7 +893,7 @@ export function KeywordsStep({ draft, update, suggest, resumeText = "" }: StepPr
       )}
 
       {resumeTopics.length > 0 && (
-        <Field label={fromPaste.length ? "Found in the text you pasted" : RESUME_LABEL(suggest)}>
+        <Field label={fromPaste.length ? "Found in the text you pasted" : RESUME_LABEL(suggest)} action={<ClearButton {...clearTopics(resumeTopics, "Clear suggested topics")} />}>
           <ToggleChips
             label="Suggested topics"
             options={resumeTopics}
@@ -776,7 +903,7 @@ export function KeywordsStep({ draft, update, suggest, resumeText = "" }: StepPr
         </Field>
       )}
 
-      <Field label={fam || resumeTopics.length ? "Add your own" : "Your topics"}>
+      <Field label={fam || resumeTopics.length ? "Add your own" : "Your topics"} action={<ClearButton {...clearTopics(yours, "Clear your own topics")} />}>
         <AddKeyword onAdd={(k) => setWeight(k, DEFAULT_WEIGHT)} />
         {yours.length > 0 && (
           <ToggleChips label="Your topics" options={yours} selected={yours} onChange={(next) => toggleGroup(yours, next, () => DEFAULT_WEIGHT)} />
@@ -806,6 +933,7 @@ export function KeywordsStep({ draft, update, suggest, resumeText = "" }: StepPr
         {entries.length > 0 && (
           <Field
             label="Importance"
+            action={<ClearButton label="Clear all" {...clearTopics(entries.map(([k]) => k), "Clear all topics")} />}
             hint={
               <>
                 <b className="text-ink">5</b> = core, <b className="text-ink">1</b> = nice to have.

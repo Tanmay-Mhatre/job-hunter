@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { COUNTRIES, countryTerms, REGIONS, searchPlaces } from "../src/catalog/places";
 import { allTitles, ROLE_FAMILIES, SENIORITY } from "../src/catalog/roles";
-import { readResume, saveResume } from "../src/resume";
+import { deleteResume, readResume, saveResume } from "../src/resume";
 import { detectFromResume, parseAiAnswer } from "../src/resume-parse";
 
 const RESUME = `# Jane Doe
@@ -118,6 +118,14 @@ describe("saveResume / readResume", () => {
     expect(saveResume("# Me\r\nline", dir)).toMatchObject({ ok: true });
     expect(existsSync(join(dir, "profile", "resume.md"))).toBe(true);
     expect(readResume(dir)).toMatchObject({ text: "# Me\nline\n" });
+  });
+
+  it("deleteResume removes the file, and is fine when there's none", () => {
+    dir = mkdtempSync(join(tmpdir(), "rawjobs-resume-"));
+    saveResume("# Me", dir);
+    expect(deleteResume(dir)).toMatchObject({ ok: true });
+    expect(readResume(dir).text).toBeNull();
+    expect(deleteResume(dir)).toMatchObject({ ok: true });
   });
 });
 

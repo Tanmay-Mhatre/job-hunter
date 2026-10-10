@@ -1,8 +1,9 @@
 import { parseAiAnswer, type AiProfile, type ParsedAnswer } from "@rawjobs/core/resume-parse";
 import { ArrowRight, Check, ClipboardCopy, ExternalLink, FileText, Files, LoaderCircle, SkipForward, Sparkles, Upload, Wand2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Dialog } from "../components/Dialog";
 import { Kbd } from "../components/primitives";
-import { Button, cx } from "../components/ui";
+import { Button, Card, cx } from "../components/ui";
 import { copyText } from "../lib/clipboard";
 import { canRunLocally } from "../lib/data";
 import { extractResumeText } from "../lib/extract";
@@ -10,6 +11,7 @@ import { displayPlace } from "../lib/format";
 import { STEP, type Draft } from "../lib/setup";
 import { buildSuggestions, prefillDraft } from "../lib/suggest";
 import { MASTER_RESUME_PROMPT } from "./prompt";
+import { ClearButton } from "./steps";
 
 type Mode = "single" | "ai" | null;
 type SaveResult = { ok: true } | { ok: false; error: string };
@@ -19,6 +21,8 @@ type Props = {
   update: (patch: Partial<Draft>) => void;
   resumeText: string;
   saveResume: (text: string) => Promise<SaveResult>;
+  /** Delete the saved resume. Without it there's no Remove button. */
+  removeResume?: () => Promise<SaveResult>;
   /** Skip ahead to the manual steps (wizard only). */
   onSkip?: () => void;
   onNext?: () => void;
@@ -50,7 +54,7 @@ function filledText(patch: Partial<Draft>): string {
   return names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : (names[0] ?? "");
 }
 
-export function ResumeStep({ draft, update, resumeText, saveResume, onSkip, onNext, hideSkip, footer }: Props) {
+export function ResumeStep({ draft, update, resumeText, saveResume, removeResume, onSkip, onNext, hideSkip, footer }: Props) {
   const wizard = !!footer;
   const [mode, setMode] = useState<Mode>(null);
   const [replacing, setReplacing] = useState(false);
@@ -143,6 +147,22 @@ export function ResumeStep({ draft, update, resumeText, saveResume, onSkip, onNe
             setFilled(null);
             prefilled.current = false;
           }}
+          onRemove={
+            removeResume &&
+            (async () => {
+              const res = await removeResume();
+              if (res.ok) {
+                // The AI profile came from this resume; answers it filled in stay.
+                update({ aiProfile: undefined });
+                setMode(null);
+                setText("");
+                setAnswer("");
+                setFilled(null);
+                prefilled.current = false;
+              }
+              return res;
+            })
+          }
           auto={wizard}
           filled={filled}
           // First time through the wizard with a resume saved earlier: prefill once on arrival.
@@ -325,6 +345,7 @@ function SinglePath({ text, setText, tooShort, save }: { text: string; setText: 
           </Button>
         )}
         <span className="type-meta text-muted">{words(text) ? `${words(text)} words` : ""}</span>
+        <ClearButton count={text.trim() ? 1 : 0} noun={["pasted text", "pasted text"]} message="Cleared the pasted text." onClear={() => setText("")} onUndo={() => setText(text)} />
         {tooShort && (
           <span id={MIN_WORDS_HINT_ID} className="type-small text-muted">
             Add a bit more: at least {MIN_WORDS} words are needed to suggest roles.
@@ -453,6 +474,7 @@ function SavedResume({
   draft,
   update,
   onReplace,
+  onRemove,
   auto,
   filled,
   onArrive,
@@ -461,6 +483,7 @@ function SavedResume({
   draft: Draft;
   update: (p: Partial<Draft>) => void;
   onReplace: () => void;
+  onRemove?: () => Promise<SaveResult>;
   /** Wizard: suggestions were (or are about to be) applied automatically. */
   auto: boolean;
   filled: string | null;
@@ -492,9 +515,12 @@ function SavedResume({
             <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-inset p-3 font-mono type-small text-muted">{text}</pre>
           </details>
         </div>
-        <Button size="sm" onClick={onReplace}>
-          Replace
-        </Button>
+        <div className="flex shrink-0 flex-col gap-1 sm:flex-row">
+          <Button size="sm" onClick={onReplace}>
+            Replace
+          </Button>
+          {onRemove && <RemoveResume onRemove={onRemove} />}
+        </div>
       </div>
 
       {nothing ? (
@@ -552,6 +578,53 @@ function Row({ label, items }: { label: string; items: string[] }) {
         {items.slice(0, 10).join(" · ")}
         {items.length > 10 && <span className="text-muted"> · +{items.length - 10} more</span>}
       </dd>
+    </>
+  );
+}
+
+/** "Remove" for the saved resume, behind a confirmation: the file can't be brought back. */
+function RemoveResume({ onRemove }: { onRemove: () => Promise<SaveResult> }) {
+  const [asking, setAsking] = useState(false);
+  const [working, setWorking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const confirm = async () => {
+    setWorking(true);
+    setError(null);
+    const res = await onRemove();
+    setWorking(false);
+    if (res.ok) setAsking(false);
+    else setError(res.error);
+  };
+
+  return (
+    <>
+      <Button size="sm" variant="ghost" onClick={() => setAsking(true)}>
+        Remove
+      </Button>
+      <Dialog open={asking} onClose={() => !working && setAsking(false)} labelledBy="remove-resume-title" initialFocus="[data-autofocus]">
+        <Card className="p-5 shadow-l3 sm:p-6">
+          <h2 id="remove-resume-title" className="type-subheading font-semibold">
+            Remove your saved resume?
+          </h2>
+          <p className="mt-1 type-small text-muted">
+            The resume is deleted from {canRunLocally ? "this computer" : "this browser"}. Roles, places and other answers it filled in stay as they are.
+          </p>
+          {error && (
+            <p role="alert" className="mt-2 type-small text-danger-text">
+              Couldn't remove the resume. {error}
+            </p>
+          )}
+          <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="ghost" onClick={() => setAsking(false)} disabled={working} data-autofocus>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={() => void confirm()} disabled={working}>
+              {working ? "Removing…" : "Remove resume"}
+            </Button>
+          </div>
+        </Card>
+      </Dialog>
     </>
   );
 }

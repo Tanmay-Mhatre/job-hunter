@@ -46,5 +46,20 @@ export function useResume() {
     return { ok: true };
   }, []);
 
-  return { resume, saveResume, refresh };
+  /** Delete the saved resume (this computer, or this browser when hosted). */
+  const removeResume = useCallback(async (): Promise<{ ok: true } | { ok: false; error: string }> => {
+    if (canRunLocally) {
+      try {
+        const res = await fetch("/api/setup/resume", { method: "DELETE" });
+        const body = (await res.json()) as { ok: boolean; errors?: string };
+        if (!body.ok) return { ok: false, error: body.errors ?? "Couldn't remove the resume." };
+      } catch (err) {
+        return { ok: false, error: (err as Error).message };
+      }
+    } else save(LOCAL_KEY, null);
+    setResume({ text: "", loaded: true });
+    return { ok: true };
+  }, []);
+
+  return { resume, saveResume, removeResume, refresh };
 }

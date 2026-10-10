@@ -102,7 +102,7 @@ export function App() {
   }, [draft, status]);
   const update = useCallback((patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch })), []);
   const dirty = !sameConfig(draft, saved);
-  const { resume, saveResume } = useResume();
+  const { resume, saveResume, removeResume } = useResume();
   const progress = setupProgress(draft, !!resume.text);
   const suggest = useMemo(() => buildSuggestions(resume.text, draft.aiProfile), [resume.text, draft.aiProfile]);
 
@@ -382,6 +382,7 @@ export function App() {
             progress={progress}
             resumeText={resume.text}
             saveResume={saveResume}
+            removeResume={removeResume}
             onStart={() => {
               save(WELCOME_SEEN_KEY, true);
               goStep(!personal && progress.started ? progress.nextStep : STEP.resume);
@@ -513,6 +514,7 @@ export function App() {
                 suggest={suggest}
                 resumeText={resume.text}
                 saveResume={saveResume}
+            removeResume={removeResume}
                 onStartOver={canRunLocally && personal ? startOver : undefined}
               />
             )}

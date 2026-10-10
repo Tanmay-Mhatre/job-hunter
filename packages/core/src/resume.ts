@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
 /** The master resume lives next to the config, in a gitignored folder. Never committed or published. */
@@ -20,5 +20,12 @@ export function saveResume(text: string, cwd = process.cwd()): { ok: true; path:
   const path = resolve(cwd, RESUME_PATH);
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, `${clean}\n`);
+  return { ok: true, path };
+}
+
+/** Delete the saved resume. Nothing saved is fine too. */
+export function deleteResume(cwd = process.cwd()): { ok: true; path: string } {
+  const path = resolve(cwd, RESUME_PATH);
+  rmSync(path, { force: true });
   return { ok: true, path };
 }

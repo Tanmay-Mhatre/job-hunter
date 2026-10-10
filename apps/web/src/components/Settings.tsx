@@ -32,6 +32,7 @@ type Props = {
   suggest: Suggestions;
   resumeText: string;
   saveResume: (text: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+  removeResume: () => Promise<{ ok: true } | { ok: false; error: string }>;
   toCompanies: () => void;
   /** Clear the saved setup and open the wizard again; an error message, or null. Only on a saved local setup. */
   onStartOver?: () => Promise<string | null>;
@@ -54,7 +55,7 @@ const sectionFromHash = () => new URLSearchParams(location.hash.split("?")[1] ??
 const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 /** Edit any part of the setup after the wizard, then save (and scan). */
-export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanning, user, prefs, onImport, suggest, resumeText, saveResume, toCompanies, onStartOver }: Props) {
+export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanning, user, prefs, onImport, suggest, resumeText, saveResume, removeResume, toCompanies, onStartOver }: Props) {
   const [status, setStatus] = useState<{ tone: "ok" | "bad"; text: string; detail?: string; retry?: boolean } | null>(null);
   const [saving, setSaving] = useState(false);
   const lastSave = useRef(false);
@@ -124,7 +125,7 @@ export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanni
       <SettingsNav active={active} />
       <div className="space-y-8">
         <Group id="profile" label="Profile">
-          {profile("resume", "Master resume", "Saved on this computer only.", <ResumeStep draft={draft} update={update} resumeText={resumeText} saveResume={saveResume} hideSkip />)}
+          {profile("resume", "Master resume", "Saved on this computer only.", <ResumeStep draft={draft} update={update} resumeText={resumeText} saveResume={saveResume} removeResume={removeResume} hideSkip />)}
           {profile("roles", "Roles", "Only jobs whose title matches are shown.", <RolesStep draft={draft} update={update} suggest={suggest} />)}
           {profile("locations", "Locations", "Jobs outside these places are hidden.", <LocationsStep draft={draft} update={update} suggest={suggest} />)}
           {profile("industries", "Industries", "Industries decide which companies are scanned and suggested.", <IndustriesStep draft={draft} update={update} suggest={suggest} />)}

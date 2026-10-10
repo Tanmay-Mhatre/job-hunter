@@ -28,6 +28,7 @@ type Props = {
   progress: SetupProgress;
   resumeText: string;
   saveResume: (text: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+  removeResume: () => Promise<{ ok: true } | { ok: false; error: string }>;
 };
 
 const COPY: Record<number, { title: string; intro: string }> = {
@@ -39,7 +40,7 @@ const COPY: Record<number, { title: string; intro: string }> = {
 };
 
 export function Wizard(props: Props) {
-  const { step, goStep, draft, update, existing, configErrors, startScan, onSaved, onFinish, onExit, onStart, onStartOver, progress, resumeText, saveResume } =
+  const { step, goStep, draft, update, existing, configErrors, startScan, onSaved, onFinish, onExit, onStart, onStartOver, progress, resumeText, saveResume, removeResume } =
     props;
   const suggest = useMemo(() => buildSuggestions(resumeText, draft.aiProfile), [resumeText, draft.aiProfile]);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -82,6 +83,7 @@ export function Wizard(props: Props) {
                 update={update}
                 resumeText={resumeText}
                 saveResume={saveResume}
+                removeResume={removeResume}
                 onSkip={() => goStep(STEP.roles)}
                 onNext={() => goStep(STEP.roles)}
                 footer={(primary) => <StepFooter onBack={() => goStep(step - 1)}>{primary}</StepFooter>}
