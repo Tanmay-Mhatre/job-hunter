@@ -111,7 +111,8 @@ function jobLines(jobs: readonly Job[], minScore: number, now = Date.now()): str
     .map((j) => {
       const star = j.score >= minScore ? "⭐ " : "";
       const where = j.location ? ` · ${esc(j.location.split(/[;|]/)[0]!.trim())}` : "";
-      return `${star}<b>${j.score}</b> <a href="${esc(j.url)}">${esc(j.title)}</a>\n${esc(j.company)}${where}`;
+      // The score sits after the company, labelled: before the title it read as part of it ("63 Staff Product Manager").
+      return `${star}<a href="${esc(j.url)}">${esc(j.title)}</a>\n${esc(j.company)}${where} · score ${j.score}/100`;
     })
     .join("\n\n");
 }
