@@ -10,12 +10,13 @@ central inbox, like any other install. You only need the steps below if you want
 
 ### Point the app at your own data
 
-Two environment variables, read by the CLI and the dev server (`packages/core/src/directory.ts`):
+Three environment variables, read by the CLI and the dev server (`packages/core/src/directory.ts`):
 
 | Variable | Default | What it is |
 |---|---|---|
 | `RAWJOBS_DIRECTORY_URL` | `https://github.com/Tanmay-Mhatre/job-hunter-directory/releases/latest/download` | Where `manifest.json`, `directory.json.gz` and `index.json.gz` are downloaded from. |
 | `RAWJOBS_CONTRIBUTE_URL` | `https://job-hunter-contribute.tanmay-jobhunter.workers.dev` | The contribution inbox that shared boards are sent to. Set it to an empty string to send nothing. |
+| `RAWJOBS_JOBS_URL` | `https://github.com/Tanmay-Mhatre/job-hunter-directory/releases/download/jobs` | The shared daily job feed that scans use to skip companies with nothing for you (`packages/core/src/job-feed.ts`). |
 
 For example:
 

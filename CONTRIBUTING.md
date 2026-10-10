@@ -9,7 +9,7 @@ Requires Node 22+ and [pnpm](https://pnpm.io).
 ```bash
 pnpm install
 pnpm hooks:install   # once per clone: no direct pushes to main, and pnpm check before every push
-pnpm check           # typecheck + tests
+pnpm check           # design tokens + design lint + typecheck + tests
 ```
 
 The contribution inbox (`services/contribute`) is a Cloudflare Worker with its own `package.json`.
@@ -33,8 +33,8 @@ in that folder.
 - **Be polite to job boards.** Read only public postings, keep the per-host delays, identify with
   the User-Agent, back off on rate limits, and never touch apply endpoints.
 - **Data licences.** Only add sources to the shared directory whose licence allows it (see
-  `services/directory-repo-template/NOTICE.md`). Third-party job APIs (Remotive, The Muse, Jobicy,
-  RemoteOK, Hacker News) are fetched on the user's computer only, never published.
+  `services/directory-repo-template/NOTICE.md`). Public job boards (Hacker News, Remotive, Arbeitnow,
+  Remote OK) are fetched on the user's computer only, never published.
 
 ## Adding a company
 
@@ -48,3 +48,8 @@ Use **Add by link** in the app (shared with the directory if sharing is on), or 
   reply within 7 days.
 - Security problems: don't open a public issue. Use GitHub's "Report a vulnerability" on the
   Security tab.
+
+## License
+
+RawJobs is MIT licensed ([LICENSE](LICENSE)). By opening a pull request you agree that your
+contribution is released under the same license.
