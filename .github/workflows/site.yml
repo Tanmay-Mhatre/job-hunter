@@ -32,6 +32,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      HAS_CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -43,7 +45,8 @@ jobs:
           SITE_URL: ${{ vars.SITE_URL }}
           CF_ANALYTICS_TOKEN: ${{ vars.CF_ANALYTICS_TOKEN }}
       - name: Deploy to Cloudflare
-        if: github.event_name != 'pull_request'
+        # Skipped (not failed) until the two Cloudflare secrets are added.
+        if: github.event_name != 'pull_request' && env.HAS_CF_TOKEN == 'true'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
