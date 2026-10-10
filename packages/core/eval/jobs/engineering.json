@@ -1,0 +1,99 @@
+[
+  {
+    "id": "eng-01",
+    "title": "Senior Platform Engineer",
+    "company": "Cloudyard",
+    "industries": ["cloud", "devtools"],
+    "location": "Berlin, Germany",
+    "workplace": "hybrid",
+    "salary": { "min": 90000, "max": 110000, "currency": "EUR", "period": "year" },
+    "postedAt": "2026-10-07",
+    "description": "Cloudyard gives engineering teams a developer platform on top of their own cloud accounts. Hundreds of companies deploy thousands of services a day through us.\n\nYour mission\nOur Platform team runs the infrastructure Cloudyard itself runs on: multi-region Kubernetes clusters on AWS, our Postgres fleet, and the CI/CD and observability tooling the rest of engineering depends on.\n\nWhat you'll work on\n- Operate and evolve our EKS clusters, from upgrades to autoscaling and cost\n- Build internal tooling and controllers in Go\n- Manage infrastructure as code with Terraform\n- Improve our observability stack (Prometheus, Grafana, OpenTelemetry) and on-call experience\n- Help design for reliability across regions\n\nWhat you bring\n- 5+ years in backend, platform or SRE roles\n- Production experience with Kubernetes and a major cloud provider, AWS preferred\n- Strong Go, or strong in another language and keen to write Go\n- Experience running Postgres or another relational database at scale\n\nNice to have\n- Contributions to open source cloud-native projects\n- Experience with distributed systems and consensus\n\nHybrid in Berlin Kreuzberg (two days a week), 30 days holiday, learning budget. We support relocation within the EU.\n\nCloudyard is an equal opportunity employer."
+  },
+  {
+    "id": "eng-02",
+    "title": "Platform Engineer",
+    "company": "Cloudyard",
+    "industries": ["cloud", "devtools"],
+    "location": "Berlin, Germany",
+    "workplace": "hybrid",
+    "salary": { "min": 65000, "max": 78000, "currency": "EUR", "period": "year" },
+    "postedAt": "2026-10-07",
+    "description": "Cloudyard gives engineering teams a developer platform on top of their own cloud accounts.\n\nWe're hiring a Platform Engineer to join our Platform team in Berlin. You'll work alongside senior engineers on the Kubernetes clusters, Terraform modules and CI pipelines that the rest of Cloudyard depends on.\n\nWhat you'll do\n- Automate cluster operations and upgrades\n- Write and review Terraform for our AWS accounts\n- Build small internal tools in Go or Python\n- Take part in a supported on-call rotation once you're ramped up\n\nWhat we're looking for\n- 2+ years of experience in a DevOps, platform or backend role\n- Familiarity with containers and Kubernetes\n- Some experience with a cloud provider\n- Eagerness to learn and a habit of writing things down\n\nHybrid in Berlin Kreuzberg (two days a week), 30 days holiday, learning budget.\n\nCloudyard is an equal opportunity employer."
+  },
+  {
+    "id": "eng-03",
+    "title": "Staff Platform Engineer",
+    "company": "Cloudyard",
+    "industries": ["cloud", "devtools"],
+    "location": "Berlin, Germany",
+    "workplace": "hybrid",
+    "salary": { "min": 120000, "max": 140000, "currency": "EUR", "period": "year" },
+    "postedAt": "2026-10-03",
+    "description": "Cloudyard gives engineering teams a developer platform on top of their own cloud accounts.\n\nAs a Staff Platform Engineer you'll set the technical direction for infrastructure across Cloudyard. You will lead architecture across our three infrastructure teams, own the multi-region strategy, and mentor senior engineers.\n\nYou will\n- Define the long-term architecture of our compute, networking and data platforms\n- Lead cross-team initiatives such as our move to cell-based Kubernetes deployments\n- Write design documents, drive decisions and unblock teams\n- Be the escalation point for our hardest production incidents\n\nRequirements\n- 10+ years of software engineering, at least 4 at staff level or equivalent technical leadership\n- Deep expertise in Kubernetes internals, AWS networking and distributed systems\n- Proven record leading multi-team technical initiatives\n- Excellent written communication\n\nHybrid in Berlin, relocation support available within the EU.\n\nCloudyard is an equal opportunity employer."
+  },
+  {
+    "id": "eng-04",
+    "title": "Senior Site Reliability Engineer",
+    "company": "Fernhook",
+    "industries": ["logistics"],
+    "location": "Remote (Europe)",
+    "workplace": "remote",
+    "salary": { "min": 85000, "max": 100000, "currency": "EUR", "period": "year" },
+    "postedAt": "2026-10-08",
+    "description": "Fernhook builds route-planning software used by 900 delivery fleets. When we go down, parcels don't move, so reliability is our product.\n\nAbout the team\nOur SRE team of five keeps 120 microservices healthy across two GCP regions. We run everything on k8s (GKE), write our tooling in Golang, and manage infrastructure as code with Pulumi.\n\nWhat you'll do\n- Own SLOs and error budgets with product teams\n- Run and improve our k8s platform, service mesh and deploy pipeline\n- Tune and operate our PostgreSQL clusters and Kafka\n- Lead incident response and write blameless post-mortems\n- Build self-service tooling in Golang\n\nYou have\n- 5+ years in SRE, platform or backend engineering\n- Production k8s experience\n- Strong Golang or Python\n- Experience with PostgreSQL operations\n- A calm head during incidents\n\nNice to have\n- GCP experience (AWS is fine too)\n- Prometheus, Grafana and tracing\n\nFully remote within Europe (UTC-1 to UTC+3). Fair on-call: one week in six, paid.\n\nFernhook is an equal opportunity employer."
+  },
+  {
+    "id": "eng-05",
+    "title": "Senior Software Engineer (Web)",
+    "company": "Pixelmint",
+    "industries": ["saas"],
+    "location": "Berlin, Germany",
+    "workplace": "hybrid",
+    "salary": { "min": 80000, "max": 95000, "currency": "EUR", "period": "year" },
+    "postedAt": "2026-10-06",
+    "description": "Pixelmint is a collaborative whiteboard used by 2 million people. Our web app is React and TypeScript; behind it, a Go backend running on Kubernetes in AWS handles real-time sync for millions of boards.\n\nThe role\nYou'll join the Canvas team and build the editor people use every day: rendering, selection, text editing and real-time presence. You'll care about frame rates, accessibility and the details of interaction.\n\nWhat you'll do\n- Build features in React and TypeScript across our canvas editor\n- Improve rendering performance with Canvas and WebGL\n- Work with designers on interaction details\n- Collaborate with backend engineers on our real-time sync protocol\n\nWhat you'll need\n- 5+ years building complex web applications\n- Expert TypeScript and React\n- Experience with performance profiling in the browser\n\nNice to have\n- WebGL or graphics programming\n- Some backend experience (Go, Postgres)\n\nHybrid in Berlin Mitte, 28 days holiday, Deutschlandticket.\n\nPixelmint is an equal opportunity employer."
+  },
+  {
+    "id": "eng-06",
+    "title": "Senior Backend Engineer (Java)",
+    "company": "Hartwell Versicherung",
+    "industries": ["insurtech"],
+    "location": "Berlin, Germany",
+    "workplace": "hybrid",
+    "salary": { "min": 82000, "max": 95000, "currency": "EUR", "period": "year" },
+    "postedAt": "2026-10-02",
+    "description": "Hartwell is modernising insurance for 4 million customers in Germany. Our digital unit in Berlin builds the claims and policy platforms behind our apps.\n\nYour tasks\n- Develop backend services in Java 21 and Spring Boot\n- Design REST APIs and event-driven integrations with Kafka\n- Migrate legacy Oracle-based systems to our new platform on Kubernetes\n- Work in a cross-functional team with product owners and testers\n\nYour profile\n- 5+ years of backend development with Java and Spring\n- Experience with relational databases (Oracle, PostgreSQL)\n- Knowledge of microservices and containerisation\n- German at B2 level or above; our teams work in German\n- Experience in insurance or financial services is a plus\n\nWhat we offer\nHybrid working (40% office), company pension, 30 days holiday, Jobrad.\n\nWe value diversity and welcome all applications regardless of gender, nationality, ethnic and social origin, religion, disability, age, sexual orientation and identity."
+  },
+  {
+    "id": "eng-07",
+    "title": "Senior Platform Engineer",
+    "company": "Northbeam Systems",
+    "industries": ["cloud", "saas"],
+    "location": "Remote",
+    "workplace": "remote",
+    "salary": { "min": 175000, "max": 205000, "currency": "USD", "period": "year" },
+    "postedAt": "2026-10-08",
+    "description": "Northbeam Systems builds data pipelines for healthcare providers. We're a remote-first team of 90.\n\nWhat you'll do\n- Own our Kubernetes platform on AWS (EKS) and the Terraform that defines it\n- Build platform services in Go\n- Improve observability and incident response\n- Help us achieve HITRUST certification\n\nWhat you'll need\n- 6+ years of experience in platform, infrastructure or SRE roles\n- Deep Kubernetes and AWS knowledge\n- Go or Python\n- Experience in regulated environments is a plus\n\nLocation and eligibility\nThis is a fully remote role, open to candidates living in the United States only, because of our healthcare data obligations. You must be authorised to work in the US; we are unable to sponsor visas.\n\nBenefits: medical, dental and vision, 401(k) match, home office stipend.\n\nNorthbeam Systems is an equal opportunity employer. All qualified applicants will receive consideration for employment without regard to race, color, religion, sex, sexual orientation, gender identity, national origin, disability or veteran status."
+  },
+  {
+    "id": "eng-08",
+    "title": "Senior Backend Engineer",
+    "company": "Tessellate",
+    "industries": ["payments", "saas"],
+    "location": "Remote (EMEA)",
+    "workplace": "remote",
+    "postedAt": "2026-10-09"
+  },
+  {
+    "id": "eng-09",
+    "title": "Senior DevOps Engineer",
+    "company": "Lagerwerk",
+    "industries": ["logistics", "saas"],
+    "location": "Berlin, Germany",
+    "workplace": "hybrid",
+    "salary": { "min": 82000, "max": 96000, "currency": "EUR", "period": "year" },
+    "postedAt": "2026-10-04",
+    "description": "Lagerwerk makes warehouse management software for 600 mid-sized warehouses in Europe.\n\nWe're looking for a Senior DevOps Engineer to own the platform our 60 developers ship on.\n\nYour responsibilities\n- Run our Kubernetes clusters on AWS and keep them secure and up to date\n- Manage our infrastructure with Terraform and Argo CD\n- Build and maintain CI/CD pipelines in GitHub Actions\n- Operate our PostgreSQL databases, backups and failover\n- Set up monitoring and alerting with Prometheus and Grafana\n- Write internal tooling (we use Go and Python)\n\nWhat you bring\n- 5+ years in DevOps, platform or SRE roles\n- Strong Kubernetes and Terraform experience\n- Experience with AWS\n- Scripting or programming skills in Go or Python\n- Good English; German is a plus but not required\n\nWhat we offer\nHybrid working in Berlin Friedrichshain, 30 days holiday, education budget, company pension.\n\nLagerwerk welcomes applications from all people regardless of background."
+  }
+]

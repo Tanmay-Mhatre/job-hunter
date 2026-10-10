@@ -1,0 +1,317 @@
+# Relevance labels: one per profile x posting pair.
+#
+# Rubric (judge from the profile's `about` and the posting; never from the scorer's output):
+#   4 Strong   would apply today: meets the must-haves, right level, no dealbreaker.
+#   3 Good     worth applying: minor gaps (a nice-to-have, one level off, adjacent domain).
+#   2 Stretch  plausible but real gaps (missing a must-have, two levels off, new domain).
+#   1 Poor     same field but clearly wrong (wrong specialisation, far level, keyword match only).
+#   0 No       not relevant, or a dealbreaker (different job, visa / location / salary blocker).
+# Unknowns (no description, no salary) are judged on what is known, not counted as failures.
+#
+# by: draft = labelled by Claude from the rubric; by: user = confirmed or corrected by a person.
+
+fintech-pm:
+  ml-01: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-02: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-03: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-04: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-05: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-06: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-07: { label: 0, why: "Different job (data science / ML).", by: draft }
+  des-01: { label: 0, why: "Different job (product design).", by: draft }
+  des-02: { label: 0, why: "Different job (product design).", by: draft }
+  des-03: { label: 0, why: "Design role at a payments company: different job.", by: draft }
+  des-04: { label: 0, why: "Different job (product design).", by: draft }
+  des-05: { label: 0, why: "Different job (product design).", by: draft }
+  des-06: { label: 0, why: "Different job (product design).", by: draft }
+  des-07: { label: 0, why: "Different job (product design).", by: draft }
+  eng-01: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-02: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-03: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-04: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-05: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-06: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-07: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-08: { label: 0, why: "Backend engineering at a payments company: different job.", by: draft }
+  eng-09: { label: 0, why: "Different job (software engineering).", by: draft }
+  fin-01: { label: 0, why: "Different job (finance).", by: draft }
+  fin-02: { label: 0, why: "Different job (finance).", by: draft }
+  fin-03: { label: 0, why: "Different job (finance).", by: draft }
+  fin-04: { label: 0, why: "Different job (finance).", by: draft }
+  fin-05: { label: 0, why: "Different job (finance).", by: draft }
+  fin-06: { label: 0, why: "Business analyst on a banking IT project: different job, and in Singapore.", by: draft }
+  fin-07: { label: 0, why: "Different job (finance).", by: draft }
+  fin-08: { label: 0, why: "Different job (finance).", by: draft }
+  pm-01: { label: 4, why: "Senior PM for card payments in London hybrid, GBP 100-120k; her exact domain and level.", by: draft }
+  pm-02: { label: 2, why: "Right domain but a level down (2-4 years) and GBP 70-85k is under her 95k floor.", by: draft }
+  pm-03: { label: 1, why: "Director leading six PMs, needs 5+ years managing PMs; she has never managed PMs.", by: draft }
+  pm-04: { label: 0, why: "Associate (entry) programme at GBP 48-55k: junior roles are a dealbreaker.", by: draft }
+  pm-05: { label: 0, why: "On-site in Amsterdam, must already live in NL, no relocation: dealbreaker.", by: draft }
+  pm-06: { label: 0, why: "Payments operations, not product management: dealbreaker despite the payments words.", by: draft }
+  pm-07: { label: 3, why: "Product Owner for open banking APIs and pay-by-bank, London, GBP 90-105k; adjacent title, bank setting.", by: draft }
+  pm-08: { label: 4, why: "Lead PM on card routing and 3DS, remote EMEA; her gateway background and next level.", by: draft }
+  pm-09: { label: 3, why: "Title only: Senior PM at a London payments company; nothing known against it.", by: draft }
+  pm-10: { label: 1, why: "Senior PM in ad measurement: right level, wrong domain entirely.", by: draft }
+  pm-11: { label: 0, why: "KYC and onboarding is her domain, but GBP 60-72k is far under her 95k floor.", by: draft }
+  ae-01: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-02: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-03: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-04: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-05: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-06: { label: 0, why: "Partnerships sales at a payments company: payments words, but not product management.", by: draft }
+  ae-07: { label: 0, why: "Different job (B2B sales).", by: draft }
+
+platform-eng:
+  ml-01: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-02: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-03: { label: 0, why: "ML engineering in the US only, no sponsorship: different job and location.", by: draft }
+  ml-04: { label: 0, why: "ML ranking engineer in New York: different specialisation and location.", by: draft }
+  ml-05: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-06: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-07: { label: 0, why: "Different job (data science / ML).", by: draft }
+  des-01: { label: 0, why: "Different job (product design).", by: draft }
+  des-02: { label: 0, why: "Different job (product design).", by: draft }
+  des-03: { label: 0, why: "Different job (product design).", by: draft }
+  des-04: { label: 0, why: "Different job (product design).", by: draft }
+  des-05: { label: 0, why: "Different job (product design).", by: draft }
+  des-06: { label: 0, why: "Different job (product design).", by: draft }
+  des-07: { label: 0, why: "Different job (product design).", by: draft }
+  eng-01: { label: 4, why: "Senior platform role on EKS, Go, Terraform, Postgres in Berlin, EUR 90-110k; his exact stack.", by: draft }
+  eng-02: { label: 2, why: "Same team a level down (2+ years) and EUR 65-78k is under his 85k floor.", by: draft }
+  eng-03: { label: 2, why: "Staff: wants 10+ years and multi-team leadership; he has 6 years and none.", by: draft }
+  eng-04: { label: 4, why: "Senior SRE, k8s, Golang, PostgreSQL, remote Europe, EUR 85-100k; same work under other names.", by: draft }
+  eng-05: { label: 0, why: "React/TypeScript canvas editor: a frontend role, his dealbreaker; Go/Kubernetes are only boilerplate.", by: draft }
+  eng-06: { label: 2, why: "Senior backend in Berlin but Java/Spring and German B2 required; a retrain, not his stack.", by: draft }
+  eng-07: { label: 0, why: "Remote but US residents only, no sponsorship: he's in Berlin.", by: draft }
+  eng-08: { label: 3, why: "Title only: Senior Backend Engineer, remote EMEA; backend rather than platform, otherwise fits.", by: draft }
+  eng-09: { label: 4, why: "DevOps title, but Kubernetes, Terraform, Argo CD, AWS, Postgres, Go in Berlin at EUR 82-96k.", by: draft }
+  fin-01: { label: 0, why: "Different job (finance).", by: draft }
+  fin-02: { label: 0, why: "Different job (finance).", by: draft }
+  fin-03: { label: 0, why: "Different job (finance).", by: draft }
+  fin-04: { label: 0, why: "Different job (finance).", by: draft }
+  fin-05: { label: 0, why: "Different job (finance).", by: draft }
+  fin-06: { label: 0, why: "Different job (finance).", by: draft }
+  fin-07: { label: 0, why: "Different job (finance).", by: draft }
+  fin-08: { label: 0, why: "Different job (finance).", by: draft }
+  pm-01: { label: 0, why: "Different job (product management).", by: draft }
+  pm-02: { label: 0, why: "Different job (product management).", by: draft }
+  pm-03: { label: 0, why: "Different job (product management).", by: draft }
+  pm-04: { label: 0, why: "Different job (product management).", by: draft }
+  pm-05: { label: 0, why: "Different job (product management).", by: draft }
+  pm-06: { label: 0, why: "Different job (product management).", by: draft }
+  pm-07: { label: 0, why: "Different job (product management).", by: draft }
+  pm-08: { label: 0, why: "Different job (product management).", by: draft }
+  pm-09: { label: 0, why: "Different job (product management).", by: draft }
+  pm-10: { label: 0, why: "Different job (product management).", by: draft }
+  pm-11: { label: 0, why: "Different job (product management).", by: draft }
+  ae-01: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-02: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-03: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-04: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-05: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-06: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-07: { label: 0, why: "Different job (B2B sales).", by: draft }
+
+ml-ds:
+  ml-01: { label: 4, why: "Senior DS on clinical NLP, NYC hybrid, sponsors H-1B, USD 165-190k; matches her NLP years exactly.", by: draft }
+  ml-02: { label: 3, why: "Experimentation DS in NYC fits her first job; USD 140-160k straddles her floor, sponsorship not stated.", by: draft }
+  ml-03: { label: 0, why: "LLM work she'd like, but no visa sponsorship: dealbreaker.", by: draft }
+  ml-04: { label: 2, why: "Sponsors and pays well, but production ranking/recsys engineering is outside her experience.", by: draft }
+  ml-05: { label: 1, why: "Staff scientist: PhD, 10+ years and leading a team; she has 4 years and an MS.", by: draft }
+  ml-06: { label: 3, why: "Title only: ML Scientist in NYC; sponsorship and salary unknown.", by: draft }
+  ml-07: { label: 2, why: "Senior DS at her level, but credit risk and model governance are a new domain; sponsorship only maybe.", by: draft }
+  des-01: { label: 0, why: "Different job (product design).", by: draft }
+  des-02: { label: 0, why: "Different job (product design).", by: draft }
+  des-03: { label: 0, why: "Different job (product design).", by: draft }
+  des-04: { label: 0, why: "Different job (product design).", by: draft }
+  des-05: { label: 0, why: "Different job (product design).", by: draft }
+  des-06: { label: 0, why: "Different job (product design).", by: draft }
+  des-07: { label: 0, why: "Different job (product design).", by: draft }
+  eng-01: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-02: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-03: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-04: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-05: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-06: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-07: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-08: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-09: { label: 0, why: "Different job (software engineering).", by: draft }
+  fin-01: { label: 0, why: "Different job (finance).", by: draft }
+  fin-02: { label: 0, why: "Different job (finance).", by: draft }
+  fin-03: { label: 0, why: "Different job (finance).", by: draft }
+  fin-04: { label: 0, why: "Different job (finance).", by: draft }
+  fin-05: { label: 0, why: "Different job (finance).", by: draft }
+  fin-06: { label: 0, why: "Different job (finance).", by: draft }
+  fin-07: { label: 0, why: "Different job (finance).", by: draft }
+  fin-08: { label: 0, why: "Different job (finance).", by: draft }
+  pm-01: { label: 0, why: "Different job (product management).", by: draft }
+  pm-02: { label: 0, why: "Different job (product management).", by: draft }
+  pm-03: { label: 0, why: "Different job (product management).", by: draft }
+  pm-04: { label: 0, why: "Different job (product management).", by: draft }
+  pm-05: { label: 0, why: "Different job (product management).", by: draft }
+  pm-06: { label: 0, why: "Different job (product management).", by: draft }
+  pm-07: { label: 0, why: "Different job (product management).", by: draft }
+  pm-08: { label: 0, why: "Different job (product management).", by: draft }
+  pm-09: { label: 0, why: "Different job (product management).", by: draft }
+  pm-10: { label: 0, why: "Different job (product management).", by: draft }
+  pm-11: { label: 0, why: "Different job (product management).", by: draft }
+  ae-01: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-02: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-03: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-04: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-05: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-06: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-07: { label: 0, why: "Different job (B2B sales).", by: draft }
+
+product-designer:
+  ml-01: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-02: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-03: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-04: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-05: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-06: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-07: { label: 0, why: "Different job (data science / ML).", by: draft }
+  des-01: { label: 4, why: "Senior PD on B2B data dashboards, remote Europe, EUR 70-85k, design systems and research.", by: draft }
+  des-02: { label: 2, why: "Same company a level down (2+ years) and EUR 45-55k is under her 60k floor.", by: draft }
+  des-03: { label: 4, why: "IC lead of a design system in Lisbon, EUR 75-90k; exactly what she did, title one step up.", by: draft }
+  des-04: { label: 0, why: "Marketing website and landing pages for growth marketing: her marketing-only dealbreaker.", by: draft }
+  des-05: { label: 0, why: "Agency, on-site, EUR 40-48k: agency roles and the salary are both dealbreakers.", by: draft }
+  des-06: { label: 2, why: "UX researcher: she does research, but it's a different job from product design.", by: draft }
+  des-07: { label: 2, why: "Interaction design in Lisbon, but in-car HMI needs hardware/automotive experience she lacks.", by: draft }
+  eng-01: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-02: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-03: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-04: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-05: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-06: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-07: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-08: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-09: { label: 0, why: "Different job (software engineering).", by: draft }
+  fin-01: { label: 0, why: "Different job (finance).", by: draft }
+  fin-02: { label: 0, why: "Different job (finance).", by: draft }
+  fin-03: { label: 0, why: "Different job (finance).", by: draft }
+  fin-04: { label: 0, why: "Different job (finance).", by: draft }
+  fin-05: { label: 0, why: "Different job (finance).", by: draft }
+  fin-06: { label: 0, why: "Different job (finance).", by: draft }
+  fin-07: { label: 0, why: "Different job (finance).", by: draft }
+  fin-08: { label: 0, why: "Different job (finance).", by: draft }
+  pm-01: { label: 0, why: "Different job (product management).", by: draft }
+  pm-02: { label: 0, why: "Different job (product management).", by: draft }
+  pm-03: { label: 0, why: "Different job (product management).", by: draft }
+  pm-04: { label: 0, why: "Different job (product management).", by: draft }
+  pm-05: { label: 0, why: "Different job (product management).", by: draft }
+  pm-06: { label: 0, why: "Different job (product management).", by: draft }
+  pm-07: { label: 0, why: "Different job (product management).", by: draft }
+  pm-08: { label: 0, why: "Different job (product management).", by: draft }
+  pm-09: { label: 0, why: "Different job (product management).", by: draft }
+  pm-10: { label: 0, why: "Different job (product management).", by: draft }
+  pm-11: { label: 0, why: "Different job (product management).", by: draft }
+  ae-01: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-02: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-03: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-04: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-05: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-06: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-07: { label: 0, why: "Different job (B2B sales).", by: draft }
+
+b2b-ae:
+  ml-01: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-02: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-03: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-04: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-05: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-06: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-07: { label: 0, why: "Different job (data science / ML).", by: draft }
+  des-01: { label: 0, why: "Different job (product design).", by: draft }
+  des-02: { label: 0, why: "Different job (product design).", by: draft }
+  des-03: { label: 0, why: "Different job (product design).", by: draft }
+  des-04: { label: 0, why: "Different job (product design).", by: draft }
+  des-05: { label: 0, why: "Different job (product design).", by: draft }
+  des-06: { label: 0, why: "Different job (product design).", by: draft }
+  des-07: { label: 0, why: "Different job (product design).", by: draft }
+  eng-01: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-02: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-03: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-04: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-05: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-06: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-07: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-08: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-09: { label: 0, why: "Different job (software engineering).", by: draft }
+  fin-01: { label: 0, why: "Different job (finance).", by: draft }
+  fin-02: { label: 0, why: "Different job (finance).", by: draft }
+  fin-03: { label: 0, why: "Different job (finance).", by: draft }
+  fin-04: { label: 0, why: "Different job (finance).", by: draft }
+  fin-05: { label: 0, why: "Different job (finance).", by: draft }
+  fin-06: { label: 0, why: "Different job (finance).", by: draft }
+  fin-07: { label: 0, why: "Different job (finance).", by: draft }
+  fin-08: { label: 0, why: "Different job (finance).", by: draft }
+  pm-01: { label: 0, why: "Different job (product management).", by: draft }
+  pm-02: { label: 0, why: "Different job (product management).", by: draft }
+  pm-03: { label: 0, why: "Different job (product management).", by: draft }
+  pm-04: { label: 0, why: "Different job (product management).", by: draft }
+  pm-05: { label: 0, why: "Different job (product management).", by: draft }
+  pm-06: { label: 0, why: "Different job (product management).", by: draft }
+  pm-07: { label: 0, why: "Different job (product management).", by: draft }
+  pm-08: { label: 0, why: "Different job (product management).", by: draft }
+  pm-09: { label: 0, why: "Different job (product management).", by: draft }
+  pm-10: { label: 0, why: "Different job (product management).", by: draft }
+  pm-11: { label: 0, why: "Different job (product management).", by: draft }
+  ae-01: { label: 4, why: "Senior mid-market AE selling HR SaaS in UAE/KSA, AED 28-32k base; his exact role, next level.", by: draft }
+  ae-02: { label: 0, why: "SMB AE at AED 15-18k base, far under his 25k floor, and a step back.", by: draft }
+  ae-03: { label: 1, why: "BDM selling construction chemicals: B2B sales but not SaaS, different buyers and product.", by: draft }
+  ae-04: { label: 0, why: "Motor insurance account manager, AED 12-15k: insurance sales is a dealbreaker.", by: draft }
+  ae-05: { label: 3, why: "Title only: Senior AE at a SaaS company in Dubai; nothing known against it.", by: draft }
+  ae-06: { label: 2, why: "Channel partnerships in GCC payments: adjacent to direct sales, new domain.", by: draft }
+  ae-07: { label: 0, why: "Must relocate to Riyadh full-time; he won't relocate, and it wants 7+ years enterprise.", by: draft }
+
+finance-analyst:
+  ml-01: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-02: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-03: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-04: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-05: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-06: { label: 0, why: "Different job (data science / ML).", by: draft }
+  ml-07: { label: 0, why: "Credit risk data science in New York: different job and her dealbreaker.", by: draft }
+  des-01: { label: 0, why: "Different job (product design).", by: draft }
+  des-02: { label: 0, why: "Different job (product design).", by: draft }
+  des-03: { label: 0, why: "Different job (product design).", by: draft }
+  des-04: { label: 0, why: "Different job (product design).", by: draft }
+  des-05: { label: 0, why: "Different job (product design).", by: draft }
+  des-06: { label: 0, why: "Different job (product design).", by: draft }
+  des-07: { label: 0, why: "Different job (product design).", by: draft }
+  eng-01: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-02: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-03: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-04: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-05: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-06: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-07: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-08: { label: 0, why: "Different job (software engineering).", by: draft }
+  eng-09: { label: 0, why: "Different job (software engineering).", by: draft }
+  fin-01: { label: 4, why: "Senior FP&A at an e-commerce marketplace in Singapore, SGD 7-9k; exactly her work and next step.", by: draft }
+  fin-02: { label: 2, why: "FP&A support role with 1-2 years asked, and SGD 5-6k is under her 6.5k floor.", by: draft }
+  fin-03: { label: 4, why: "Strategic finance (FP&A) at SaaS, remote APAC, forecasts, budgets, SQL; salary unknown.", by: draft }
+  fin-04: { label: 0, why: "Credit risk and IFRS 9 provisioning: credit/lending risk is her dealbreaker.", by: draft }
+  fin-05: { label: 0, why: "AP/AR operations at SGD 3.8-4.5k: payables/receivables work is her dealbreaker.", by: draft }
+  fin-06: { label: 1, why: "IT business analyst on a core banking migration: the title matches, the job doesn't.", by: draft }
+  fin-07: { label: 3, why: "Title only: Senior Financial Analyst at a SaaS company in Singapore.", by: draft }
+  fin-08: { label: 1, why: "Finance Manager leading three analysts, 7+ years and CA/CPA/CFA; far above her level.", by: draft }
+  pm-01: { label: 0, why: "Different job (product management).", by: draft }
+  pm-02: { label: 0, why: "Different job (product management).", by: draft }
+  pm-03: { label: 0, why: "Different job (product management).", by: draft }
+  pm-04: { label: 0, why: "Different job (product management).", by: draft }
+  pm-05: { label: 0, why: "Different job (product management).", by: draft }
+  pm-06: { label: 0, why: "Payments operations in London: different job and location.", by: draft }
+  pm-07: { label: 0, why: "Different job (product management).", by: draft }
+  pm-08: { label: 0, why: "Different job (product management).", by: draft }
+  pm-09: { label: 0, why: "Different job (product management).", by: draft }
+  pm-10: { label: 0, why: "Different job (product management).", by: draft }
+  pm-11: { label: 0, why: "Different job (product management).", by: draft }
+  ae-01: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-02: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-03: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-04: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-05: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-06: { label: 0, why: "Different job (B2B sales).", by: draft }
+  ae-07: { label: 0, why: "Different job (B2B sales).", by: draft }

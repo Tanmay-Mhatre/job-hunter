@@ -1,0 +1,26 @@
+# Invented candidate. No real person.
+id: fintech-pm
+summary: Senior PM, payments and cards, London or EMEA remote, 8 years
+about: |
+  Product manager with 8 years in fintech: 5 as PM, the last 3 as Senior PM at a UK card issuer
+  (card controls, disputes, 3DS) and before that a payments gateway (merchant onboarding, payouts).
+  Comfortable with APIs, B2B and B2C, KYC and onboarding flows, works closely with compliance.
+  Level: Senior PM, ready for Lead / Group PM. Not a Director yet (has never managed PMs).
+  Location: London. British citizen, no sponsorship needed. Will take hybrid in London or remote
+  anywhere in EMEA. Won't relocate outside the UK.
+  Salary floor: GBP 95k base.
+  Dealbreakers: on-site outside the UK; roles that are really product marketing, project or
+  operations management; junior / associate roles.
+profile:
+  name: Fintech PM
+  titles:
+    include: [product manager, product lead, head of product]
+    exclude: [product marketing, associate, intern]
+  seniority_boost: [senior, lead]
+  locations:
+    include: [london, united kingdom]
+    remote_ok: [emea, uk, remote]
+    remote_exclude: [us, united states, canada]
+  industries: [fintech, payments, banking]
+  keywords: { payments: 5, cards: 4, kyc: 3, onboarding: 3, open banking: 3, fintech: 3, api: 2, b2b: 2 }
+  min_score: 70

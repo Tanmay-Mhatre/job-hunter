@@ -1,0 +1,26 @@
+# Invented candidate. No real person.
+id: platform-eng
+summary: Senior backend / platform engineer, Go and Kubernetes, Berlin or EU remote, 6 years
+about: |
+  Backend and platform engineer with 6 years: Go services and Kubernetes platform work at a
+  logistics scale-up, before that Python/Django backend at an agency. Runs EKS clusters with
+  Terraform and Argo CD, owns Postgres operations and the observability stack (Prometheus, Grafana,
+  OpenTelemetry). Some on-call experience, happy with a fair rotation.
+  Level: Senior engineer. Not yet Staff (no multi-team technical leadership); not a manager.
+  Location: Berlin. EU citizen. Hybrid in Berlin or remote within the EU. No relocation outside the EU.
+  Salary floor: EUR 85k.
+  Dealbreakers: frontend or mobile roles, people-management roles, US-only remote. Java-only
+  shops are a stretch, not a blocker.
+profile:
+  name: Platform engineer
+  titles:
+    include: [backend engineer, platform engineer, software engineer, site reliability engineer, infrastructure engineer]
+    exclude: [frontend, front-end, ios, android, intern, manager]
+  seniority_boost: [senior]
+  locations:
+    include: [berlin, germany]
+    remote_ok: [europe, eu, emea, remote]
+    remote_exclude: [us, united states, india]
+  industries: [cloud, devtools, saas]
+  keywords: { kubernetes: 5, go: 4, aws: 4, terraform: 3, postgres: 3, distributed systems: 3, observability: 2 }
+  min_score: 70

@@ -1,0 +1,25 @@
+# Invented candidate. No real person.
+id: finance-analyst
+summary: FP&A / finance analyst, e-commerce and SaaS, Singapore, 3 years
+about: |
+  Finance analyst with 3 years: 1 year in audit at a mid-size accounting firm, then 2 years in FP&A
+  at a regional e-commerce marketplace (monthly forecasts, budget vs actual, unit economics,
+  board pack). Strong Excel and SQL, some Python, Looker. Not a qualified accountant (CFA level 1).
+  Level: Analyst moving to Senior Analyst. Not a manager.
+  Location: Singapore citizen. Hybrid or on-site in Singapore, or remote in APAC.
+  Salary floor: SGD 6.5k/month.
+  Dealbreakers: back to audit, accounts payable/receivable or bookkeeping, roles outside APAC,
+  credit/lending risk roles (not her field).
+profile:
+  name: Finance analyst
+  titles:
+    include: [financial analyst, finance analyst, fp&a analyst, business analyst, operations analyst]
+    exclude: [intern]
+  seniority_boost: [senior]
+  locations:
+    include: [singapore]
+    remote_ok: [apac, asia, remote]
+    remote_exclude: []
+  industries: [ecommerce, saas, fintech]
+  keywords: { fp&a: 5, forecasting: 4, budgeting: 4, sql: 3, excel: 3, variance analysis: 3, unit economics: 2 }
+  min_score: 70
