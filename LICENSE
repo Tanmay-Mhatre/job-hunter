@@ -1,6 +1,8 @@
-MIT License
+MIT License (with attribution)
 
-Copyright (c) 2026 RawJobs contributors
+Copyright (c) 2026 Tanmay Mhatre
+
+Built by Tanmay Mhatre
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -11,6 +13,10 @@ furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
+
+Attribution: any copy, fork, modified version or work substantially based on
+the Software must keep the line "Built by Tanmay Mhatre" in its license file,
+and, where it has a README, about page or other credits, in that place too.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,

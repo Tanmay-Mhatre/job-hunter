@@ -2,8 +2,9 @@
   "name": "rawjobs",
   "version": "0.1.0",
   "private": true,
-  "description": "Self-hosted job radar: pulls openings from company ATS feeds daily, scores them against your profile, alerts you on new matches.",
-  "license": "MIT",
+  "description": "Self-hosted job radar: scans company careers pages, scores openings against your profile, alerts you on new matches. Built by Tanmay Mhatre.",
+  "author": "Tanmay Mhatre",
+  "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "packageManager": "pnpm@10.34.6",
   "engines": {
