@@ -12,8 +12,9 @@
  *
  * Abuse limits: 20 requests a minute per IP (Cloudflare rate limiter; the IP is not stored), at
  * most 25 boards a request, at most DAILY_CAP boards accepted a day for everyone together, and a
- * board already received in the last 7 days is skipped. Only boards on the hiring systems below
- * are accepted, and they are stored as a system and a slug, never as a free-form link.
+ * board already received in the last 7 days is skipped. Only boards on the hiring systems the
+ * directory takes (SCANNABLE) are accepted, stored as a system and a slug (plus shard and site
+ * where the system needs them), never as a free-form link.
  *
  * KV keys: "c:…" contributions (the only keys /v1/pending lists) and "day:YYYY-MM-DD", the boards
  * accepted that day (for the cap and the dedupe). One accepted request costs two KV writes, which
@@ -31,8 +32,41 @@ export interface Env {
 
 type Board = { ats: string; slug: string; region?: string; shard?: string; site?: string; name?: string };
 
-const SCANNABLE = new Set(["greenhouse", "lever", "ashby", "smartrecruiters", "workday"]);
+/**
+ * The hiring systems the directory workflow accepts: ATS_TYPES in packages/core/src/schema.ts, with the
+ * same shard and site rules as scripts/catalog/contributions.ts (the Worker can't import them; a test
+ * keeps them in step). Public job boards are never shared.
+ */
+export const SCANNABLE = new Set([
+  "greenhouse",
+  "lever",
+  "ashby",
+  "smartrecruiters",
+  "workday",
+  "workable",
+  "recruitee",
+  "personio",
+  "bamboohr",
+  "breezy",
+  "successfactors",
+  "teamtailor",
+  "comeet",
+  "oracle",
+  "icims",
+  "taleo",
+  "jobvite",
+  "pinpoint",
+  "rippling",
+  "jazzhr",
+  "zoho",
+  "hibob",
+  "freshteam",
+]);
 const SLUG = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
+/** What `shard` may look like per system (the rest have none). */
+const SHARD: Record<string, RegExp> = { workday: /^wd\d{1,3}$/, oracle: /^[a-z0-9-]{2,30}$/, successfactors: /^[a-z0-9.-]{1,60}\.(successfactors|sapsf)\.(com|eu)$/ };
+/** Systems that need `site` (the rest may carry one). */
+const NEEDS_SITE = new Set(["workday", "taleo", "comeet"]);
 /** The app's name and, optionally, its version ("rawjobs", "rawjobs/0.1.0"; apps from before the rename send "job-hunter"). Anything else is dropped. */
 const CLIENT = /^(rawjobs|job-hunter)(\/\d{1,3}\.\d{1,3}\.\d{1,4})?$/;
 const MAX_BODY = 20_000;
@@ -49,13 +83,18 @@ function clean(b: unknown): Board | null {
   const o = b as Record<string, unknown>;
   if (typeof o.ats !== "string" || !SCANNABLE.has(o.ats)) return null;
   if (typeof o.slug !== "string" || !SLUG.test(o.slug)) return null;
-  if (o.ats === "workday" && !(typeof o.shard === "string" && /^wd\d{1,3}$/.test(o.shard) && typeof o.site === "string" && SLUG.test(o.site))) return null;
+  const shard = SHARD[o.ats];
+  if (o.shard !== undefined && !(shard && typeof o.shard === "string" && shard.test(o.shard))) return null;
+  if ((o.ats === "workday" || o.ats === "oracle") && o.shard === undefined) return null;
+  if (o.site !== undefined && !(typeof o.site === "string" && SLUG.test(o.site))) return null;
+  if (NEEDS_SITE.has(o.ats) && o.site === undefined) return null;
   const name = typeof o.name === "string" ? o.name.replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, 100) : "";
   return {
     ats: o.ats,
     slug: o.slug,
     ...(o.region === "eu" ? { region: "eu" } : {}),
-    ...(o.ats === "workday" ? { shard: o.shard as string, site: o.site as string } : {}),
+    ...(typeof o.shard === "string" ? { shard: o.shard } : {}),
+    ...(typeof o.site === "string" ? { site: o.site } : {}),
     ...(name ? { name } : {}),
   };
 }
