@@ -219,13 +219,18 @@ const SENIORITY_LABEL = Object.fromEntries(SENIORITY_LEVELS.map((s) => [s.id, s.
  */
 export function facetCounts(jobs: Job[], f: Filters, ctx: Ctx): Record<FacetKey, FacetOption[]> {
   const terms = termsOf(f.q);
+  // Counts are roles, like the list: one role posted in three cities counts once (per option it's in).
   const tally = (key: FacetKey, valuesOf: (j: Job) => readonly string[]) => {
-    const counts = new Map<string, number>();
+    const roles = new Map<string, Set<string>>();
     for (const j of jobs) {
       if (!passes(j, f, ctx, terms, key)) continue;
-      for (const v of new Set(valuesOf(j))) counts.set(v, (counts.get(v) ?? 0) + 1);
+      for (const v of valuesOf(j)) {
+        let set = roles.get(v);
+        if (!set) roles.set(v, (set = new Set()));
+        set.add(roleOf(j));
+      }
     }
-    return counts;
+    return new Map([...roles].map(([v, set]) => [v, set.size]));
   };
   const sorted = (counts: Map<string, number>, label: (v: string) => string = (v) => v, selected: string[] = [], mine?: ReadonlySet<string>) => {
     // Selected options stay listed even at 0, so they can be unticked; your own ones too.
@@ -238,7 +243,7 @@ export function facetCounts(jobs: Job[], f: Filters, ctx: Ctx): Record<FacetKey,
   const postedPool = jobs.filter((j) => passes(j, f, ctx, terms, "posted"));
   const matchPool = jobs.filter((j) => passes(j, f, ctx, terms, "match"));
   return {
-    posted: POSTED_OPTIONS.map((o) => ({ value: String(o.value), label: o.label, count: postedPool.filter((j) => ageDays(postedOrSeen(j), ctx.now) <= o.value).length })),
+    posted: POSTED_OPTIONS.map((o) => ({ value: String(o.value), label: o.label, count: roleCount(postedPool.filter((j) => ageDays(postedOrSeen(j), ctx.now) <= o.value)) })),
     countries: sorted(tally("countries", countriesOf), (v) => (v === REMOTE ? "Remote & your regions" : v), f.countries, ctx.mine?.countries),
     // "Dubai, United Arab Emirates" reads as "Dubai · United Arab Emirates" in the menu.
     locations: sorted(tally("locations", (j) => j.cities), (v) => v.replace(/, ([^,]+)$/, " · $1"), f.locations, ctx.mine?.locations),
@@ -249,8 +254,8 @@ export function facetCounts(jobs: Job[], f: Filters, ctx: Ctx): Record<FacetKey,
     topics: sorted(tally("topics", (j) => j.why.keywords), undefined, f.topics),
     ats: sorted(tally("ats", (j) => [j.ats]), atsLabel, f.ats),
     match: [
-      { value: "strong", label: `Strong (${ctx.min}+)`, count: matchPool.filter((j) => j.score >= ctx.min).length },
-      { value: "good", label: `Good (${Math.max(0, ctx.min - 20)}+)`, count: matchPool.filter((j) => j.score >= Math.max(0, ctx.min - 20)).length },
+      { value: "strong", label: `Strong (${ctx.min}+)`, count: roleCount(matchPool.filter((j) => j.score >= ctx.min)) },
+      { value: "good", label: `Good (${Math.max(0, ctx.min - 20)}+)`, count: roleCount(matchPool.filter((j) => j.score >= Math.max(0, ctx.min - 20))) },
     ],
   };
 }
@@ -280,6 +285,11 @@ export function sortJobs(jobs: Job[], sort: Sort, isYours?: (j: Job) => boolean,
   return [...jobs].sort(by[sort]);
 }
 
+/** The role a posting belongs to: the same key the list groups by (groupJobs). */
+const roleOf = (j: Pick<Job, "company" | "title">) => groupKey(j.company, j.title);
+/** How many roles these postings make up: what the list shows as rows, and what every count should say. */
+export const roleCount = (jobs: readonly Pick<Job, "company" | "title">[]) => new Set(jobs.map(roleOf)).size;
+
 /** One role posted in several places: the best posting leads, the others ride along. */
 export type JobGroup = { key: string; lead: Job; jobs: Job[] };
 
@@ -287,7 +297,7 @@ export type JobGroup = { key: string; lead: Job; jobs: Job[] };
 export function groupJobs(sorted: Job[]): JobGroup[] {
   const groups = new Map<string, JobGroup>();
   for (const j of sorted) {
-    const key = groupKey(j.company, j.title);
+    const key = roleOf(j);
     const g = groups.get(key);
     if (g) g.jobs.push(j);
     else groups.set(key, { key, lead: j, jobs: [j] });
@@ -393,7 +403,7 @@ export function profileFilters(profile: Profile): Filters {
 export function suggestRelax(jobs: Job[], f: Filters, ctx: Ctx, limit = 3): { label: string; remove: Partial<Filters>; count: number }[] {
   return chipsOf(f, ctx)
     .filter((c) => !["failed", "closed", "hidden", "old"].includes(c.key))
-    .map((c) => ({ label: c.label, remove: c.remove, count: applyFilters(jobs, { ...f, ...c.remove }, ctx).length }))
+    .map((c) => ({ label: c.label, remove: c.remove, count: roleCount(applyFilters(jobs, { ...f, ...c.remove }, ctx)) }))
     .filter((s) => s.count > 0)
     .sort((a, b) => b.count - a.count)
     .slice(0, limit);
@@ -401,11 +411,16 @@ export function suggestRelax(jobs: Job[], f: Filters, ctx: Ctx, limit = 3): { la
 
 export const sameFilters = (a: Filters, b: Filters) => JSON.stringify({ ...a, q: "" }) === JSON.stringify({ ...b, q: "" });
 
-/** Filters + sort <-> URL hash query ("#radar?posted=7&countries=United+Arab+Emirates&sort=newest"). */
-export function toQuery(f: Filters, sort: Sort): string {
+/**
+ * Filters + sort <-> URL hash query ("#radar?posted=7&countries=United+Arab+Emirates&sort=newest"), written
+ * relative to `base` (your profile's filters): a link says only what differs from your profile, and
+ * whatever it leaves out comes from your profile when it's opened. So "#radar?q=kraken" searches within
+ * your places, and "everywhere" is said out loud ("countries=", empty).
+ */
+export function toQuery(f: Filters, sort: Sort, base: Filters = DEFAULT_FILTERS): string {
   const p = new URLSearchParams();
   for (const [k, v] of Object.entries(f) as [keyof Filters, Filters[keyof Filters]][]) {
-    const d = DEFAULT_FILTERS[k];
+    const d = base[k];
     if (JSON.stringify(v) === JSON.stringify(d)) continue;
     p.set(k, Array.isArray(v) ? v.join("|") : String(v));
   }
@@ -413,10 +428,10 @@ export function toQuery(f: Filters, sort: Sort): string {
   return p.toString();
 }
 
-export function fromQuery(query: string): { filters: Filters; sort: Sort } | null {
+export function fromQuery(query: string, base: Filters = DEFAULT_FILTERS): { filters: Filters; sort: Sort } | null {
   if (!query) return null;
   const p = new URLSearchParams(query);
-  const f: Filters = { ...DEFAULT_FILTERS };
+  const f: Filters = { ...base };
   const rec = f as unknown as Record<string, unknown>;
   for (const [k, raw] of p) {
     if (k === "sort" || !(k in DEFAULT_FILTERS)) continue;

@@ -13,6 +13,7 @@ import {
   isNewJob,
   profileFilters,
   profilePlaces,
+  roleCount,
   sameFilters,
   sortJobs,
   suggestRelax,
@@ -92,10 +93,12 @@ const STRIP = 3;
 /**
  * Filters + sort: from the URL (shareable, Back works), else your own changes if you made any,
  * else your profile's filters. Until you change them, they follow your profile (e.g. after Settings).
+ * The URL is written against `linkBase` (your profile's places, before "Show everywhere"), so a link
+ * leaves out what your profile already says, and what it leaves out comes from your profile.
  */
-function useRadarFilters(base: Filters) {
+function useRadarFilters(base: Filters, linkBase: Filters) {
   const [state, setState] = useState<{ filters: Filters; sort: Sort }>(() => {
-    const fromUrl = fromQuery(location.hash.split("?")[1] ?? "");
+    const fromUrl = fromQuery(location.hash.split("?")[1] ?? "", linkBase);
     if (fromUrl) return fromUrl;
     const stored = load<{ filters?: Partial<Filters>; sort?: Sort; custom?: boolean }>(FILTER_KEY, {});
     return { filters: stored.custom ? { ...DEFAULT_FILTERS, ...stored.filters, q: "" } : base, sort: stored.sort ?? "best" };
@@ -111,7 +114,7 @@ function useRadarFilters(base: Filters) {
   }, [base]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     save(FILTER_KEY, { filters: { ...state.filters, q: "" }, sort: state.sort, custom: !sameFilters(state.filters, baseRef.current) });
-    const q = toQuery(state.filters, state.sort);
+    const q = toQuery(state.filters, state.sort, linkBase);
     const next = `#radar${q ? `?${q}` : ""}`;
     if (location.hash !== next && location.hash.split("?")[0] === "#radar") history.replaceState(null, "", next);
   }, [state]);
@@ -156,7 +159,7 @@ export function RadarPage(p: Props) {
   const everywhere = everywhereFor === placesKey;
   const placeBase = useMemo(() => profileFilters(profile), [profileKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const base = useMemo(() => (everywhere ? { ...placeBase, countries: [], locations: [] } : placeBase), [placeBase, everywhere]);
-  const { filters, sort, setFilters, setSort, replace, adoptNextProfile } = useRadarFilters(base);
+  const { filters, sort, setFilters, setSort, replace, adoptNextProfile } = useRadarFilters(base, placeBase);
   const setEverywhere = (on: boolean) => {
     const v = on ? placesKey : null;
     setEverywhereFor(v);
@@ -231,18 +234,19 @@ export function RadarPage(p: Props) {
   const chips = useMemo(() => activeChips(filters, ctx, base), [filters, ctx, base]);
   // Postings past your age limit that the other filters would show: "Show older jobs (N)".
   const olderCount = useMemo(
-    () => (listFilters.showOld ? 0 : applyFilters(pool, { ...listFilters, showOld: true }, ctx).length - visible.length),
-    [pool, listFilters, ctx, visible.length],
+    () => (listFilters.showOld ? 0 : roleCount(applyFilters(pool, { ...listFilters, showOld: true }, ctx)) - groups.length),
+    [pool, listFilters, ctx, groups.length],
   );
 
   // Summary numbers over all matches (not the current filters).
   // View counts are within your profile, like the views themselves.
   const open = useMemo(() => applyFilters(p.jobs, base, ctx), [p.jobs, base, ctx]);
-  const newCount = open.filter((j) => isNewJob(j, ctx)).length;
-  const strongCount = open.filter((j) => j.score >= min).length;
+  // Every count is roles, like the list's rows: one role posted in three cities counts once.
+  const newCount = roleCount(open.filter((j) => isNewJob(j, ctx)));
+  const strongCount = roleCount(open.filter((j) => j.score >= min));
   // Saved and Applied keep jobs that closed or aged out, so they're counted with their own view's filters.
-  const savedCount = useMemo(() => applyFilters(p.jobs, { ...base, status: "saved" }, ctx).length, [p.jobs, base, ctx]);
-  const appliedCount = useMemo(() => applyFilters(p.jobs, { ...base, status: "applied" }, ctx).length, [p.jobs, base, ctx]);
+  const savedCount = useMemo(() => roleCount(applyFilters(p.jobs, { ...base, status: "saved" }, ctx)), [p.jobs, base, ctx]);
+  const appliedCount = useMemo(() => roleCount(applyFilters(p.jobs, { ...base, status: "applied" }, ctx)), [p.jobs, base, ctx]);
   const yourGroups = groups.filter((g) => p.isYours(g.lead)).length;
   // The newest job in the list, said in the head when the list isn't sorted by date.
   const newest = useMemo(() => (sort === "newest" ? undefined : visible.reduce<string | undefined>((m, j) => (!m || postedOrSeen(j) > m ? postedOrSeen(j) : m), undefined)), [sort, visible]);
@@ -474,7 +478,7 @@ export function RadarPage(p: Props) {
             filters={filters}
             sort={sort}
             views={p.prefs.views}
-            counts={{ all: open.length, mine: open.filter(p.isYours).length, new: newCount, strong: strongCount, saved: savedCount, applied: appliedCount }}
+            counts={{ all: roleCount(open), mine: roleCount(open.filter(p.isYours)), new: newCount, strong: strongCount, saved: savedCount, applied: appliedCount }}
             hideNew={firstScan}
             onPick={replace}
             onSave={(name) => p.onSaveView(name, filters, sort)}
