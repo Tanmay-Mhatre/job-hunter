@@ -1,106 +1,120 @@
 /* RawJobs v0.2: Tailwind utilities generated from tokens.json. Do not edit by hand. */
 @utility type-title {
   font-family: var(--font-sans);
-  font-size: 24px;
-  line-height: 30px;
+  font-size: 1.5rem;
+  line-height: 1.875rem;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 @utility type-heading {
   font-family: var(--font-sans);
-  font-size: 20px;
-  line-height: 24px;
+  font-size: 1.25rem;
+  line-height: 1.5rem;
   font-weight: 600;
   letter-spacing: normal;
 }
 @utility type-subheading {
   font-family: var(--font-sans);
-  font-size: 18px;
-  line-height: 24px;
+  font-size: 1.125rem;
+  line-height: 1.5rem;
   font-weight: 500;
   letter-spacing: normal;
 }
 @utility type-body {
   font-family: var(--font-sans);
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 1rem;
+  line-height: 1.5rem;
   font-weight: 400;
   letter-spacing: normal;
 }
 @utility type-body-strong {
   font-family: var(--font-sans);
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 1rem;
+  line-height: 1.5rem;
   font-weight: 500;
   letter-spacing: normal;
 }
 @utility type-small {
   font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 21px;
+  font-size: 0.875rem;
+  line-height: 1.3125rem;
   font-weight: 400;
   letter-spacing: normal;
 }
 @utility type-label {
   font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
   font-weight: 500;
   letter-spacing: normal;
 }
 @utility type-meta {
   font-family: var(--font-sans);
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 0.75rem;
+  line-height: 1rem;
   font-weight: 400;
   letter-spacing: normal;
 }
 @utility type-score {
   font-family: var(--font-sans);
-  font-size: 16px;
-  line-height: 20px;
+  font-size: 1rem;
+  line-height: 1.25rem;
   font-weight: 600;
   letter-spacing: normal;
 }
 @utility type-score-lg {
   font-family: var(--font-sans);
-  font-size: 32px;
-  line-height: 36px;
+  font-size: 2rem;
+  line-height: 2.25rem;
   font-weight: 600;
   letter-spacing: -0.02em;
 }
+@utility type-display-xl {
+  font-family: var(--font-sans);
+  font-size: clamp(2.5rem, 7.4vw, 5.5rem);
+  line-height: 1.02;
+  font-weight: 600;
+  letter-spacing: -0.045em;
+}
 @utility type-display {
   font-family: var(--font-sans);
-  font-size: 48px;
-  line-height: 52px;
+  font-size: clamp(2.25rem, 5vw, 3rem);
+  line-height: 1.1;
   font-weight: 600;
   letter-spacing: -0.025em;
 }
+@utility type-section {
+  font-family: var(--font-sans);
+  font-size: clamp(1.75rem, 3.6vw, 2.5rem);
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
 @utility type-lede {
   font-family: var(--font-sans);
-  font-size: 20px;
-  line-height: 30px;
+  font-size: 1.25rem;
+  line-height: 1.875rem;
   font-weight: 400;
   letter-spacing: normal;
 }
 @utility type-source {
   font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 0.75rem;
+  line-height: 1rem;
   font-weight: 500;
   letter-spacing: 0.04em;
 }
 @utility type-kbd {
   font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 0.75rem;
+  line-height: 1rem;
   font-weight: 500;
   letter-spacing: normal;
 }
 @utility type-code {
   font-family: var(--font-mono);
-  font-size: 14px;
-  line-height: 21px;
+  font-size: 0.875rem;
+  line-height: 1.3125rem;
   font-weight: 400;
   letter-spacing: normal;
 }
@@ -115,6 +129,9 @@
 }
 @utility duration-slow {
   transition-duration: var(--duration-slow);
+}
+@utility duration-story {
+  transition-duration: var(--duration-story);
 }
 @utility z-sticky {
   z-index: var(--z-sticky);

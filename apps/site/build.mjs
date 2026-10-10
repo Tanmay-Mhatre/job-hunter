@@ -72,16 +72,28 @@ const NUMBERS = {
 
 // Fonts are served as files next to the page instead of the app's relative ./fonts/ paths.
 let tokens = read(join(DS, "tokens.css")).replace(/url\('\.\/fonts\//g, "url('/fonts/");
-// Follow the OS when no theme is set yet (and when scripts are off): reuse the dark block.
-const dark = tokens.match(/\[data-theme="dark"\] \{([\s\S]*?)\n\}/);
-if (!dark) throw new Error("tokens.css: dark theme block not found");
-tokens = tokens.replace('[data-theme="dark"] {', '[data-theme="dark"] { color-scheme: dark;');
-tokens += `\n@media (prefers-color-scheme: dark) { :root:not([data-theme]) {${dark[1]}\n  color-scheme: dark;\n} }\n`;
+// Follow the OS when no theme is set yet (and when scripts are off): reuse the theme blocks.
+const block = (id) => {
+  const m = tokens.match(new RegExp(`\\[data-theme="${id}"\\] \\{([\\s\\S]*?)\\n\\}`));
+  if (!m) throw new Error(`tokens.css: ${id} theme block not found`);
+  return m[1];
+};
+const [dark, lightHc, darkHc] = ["dark", "light-hc", "dark-hc"].map(block);
+tokens = tokens
+  .replace('[data-theme="dark"] {', '[data-theme="dark"] { color-scheme: dark;')
+  .replace('[data-theme="dark-hc"] {', '[data-theme="dark-hc"] { color-scheme: dark;');
+tokens += `
+@media (prefers-color-scheme: dark) { :root:not([data-theme]) {${dark}\n  color-scheme: dark;\n} }
+@media (prefers-contrast: more) { :root:not([data-theme]) {${lightHc}\n} }
+@media (prefers-contrast: more) and (prefers-color-scheme: dark) { :root:not([data-theme]) {${darkHc}\n  color-scheme: dark;\n} }
+`;
 
 const bundle = read(join(ROOT, "design/components/bundle.css"));
+// The letters follow the text color; the cursor is brand-signal, the same orange in every theme.
 const wordmark = read(join(DS, "logos/rawjobs-wordmark-ink.svg"))
   .trim()
   .replace('fill="#151412"', 'fill="currentColor"')
+  .replace('fill="#ff5a1f"', 'style="fill: var(--brand-signal)"')
   .replace('role="img" aria-label="rawjobs"', 'aria-hidden="true" focusable="false"');
 const ats = SYSTEMS.map((s) => `<li class="ats">${s}</li>`).join("");
 // The scoring demo's rules, inlined as a plain script (packages/core/test/site-demo.test.ts checks them).
@@ -90,21 +102,29 @@ const analytics = ANALYTICS_TOKEN
   ? `<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='${JSON.stringify({ token: ANALYTICS_TOKEN })}'></script>`
   : "";
 
-let html = read(join(SITE, "src/index.html"))
-  .replace("/*__TOKENS__*/", () => tokens)
-  .replace("/*__BUNDLE__*/", () => bundle)
-  .replace("/*__SCORE__*/", () => score)
-  .replaceAll("__WORDMARK__", () => wordmark)
-  .replace("__ATS__", () => ats)
-  .replace("<!--__ANALYTICS__-->", () => analytics)
-  .replaceAll("__SITE_URL__", () => SITE_URL);
-for (const [key, value] of Object.entries(NUMBERS)) html = html.replaceAll(key, () => value);
-const left = html.match(/__[A-Z_]+__/);
-if (left) throw new Error(`Unfilled placeholder ${left[0]} in src/index.html`);
+const page = (name) => {
+  let out = read(join(SITE, "src", name))
+    .replace("/*__TOKENS__*/", () => tokens)
+    .replace("/*__BUNDLE__*/", () => bundle)
+    .replace("/*__SCORE__*/", () => score)
+    .replaceAll("__WORDMARK__", () => wordmark)
+    .replace("__ATS__", () => ats)
+    .replace("<!--__ANALYTICS__-->", () => analytics)
+    .replaceAll("__SITE_URL__", () => SITE_URL);
+  for (const [key, value] of Object.entries(NUMBERS)) out = out.replaceAll(key, () => value);
+  const left = out.match(/__[A-Z_]+__/);
+  if (left) throw new Error(`Unfilled placeholder ${left[0]} in src/${name}`);
+  return out;
+};
+const html = page("index.html");
 
 rmSync(DIST, { recursive: true, force: true });
 mkdirSync(join(DIST, "fonts"), { recursive: true });
 writeFileSync(join(DIST, "index.html"), html);
+// Same tokens and theme script as the home page, so it follows all four themes.
+writeFileSync(join(DIST, "404.html"), page("404.html"));
+// The share image's template, only when asked (pnpm site:og renders it to public/og.png).
+if (process.argv.includes("--og")) writeFileSync(join(DIST, "og.html"), page("og.html"));
 for (const f of readdirSync(join(DS, "fonts"))) copyFileSync(join(DS, "fonts", f), join(DIST, "fonts", f));
 copyFileSync(join(DS, "logos/rawjobs-mark.svg"), join(DIST, "favicon.svg"));
 cpSync(join(SITE, "public"), DIST, { recursive: true });

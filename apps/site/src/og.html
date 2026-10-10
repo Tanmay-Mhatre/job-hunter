@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>RawJobs share image</title>
+<!-- Template for public/og.png (1200 x 630). Render it with: pnpm site:og -->
+<style>
+/*__TOKENS__*/
+/*__BUNDLE__*/
+html, body { margin: 0; }
+body { width: 1200px; height: 630px; box-sizing: border-box; padding: var(--space-16) 72px; background: var(--bg-canvas); color: var(--text-primary);
+       display: grid; grid-template-columns: 1fr 476px; gap: var(--space-16); align-items: center; font: var(--text-body); -webkit-font-smoothing: antialiased; }
+.copy { display: grid; gap: var(--space-6); }
+.brand svg { height: 36px; width: auto; display: block; }
+h1 { margin: 0; font: var(--text-display-xl); font-size: 5.25rem; letter-spacing: -0.045em; }
+.cursor { display: inline-block; width: 0.28em; height: 0.72em; margin-left: 0.06em; background: var(--brand-signal); vertical-align: -0.02em; }
+p { margin: 0; font: var(--text-lede); font-size: 1.5rem; line-height: 2rem; color: var(--text-secondary); }
+.panel { box-shadow: var(--shadow-l1); }
+.bar { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--feed-divider); font: var(--text-code); color: var(--text-secondary); }
+.bar b { color: var(--text-primary); font-weight: 500; }
+.rj-row { grid-template-columns: 64px minmax(0, 1fr); }
+.rj-row__side { grid-column: 2; justify-content: flex-start; }
+</style>
+</head>
+<body class="rj-root">
+  <div class="copy">
+    <span class="brand">__WORDMARK__</span>
+    <h1>Jobs, straight from the source.<span class="cursor"></span></h1>
+    <p>Free, open-source job radar. The careers pages of __COMPANIES_ROUND__ companies, scored with rules you can read.</p>
+  </div>
+  <div class="rj-panel rj-feed panel">
+    <div class="bar"><span>$ </span><b>pnpm rawjobs scan</b></div>
+    <ul class="rj-feed__list">
+      <li class="rj-row"><span class="rj-score rj-score--strong"><i class="rj-glyph rj-glyph--full"></i>87</span><span class="rj-row__main"><span class="rj-row__title"><span>Head of Product, Exchange</span></span><span class="rj-row__meta">Acme Exchange<span class="rj-sep">·</span>Dubai<span class="rj-sep">·</span>Hybrid</span></span><span class="rj-row__side"><span class="rj-source"><span class="rj-dot"></span>Lever<span class="rj-source__age">2h</span></span></span></li>
+      <li class="rj-row"><span class="rj-score rj-score--strong"><i class="rj-glyph rj-glyph--full"></i>76</span><span class="rj-row__main"><span class="rj-row__title"><span>Senior Product Manager, Trading</span></span><span class="rj-row__meta">Kestrel Markets<span class="rj-sep">·</span>Abu Dhabi<span class="rj-sep">·</span>On-site</span></span><span class="rj-row__side"><span class="rj-source">Ashby<span class="rj-source__age">1d</span></span></span></li>
+      <li class="rj-row"><span class="rj-score rj-score--fair"><i class="rj-glyph rj-glyph--half"></i>66</span><span class="rj-row__main"><span class="rj-row__title"><span>Senior Product Manager, Search</span></span><span class="rj-row__meta">Fernway Travel<span class="rj-sep">·</span>Dubai<span class="rj-sep">·</span>Hybrid</span></span><span class="rj-row__side"><span class="rj-source">Greenhouse<span class="rj-source__age">3d</span></span></span></li>
+    </ul>
+  </div>
+</body>
+</html>
