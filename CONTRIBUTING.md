@@ -51,6 +51,5 @@ Use **Add by link** in the app (shared with the directory if sharing is on), or 
 
 ## License
 
-RawJobs is MIT licensed with one extra condition: copies and forks keep the line "Built by
-Tanmay Mhatre" (see [LICENSE](LICENSE)). By opening a pull request you agree that your
+RawJobs is MIT licensed ([LICENSE](LICENSE)). By opening a pull request you agree that your
 contribution is released under the same license.

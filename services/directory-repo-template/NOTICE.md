@@ -16,7 +16,7 @@ used only to confirm boards that are already listed, and are never published.
 | [Common Crawl](https://commoncrawl.org) URL index (our own query) | [Common Crawl terms of use](https://commoncrawl.org/terms-of-use) | adds companies (board URLs only) |
 | [Wayback Machine](https://web.archive.org) CDX index (our own query) | [Internet Archive terms of use](https://archive.org/about/terms.php) | adds companies (board URLs only) |
 | [Wikidata](https://www.wikidata.org) companies | CC0 | company names and websites, to find their boards |
-| RawJobs industry seed list | MIT with attribution (RawJobs, built by Tanmay Mhatre) | adds companies, industry labels |
+| RawJobs industry seed list | MIT (RawJobs) | adds companies, industry labels |
 | Boards shared by RawJobs users ("Add by link") | CC BY 4.0 (this directory) | adds companies, after a live check |
 | [LastRound AI ATS company directory](https://datahub.io/lastroundai-hiring-data/lastroundai-hiring-data/ats-directory) | CC BY 4.0 | adds companies, each verified live |
 | [Feashliaa/job-board-aggregator](https://github.com/Feashliaa/job-board-aggregator) | CC BY-NC | confirmation only, never published |

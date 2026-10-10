@@ -198,7 +198,7 @@ Your config lists the companies you're targeting. If you run RawJobs from GitHub
 
 ## Data & licenses
 
-- **Code:** MIT with attribution ([LICENSE](LICENSE)). Use, change and share it freely; any copy or fork must keep the line **"Built by Tanmay Mhatre"** in its license file and in its README or credits.
+- **Code:** MIT ([LICENSE](LICENSE)), copyright Tanmay Mhatre. Use, change and share it freely; copies must keep the copyright and license notice.
 - **Shared directory and job index:** CC BY 4.0. Sources and credits (Common Crawl, the Wayback Machine, Wikidata, permissively licensed board lists, user contributions) are in the directory repo's `NOTICE.md` ([template](services/directory-repo-template/NOTICE.md)).
 - **Public job boards** (Hacker News "Who is hiring", Remotive, Arbeitnow, Remote OK) are fetched on your own computer only, at most a few times a day, credited by name with every job linking back to the board, and never shared or redistributed. (The Muse and Jobicy aren't included: their terms weren't confirmed.)
 - **Remove a company:** open a [takedown request](.github/ISSUE_TEMPLATE/takedown.yml). We reply within 7 days, and removed companies go into `denylist.json`.
@@ -246,4 +246,4 @@ Connector tests use saved feed responses in `packages/core/test/fixtures`, so te
 
 ## License
 
-MIT with attribution, see [LICENSE](LICENSE). Built by Tanmay Mhatre: if you copy or fork this project, keep that credit in your license and README.
+[MIT](LICENSE) © 2026 Tanmay Mhatre.
