@@ -86,7 +86,7 @@ Jobs keep their first-seen date, and a job missing from two successful scans of 
 ```
 ★  74  Head of Product, Exchange
         Acme · Abu Dhabi; Dubai · hybrid · posted 2026-10-02
-        title 30 · loc 20 · kw 14 (crypto, tokenization, exchange) · fresh 10
+        title 30 · place 20 · keywords 14 (crypto, exchange, tokenization) · industry 10
         https://jobs.lever.co/acme/...
 ```
 
@@ -217,7 +217,7 @@ Your config lists the companies you're targeting. If you run RawJobs from GitHub
 
 ## Fair use
 
-RawJobs only reads public job postings that companies publish for their own careers pages. A scan makes one request per company it fetches, and the shared job feed lets it skip most companies with nothing for you. It spaces requests to the same host (about one a second), identifies itself with a User-Agent, slows down on rate limits, links to the original posting and never touches apply endpoints or candidate data. Keep it that way: prefer the default scope, keep your own list to the companies you really want (the Companies tab flags ones that never have anything for you), and don't scan more than a couple of times a day.
+RawJobs only reads public job postings that companies publish for their own careers pages. A scan makes a few requests per company it fetches (a list, then details for jobs that pass your gates on some systems, or one page at a time on Workday), and the shared job feed lets it skip most companies with nothing for you. It spaces requests to the same host (about one a second), identifies itself with a User-Agent, slows down on rate limits, links to the original posting and never touches apply endpoints or candidate data. Keep it that way: prefer the default scope, keep your own list to the companies you really want (the Companies tab flags ones that never have anything for you), and don't scan more than a couple of times a day.
 
 RawJobs is an independent project. It isn't affiliated with or endorsed by Greenhouse, Lever, Ashby, Workday or any other hiring system or job board named here; their names are used only to say which careers pages it can read.
 

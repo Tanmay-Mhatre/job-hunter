@@ -17,7 +17,7 @@ Plain, specific, a little dry. Show the number, skip the hype. Write to "you"; t
 | Say | Don't say |
 |---|---|
 | Posted 2 days ago on Greenhouse | Hot new opportunity! |
-| 74: title 30, place 20, keywords 14, fresh 10 | Great match for you |
+| 74: title 30, place 20, keywords 14, industry 10 | Great match for you |
 | No jobs matched this scan. Adding Dubai would show 23 more. | Oops! Nothing here yet. |
 | This board returned no jobs. Check the link or try the company's main careers page. | Invalid URL |
 | Runs on your machine. Nothing is sent anywhere. | Enterprise-grade privacy |

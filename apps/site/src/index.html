@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>RawJobs: jobs, straight from the source</title>
-<meta name="description" content="RawJobs reads openings straight from 21,000+ companies' hiring systems and scores each one with rules you can read. Free, open source, runs on your machine.">
+<meta name="description" content="RawJobs reads jobs straight from the careers pages of __COMPANIES_ROUND__ companies and scores each one with rules you can read. Free, open source, runs on your computer.">
 <link rel="canonical" href="__SITE_URL__/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="RawJobs">
 <meta property="og:title" content="RawJobs: jobs, straight from the source">
-<meta property="og:description" content="Free, open-source job radar. Reads 21,000+ companies' careers pages directly and scores every opening with rules you can read.">
+<meta property="og:description" content="Free, open-source job radar. Reads the careers pages of __COMPANIES_ROUND__ companies directly and scores every job with rules you can read.">
 <meta property="og:url" content="__SITE_URL__/">
 <meta property="og:image" content="__SITE_URL__/og.png">
 <meta property="og:image:width" content="1200">
@@ -243,20 +243,17 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
 /* ---------- download ---------- */
 .dl { border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-raised); overflow: hidden; }
 .dl__files { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.dl__file { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-2) var(--space-4); align-items: center; padding: var(--space-6); }
+.dl__file { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-4); padding: var(--space-6); }
 .dl__file + .dl__file { border-left: 1px solid var(--border-subtle); }
-.dl__icon { width: 44px; height: 52px; position: relative; border: 1px solid var(--border-control); border-radius: var(--radius-sm); background: var(--bg-canvas); display: grid; place-items: end center; padding-bottom: 6px; font: var(--text-source); font-size: 10px; color: var(--text-secondary); }
-.dl__icon::before { content: ""; position: absolute; top: -1px; right: -1px; width: 12px; height: 12px; background: linear-gradient(225deg, var(--bg-raised) 50%, var(--border-control) 50%); }
-.dl__name { font: var(--text-subheading); }
-.dl__name small { display: block; font: var(--text-small); color: var(--text-secondary); }
-.dl__file .rj-btn { grid-column: 1 / -1; justify-self: start; }
-.soon { display: flex; width: fit-content; margin-block: var(--space-1); align-items: center; gap: var(--space-2); font: var(--text-meta); font-weight: 500; color: var(--text-secondary); border: 1px solid var(--border-default); border-radius: var(--radius-sm); padding: 2px var(--space-2); }
-.dl__steps { list-style: none; margin: 0; padding: var(--space-6); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-6); border-top: 1px solid var(--border-subtle); background: var(--bg-canvas); counter-reset: d; }
+.soon { display: flex; width: fit-content; align-items: center; gap: var(--space-2); font: var(--text-meta); font-weight: 500; color: var(--text-secondary); border: 1px solid var(--border-default); border-radius: var(--radius-sm); padding: 2px var(--space-2); }
+.dl__steps { padding: var(--space-6); display: grid; gap: var(--space-4); border-top: 1px solid var(--border-subtle); background: var(--bg-canvas); }
+.dl__head { font: var(--text-label); }
+.dl__steps ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-6); counter-reset: d; }
 .dl__steps li { display: grid; align-content: start; gap: var(--space-1); counter-increment: d; font: var(--text-small); color: var(--text-secondary); }
 .dl__steps li::before { content: counter(d); font: var(--text-source); color: var(--text-primary); width: 24px; height: 24px; display: grid; place-items: center; border: 1px solid var(--border-control); border-radius: var(--radius-sm); margin-bottom: var(--space-2); }
 .dl__steps b { color: var(--text-primary); font-weight: 500; }
 .dl__foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-4); padding: var(--space-4) var(--space-6); border-top: 1px solid var(--border-subtle); }
-@media (max-width: 760px) { .dl__files, .dl__steps { grid-template-columns: minmax(0, 1fr); } .dl__file + .dl__file { border-left: 0; border-top: 1px solid var(--border-subtle); } }
+@media (max-width: 760px) { .dl__files, .dl__steps ol { grid-template-columns: minmax(0, 1fr); } .dl__file + .dl__file { border-left: 0; border-top: 1px solid var(--border-subtle); } }
 
 /* ---------- how it works ---------- */
 .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); counter-reset: s; position: relative; }
@@ -434,7 +431,7 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
       <p class="eyebrow" data-step style="--i:0">Free and open source · MIT</p>
       <h1 id="hero-title" data-step style="--i:1">Jobs, straight from the source.<span class="cursor" aria-hidden="true"></span></h1>
       <p class="hero__sub" data-step style="--i:2">See it before LinkedIn does.</p>
-      <p class="hero__lede" data-step style="--i:3">RawJobs reads openings directly from 21,000+ companies' hiring systems and scores each one with rules you can read. It runs on your machine. Your profile never leaves it.</p>
+      <p class="hero__lede" data-step style="--i:3">RawJobs reads jobs straight from the careers pages of __COMPANIES_ROUND__ companies and scores each one with rules you can read. It runs on your computer.</p>
       <div class="hero__ctas" data-step style="--i:4">
         <a class="rj-btn rj-btn--primary btn-lg" href="https://github.com/Tanmay-Mhatre/rawjobs#getting-started" target="_blank" rel="noopener">
           Set up RawJobs
@@ -448,7 +445,7 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
       <p class="hero__note" data-step style="--i:5">
         <span><i class="rj-glyph rj-glyph--full" style="color:var(--success-text)" aria-hidden="true"></i>No account</span>
         <span><i class="rj-glyph rj-glyph--full" style="color:var(--success-text)" aria-hidden="true"></i>No AI scoring</span>
-        <span><a href="#download" style="color:var(--text-primary);text-underline-offset:3px">Not a developer? A one-file app is coming</a></span>
+        <span><a href="#download" style="color:var(--text-primary);text-underline-offset:3px">Not a developer? One-file setup is coming</a></span>
       </p>
     </div>
 
@@ -465,7 +462,7 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
       </div>
       <div class="radar__list">
         <ul class="rj-feed__list" id="radar-list" aria-label="Jobs for you, best match first">
-          <li class="rj-row" data-current><span class="rj-score rj-score--strong" role="img" aria-label="Strong match, score 84"><i class="rj-glyph rj-glyph--full"></i>84</span><span class="rj-row__main"><span class="rj-row__title"><span>Head of Product, Exchange</span></span><span class="rj-row__meta">Acme Exchange<span class="rj-sep" aria-hidden="true">·</span>Dubai<span class="rj-sep" aria-hidden="true">·</span>Hybrid</span></span><span class="rj-row__side"><span class="rj-source"><span class="rj-dot" role="img" aria-label="New this scan"></span>Lever<span class="rj-source__age">2h</span></span></span></li>
+          <li class="rj-row" data-current><span class="rj-score rj-score--strong" role="img" aria-label="Strong match, score 87"><i class="rj-glyph rj-glyph--full"></i>87</span><span class="rj-row__main"><span class="rj-row__title"><span>Head of Product, Exchange</span></span><span class="rj-row__meta">Acme Exchange<span class="rj-sep" aria-hidden="true">·</span>Dubai<span class="rj-sep" aria-hidden="true">·</span>Hybrid</span></span><span class="rj-row__side"><span class="rj-source"><span class="rj-dot" role="img" aria-label="New this scan"></span>Lever<span class="rj-source__age">2h</span></span></span></li>
           <li class="rj-row"><span class="rj-score rj-score--strong" role="img" aria-label="Strong match, score 72"><i class="rj-glyph rj-glyph--full"></i>72</span><span class="rj-row__main"><span class="rj-row__title"><span>Senior Product Manager, Custody</span></span><span class="rj-row__meta">Halcyon Labs<span class="rj-sep" aria-hidden="true">·</span>Abu Dhabi<span class="rj-sep" aria-hidden="true">·</span>On-site</span></span><span class="rj-row__side"><span class="rj-source">Ashby<span class="rj-source__age">1d</span></span></span></li>
           <li class="rj-row"><span class="rj-score rj-score--fair" role="img" aria-label="Fair match, score 61"><i class="rj-glyph rj-glyph--half"></i>61</span><span class="rj-row__main"><span class="rj-row__title"><span>Product Manager, Payments</span></span><span class="rj-row__meta">Northwind Pay<span class="rj-sep" aria-hidden="true">·</span>Remote (EMEA)<span class="rj-sep" aria-hidden="true">·</span>Remote</span></span><span class="rj-row__side"><span class="rj-source">Greenhouse<span class="rj-source__age">3d</span></span></span></li>
           <li class="rj-row"><span class="rj-score rj-score--fair rj-score--estimated" role="img" aria-label="Fair match, score 56, estimated"><i class="rj-glyph rj-glyph--half"></i>~56</span><span class="rj-row__main"><span class="rj-row__title"><span>Product Lead, Tokenization</span></span><span class="rj-row__meta">Meridian Bank<span class="rj-sep" aria-hidden="true">·</span>Dubai<span class="rj-sep" aria-hidden="true">·</span>Hybrid</span></span><span class="rj-row__side"><span class="rj-source">Workday<span class="rj-source__age">5d</span></span></span></li>
@@ -473,15 +470,15 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
         </ul>
       </div>
       <div class="radar__why">
-        <div class="radar__why-head"><span class="radar__why-title" id="why-title">Why “Head of Product, Exchange” scored 84</span><span class="eyebrow">Score breakdown</span></div>
+        <div class="radar__why-head"><span class="radar__why-title" id="why-title">Why “Head of Product, Exchange” scored 87</span><span class="eyebrow">Score breakdown</span></div>
         <div class="rj-breakdown">
           <div class="rj-breakdown__bar" aria-hidden="true">
             <span class="rj-breakdown__seg"><i class="bd-fill" data-k="t" style="transform:scaleX(1)"></i></span>
             <span class="rj-breakdown__seg"><i class="bd-fill" data-k="p" style="transform:scaleX(1)"></i></span>
-            <span class="rj-breakdown__seg"><i class="bd-fill" data-k="k" style="transform:scaleX(.6)"></i></span>
-            <span class="rj-breakdown__seg"><i class="bd-fill" data-k="f" style="transform:scaleX(1)"></i></span>
+            <span class="rj-breakdown__seg"><i class="bd-fill" data-k="k" style="transform:scaleX(.675)"></i></span>
+            <span class="rj-breakdown__seg"><i class="bd-fill" data-k="i" style="transform:scaleX(1)"></i></span>
           </div>
-          <div class="rj-breakdown__legend num" id="why-legend"><span>title <b>30</b></span><span>place <b>20</b></span><span>keywords <b>24</b></span><span>fresh <b>10</b></span></div>
+          <div class="rj-breakdown__legend num" id="why-legend"><span>title <b>30</b></span><span>place <b>20</b></span><span>keywords <b>27</b></span><span>industry <b>10</b></span></div>
         </div>
       </div>
     </section>
@@ -492,12 +489,12 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
 <section class="proof" aria-label="RawJobs in numbers">
   <div class="wrap">
     <div class="proof__grid">
-      <div class="stat"><span class="stat__n" data-count="21485">21,485</span><span class="stat__l">companies in the directory</span></div>
-      <div class="stat"><span class="stat__n" data-count="13962">13,962</span><span class="stat__l">with open jobs indexed</span></div>
-      <div class="stat"><span class="stat__n" data-count="23">23</span><span class="stat__l">hiring systems, plus 4 job boards</span></div>
-      <div class="stat"><span class="stat__n">0</span><span class="stat__l">accounts to create</span></div>
+      <div class="stat"><span class="stat__n">__COMPANIES__</span><span class="stat__l">companies in the directory</span></div>
+      <div class="stat"><span class="stat__n">__INDEXED__</span><span class="stat__l">companies hiring now</span></div>
+      <div class="stat"><span class="stat__n">23</span><span class="stat__l">hiring systems, plus 4 job boards</span></div>
+      <div class="stat"><span class="stat__n">__FEED_JOBS__</span><span class="stat__l">open jobs in the daily feed</span></div>
     </div>
-    <p class="proof__foot">Directory build of 6 October 2026. Rebuilt weekly from public, permissively licensed lists.</p>
+    <p class="proof__foot">Directory build of __DIR_DATE__, rebuilt weekly from public, permissively licensed lists. Daily job feed of __FEED_DATE__, from Greenhouse, Lever, Ashby, SmartRecruiters and Workday boards.</p>
   </div>
 </section>
 
@@ -510,8 +507,8 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
       <p class="prose">You send 50 applications and hear back from two. Often it isn't you. It's where you applied.</p>
     </div>
     <div class="split__body">
-      <p class="section__lede">Many job sites don't post jobs. They copy them.</p>
-      <p class="prose">Aggregators and staffing agencies repost openings from company careers pages so their boards look full. Some copies are weeks out of date. Some only collect resumes for a talent pool. Apply there and your resume can stop with the middleman instead of reaching the team that's hiring. <strong>RawJobs only reads the company's own careers page</strong>, so every apply link goes straight to the people who posted the job.</p>
+      <p class="section__lede">Many job sites repost jobs instead of hosting them.</p>
+      <p class="prose">Aggregators and agencies often repost openings from company careers pages. Copies can go stale, and some feed a talent pool rather than the hiring team. Apply there and your resume can stop with the middleman instead of reaching the team that's hiring. <strong>Most jobs in RawJobs come straight from the company's own careers page</strong>, so the apply link goes into the company's own hiring system.</p>
       <div class="routes" id="routes" data-play="static">
         <div class="routes__bar">
           <span class="eyebrow">Where your resume goes</span>
@@ -536,13 +533,13 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
         </div>
         <div class="lane lane--good">
           <p class="lane__label">At the source, with RawJobs <small>1 hop</small></p>
-          <p class="rj-sr">At the source: your resume goes to the company's own careers page and is read by the hiring team that posted the job.</p>
+          <p class="rj-sr">At the source: your resume goes to the company's own careers page and into its own hiring system.</p>
           <div class="track" aria-hidden="true">
             <div class="node node--you">Your resume<small>applied on the careers page</small></div>
             <span class="link link--good"><i></i></span>
             <div class="node">Company careers page<small>Lever, Greenhouse, Workday…</small></div>
             <span class="link link--good"><i></i></span>
-            <div class="node node--end node--good"><i class="rj-glyph rj-glyph--full"></i><b>Hiring team</b><small>Read by the people who posted it</small></div>
+            <div class="node node--end node--good"><i class="rj-glyph rj-glyph--full"></i><b>Hiring team</b><small>Goes into the company's own hiring system</small></div>
           </div>
           <span class="token" aria-hidden="true"><svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 13H8"/><path d="M16 17H8"/></svg></span>
         </div>
@@ -588,8 +585,8 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
           <h3>You see the score and why.</h3>
           <p>Every job gets 0 to 100 with the reason written out. Your favorite companies stay on top.</p>
           <div class="step__demo" aria-hidden="true">
-            <div style="display:flex;gap:8px;align-items:center"><span class="rj-score rj-score--strong"><i class="rj-glyph rj-glyph--full"></i>84</span><span style="font:var(--text-label)">Head of Product, Exchange</span></div>
-            <div class="log"><div>title 30 · place 20 · keywords 24 · fresh 10</div></div>
+            <div style="display:flex;gap:8px;align-items:center"><span class="rj-score rj-score--strong"><i class="rj-glyph rj-glyph--full"></i>87</span><span style="font:var(--text-label)">Head of Product, Exchange</span></div>
+            <div class="log"><div>title 30 · place 20 · keywords 27 · industry 10</div></div>
           </div>
         </li>
       </ol>
@@ -603,7 +600,7 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
     <div class="split__head">
       <p class="eyebrow">Scoring</p>
       <h2 id="scoring-title">A score you can argue with.</h2>
-      <p class="prose">No AI and no black box. <strong>Title</strong> up to 30, <strong>place</strong> up to 20, <strong>keywords</strong> up to 40, <strong>fresh</strong> up to 10. Change what you're looking for and watch the score move.</p>
+      <p class="prose">No AI and no black box. <strong>Title</strong> up to 30, <strong>place</strong> up to 20, <strong>keywords</strong> up to 40, <strong>industry</strong> up to 10. Newer jobs rank higher, separately. Change what you're looking for and watch the score move.</p>
     </div>
     <div class="split__body">
       <div class="lab" id="lab">
@@ -614,7 +611,14 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
               <button type="button" class="rj-chip" id="t-head" data-group="titles" data-v="head of product" aria-pressed="true"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Head of product</button>
               <button type="button" class="rj-chip" id="t-pm" data-group="titles" data-v="product manager" aria-pressed="true"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Product manager</button>
               <button type="button" class="rj-chip" id="t-em" data-group="titles" data-v="engineering manager" aria-pressed="false"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Engineering manager</button>
-              <button type="button" class="rj-chip" id="t-boost" data-group="boost" data-v="head" aria-pressed="true"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Boost senior titles</button>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Your seniority word<small>The title is Head level. The same level adds 10, one level away adds 5.</small></legend>
+            <div class="chips">
+              <label class="rj-chip" for="s-head"><input class="rj-sr" type="radio" name="seniority" id="s-head" value="head" checked><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Head</label>
+              <label class="rj-chip" for="s-lead"><input class="rj-sr" type="radio" name="seniority" id="s-lead" value="lead"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Lead</label>
+              <label class="rj-chip" for="s-none"><input class="rj-sr" type="radio" name="seniority" id="s-none" value=""><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>None</label>
             </div>
           </fieldset>
           <fieldset>
@@ -626,7 +630,7 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
             </div>
           </fieldset>
           <fieldset>
-            <legend>Keywords<small>Points are the share of your keywords the posting mentions. Three matches fill the bar. A keyword in the title is worth at least 20.</small></legend>
+            <legend>Keywords<small>Points are the share of your keywords the posting mentions. Three matches fill the bar. A keyword in the title is worth up to 20.</small></legend>
             <div class="chips">
               <button type="button" class="rj-chip" id="k-crypto" data-group="kw" data-v="crypto" aria-pressed="true"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>crypto</button>
               <button type="button" class="rj-chip" id="k-exch" data-group="kw" data-v="exchange" aria-pressed="true"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>exchange</button>
@@ -636,23 +640,23 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
             </div>
           </fieldset>
           <fieldset>
-            <legend>Posted</legend>
+            <legend>The company's industry<small>Yours adds 10, not known adds 5, another one adds 0.</small></legend>
             <div class="chips">
-              <label class="rj-chip" for="f-0"><input class="rj-sr" type="radio" name="fresh" id="f-0" value="0"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Today</label>
-              <label class="rj-chip" for="f-5"><input class="rj-sr" type="radio" name="fresh" id="f-5" value="5" checked><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>5 days ago</label>
-              <label class="rj-chip" for="f-14"><input class="rj-sr" type="radio" name="fresh" id="f-14" value="14"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>2 weeks ago</label>
+              <label class="rj-chip" for="i-mine"><input class="rj-sr" type="radio" name="industry" id="i-mine" value="mine" checked><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Yours</label>
+              <label class="rj-chip" for="i-unknown"><input class="rj-sr" type="radio" name="industry" id="i-unknown" value="unknown"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Not known</label>
+              <label class="rj-chip" for="i-other"><input class="rj-sr" type="radio" name="industry" id="i-other" value="other"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Another one</label>
             </div>
           </fieldset>
         </form>
         <div class="lab__result">
           <div class="jobcard">
-            <span class="rj-source">Lever<span class="rj-source__age" id="lab-age">5d</span></span>
+            <span class="rj-source">Lever<span class="rj-source__age">5d</span></span>
             <h3 class="jobcard__title">Head of Product, Exchange</h3>
             <p class="jobcard__meta">Acme Exchange · Dubai, Abu Dhabi · Hybrid</p>
             <p class="jobcard__text" id="lab-text">Own the roadmap for our regulated <mark data-kw="crypto">crypto</mark> <mark data-kw="exchange">exchange</mark>: spot trading, custody and <mark data-kw="tokenization">tokenization</mark> of real-world assets. You'll work with compliance on KYC and launch new markets.</p>
           </div>
           <div class="verdict">
-            <span class="rj-score rj-score--lg rj-score--strong" id="lab-score" role="img" aria-label="Strong match, score 83"><i class="rj-glyph rj-glyph--full" id="lab-glyph"></i><span id="lab-num">83</span></span>
+            <span class="rj-score rj-score--lg rj-score--strong" id="lab-score" role="img" aria-label="Strong match, score 87"><i class="rj-glyph rj-glyph--full" id="lab-glyph"></i><span id="lab-num">87</span></span>
             <span class="verdict__label" id="lab-verdict">Strong match<span>Shown near the top of your Radar</span></span>
           </div>
           <div class="rj-breakdown" aria-hidden="true">
@@ -660,12 +664,12 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
               <span class="rj-breakdown__seg"><i class="bd-fill" id="lab-bt" style="transform:scaleX(1)"></i></span>
               <span class="rj-breakdown__seg"><i class="bd-fill" id="lab-bp" style="transform:scaleX(1)"></i></span>
               <span class="rj-breakdown__seg"><i class="bd-fill" id="lab-bk" style="transform:scaleX(.675)"></i></span>
-              <span class="rj-breakdown__seg"><i class="bd-fill" id="lab-bf" style="transform:scaleX(.6)"></i></span>
+              <span class="rj-breakdown__seg"><i class="bd-fill" id="lab-bi" style="transform:scaleX(1)"></i></span>
             </div>
-            <div class="rj-breakdown__legend num" id="lab-legend"><span>title <b>30</b></span><span>place <b>20</b></span><span>keywords <b>27</b></span><span>fresh <b>6</b></span></div>
+            <div class="rj-breakdown__legend num" id="lab-legend"><span>title <b>30</b></span><span>place <b>20</b></span><span>keywords <b>27</b></span><span>industry <b>10</b></span></div>
           </div>
-          <p class="why-line num" id="lab-why" aria-live="polite">83: title 30, place 20, keywords 27 (crypto, exchange), fresh 6</p>
-          <p class="lab__fine">An example job. In RawJobs you set what counts as a strong match; this demo uses 70 and up.</p>
+          <p class="why-line num" id="lab-why" aria-live="polite">87: title 30, place 20, keywords 27 (crypto, exchange), industry 10</p>
+          <p class="lab__fine">An example job. In RawJobs you set what counts as a strong match: 70 and up by default, as here. Fair is 40 and up.</p>
         </div>
       </div>
     </div>
@@ -678,7 +682,7 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
     <div class="split__head">
       <p class="eyebrow">Sources</p>
       <h2 id="sources-title">Reads 23 hiring systems.</h2>
-      <p class="prose">Each connector reads the public feed a company publishes for its own careers page. One request per company per scan, spaced out and identified.</p>
+      <p class="prose">Each connector reads the company's public feed or careers page. A few requests per company, spaced out and identified.</p>
     </div>
     <div class="split__body">
       <ul class="ats-grid" aria-label="Supported hiring systems">__ATS__</ul>
@@ -697,7 +701,7 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
       <h2 id="privacy-title">Runs on your machine.</h2>
     </div>
     <div class="split__body">
-      <p class="section__lede">Your resume, roles and companies never leave your computer. RawJobs only reads job postings that companies publish themselves.</p>
+      <p class="section__lede">Your resume and roles stay on your computer. If you add a company by link, only its careers board is shared, and you can turn that off. RawJobs only reads job postings that companies publish themselves.</p>
       <div class="facts">
         <div class="fact">
           <svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0 1.28 2.55a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45L4 16"/></svg>
@@ -707,7 +711,7 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
         <div class="fact">
           <svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m17 8 5 5"/><path d="m22 8-5 5"/></svg>
           <h3>No account, no telemetry</h3>
-          <p>Nothing to sign up for. The app only talks to job boards, GitHub for the shared directory and, if you turn on alerts, Telegram.</p>
+          <p>Nothing to sign up for. The app only talks to job boards, GitHub for the shared directory, the project's company inbox when you add a company (optional) and, if you turn on alerts, Telegram.</p>
         </div>
         <div class="fact">
           <svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
@@ -724,31 +728,26 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
   <div class="wrap split">
     <div class="split__head">
       <p class="eyebrow">No terminal needed</p>
-      <h2 id="download-title">Not a developer? Download one file.</h2>
-      <p class="prose">A desktop app for Mac and Windows is on the way. Download it, open it, pick your roles. It runs on your computer, exactly like the developer version.</p>
+      <h2 id="download-title">Not a developer? One file will set it all up</h2>
+      <p class="prose">A setup file for Mac and Windows is on the way. Download it, open it, and it installs everything RawJobs needs, then opens your dashboard in the browser. It all runs on your computer.</p>
     </div>
     <div class="split__body">
       <div class="dl">
         <div class="dl__files">
-          <div class="dl__file">
-            <span class="dl__icon" aria-hidden="true">.dmg</span>
-            <span class="dl__name">RawJobs for Mac<span class="soon"><i class="rj-glyph rj-glyph--empty" aria-hidden="true"></i>Coming soon</span><small>One file. Open it and go.</small></span>
-            <button class="rj-btn" type="button" aria-disabled="true">Download for Mac</button>
-          </div>
-          <div class="dl__file">
-            <span class="dl__icon" aria-hidden="true">.exe</span>
-            <span class="dl__name">RawJobs for Windows<span class="soon"><i class="rj-glyph rj-glyph--empty" aria-hidden="true"></i>Coming soon</span><small>One file. Open it and go.</small></span>
-            <button class="rj-btn" type="button" aria-disabled="true">Download for Windows</button>
-          </div>
+          <div class="dl__file"><span class="dl__name">Setup for Mac</span><span class="soon"><i class="rj-glyph rj-glyph--empty" aria-hidden="true"></i>Coming soon</span></div>
+          <div class="dl__file"><span class="dl__name">Setup for Windows</span><span class="soon"><i class="rj-glyph rj-glyph--empty" aria-hidden="true"></i>Coming soon</span></div>
         </div>
-        <ol class="dl__steps">
-          <li><b>Download the file</b>No install steps, no account.</li>
-          <li><b>Open it</b>Setup asks for your roles, places and topics. About three minutes.</li>
-          <li><b>Scan</b>Scored jobs appear on your computer. Nothing to host.</li>
-        </ol>
+        <div class="dl__steps">
+          <p class="dl__head">What the setup file will do</p>
+          <ol>
+            <li><b>Download one file</b>For Mac or Windows.</li>
+            <li><b>Open it</b>It installs what RawJobs needs (Node, pnpm and RawJobs) and keeps it up to date.</li>
+            <li><b>Pick your roles</b>The dashboard opens in your browser. Setup takes about 3 minutes.</li>
+          </ol>
+        </div>
         <div class="dl__foot">
           <a class="rj-btn" href="https://github.com/Tanmay-Mhatre/rawjobs/releases" target="_blank" rel="noopener">Watch releases on GitHub<svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></a>
-          <span class="lab__fine">Comfortable with a terminal? The developer setup works today.</span>
+          <span class="lab__fine">Comfortable with a terminal? <a href="https://github.com/Tanmay-Mhatre/rawjobs#getting-started" target="_blank" rel="noopener">The developer setup works today.</a></span>
         </div>
       </div>
     </div>
@@ -761,7 +760,7 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
     <div class="split__head">
       <p class="eyebrow">For developers</p>
       <h2 id="cli-title">Prefer the terminal?</h2>
-      <p class="prose">Everything the dashboard does, the CLI does too. Schedule it, pipe it, or send new matches to Telegram.</p>
+      <p class="prose">The CLI scans, schedules and sends alerts. Run it by hand, schedule it, or send new matches to Telegram.</p>
     </div>
     <div class="split__body">
       <div class="term" id="term" data-play="static">
@@ -772,7 +771,7 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
             <span>Copy command</span>
           </button>
         </div>
-<pre class="term__body" aria-label="Example output of pnpm rawjobs scan"><span data-line="0"><span class="p">$ </span><span class="typed">pnpm rawjobs scan</span></span><span data-line style="--i:1"><span class="d">Scanned 214 companies. 9 new for you.</span></span><span data-line style="--i:2"> </span><span data-line style="--i:3"><span class="st">★</span>  <span class="s">84</span>  Head of Product, Exchange</span><span data-line style="--i:4"><span class="d">        Acme Exchange · Dubai · hybrid · posted 2026-10-08</span></span><span data-line style="--i:5"><span class="d">        title 30 · loc 20 · kw 24 (crypto, exchange) · fresh 10</span></span><span data-line style="--i:6"><span class="d">        https://jobs.lever.co/acme-exchange/…</span></span><span data-line style="--i:7"> </span><span data-line style="--i:8">   <span class="s">72</span>  Senior Product Manager, Custody</span><span data-line style="--i:9"><span class="d">        Halcyon Labs · Abu Dhabi · on-site · posted 2026-10-09</span></span><span data-line style="--i:10"><span class="d">        title 30 · loc 20 · kw 16 (custody) · fresh 6</span></span></pre>
+<pre class="term__body" aria-label="Example output of pnpm rawjobs scan, with made-up jobs"><span data-line="0"><span class="p">$ </span><span class="typed">pnpm rawjobs scan</span></span><span data-line style="--i:1"><span class="d">38 jobs passed your title and location gates (9 new); 6 scored 70+ (alert threshold).</span></span><span data-line style="--i:2"><span class="d">Checked 1,412 directory companies besides yours.</span></span><span data-line style="--i:3"> </span><span data-line style="--i:4"><span class="st">★</span>  <span class="s">87</span>  Head of Product, Exchange</span><span data-line style="--i:5"><span class="d">        Acme Exchange · Dubai, Abu Dhabi · hybrid · posted 2026-10-08</span></span><span data-line style="--i:6"><span class="d">        title 30 · place 20 · keywords 27 (crypto, exchange) · industry 10</span></span><span data-line style="--i:7"><span class="d">        https://jobs.lever.co/acme-exchange/…</span></span><span data-line style="--i:8"> </span><span data-line style="--i:9"><span class="st">★</span>  <span class="s">72</span>  Senior Product Manager, Custody</span><span data-line style="--i:10"><span class="d">        Halcyon Labs · Abu Dhabi · onsite · posted 2026-10-09</span></span><span data-line style="--i:11"><span class="d">        title 20 · place 20 · keywords 27 (crypto, exchange) · industry 5</span></span></pre>
       </div>
       <div class="cmds">
         <div class="cmd"><code>pnpm rawjobs scan --notify</code><span>Send new matches to Telegram</span></div>
@@ -793,7 +792,7 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
     </div>
     <div class="split__body">
       <div class="cards">
-        <a class="card" href="https://github.com/Tanmay-Mhatre/rawjobs/issues/new/choose" target="_blank" rel="noopener">
+        <a class="card" href="https://github.com/Tanmay-Mhatre/rawjobs/issues/new?template=suggest_company.yml" target="_blank" rel="noopener">
           <h3>Add a company <svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></h3>
           <p>Missing a company? Paste its careers link in the app, or suggest it for the shared directory so everyone gets it.</p>
         </a>
@@ -817,9 +816,9 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
       <div class="faq">
         <details><summary>Is it free?<svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></summary><p class="ans">Yes. RawJobs is MIT licensed, with no paid tier and no account.</p></details>
         <details><summary>Does it use AI?<svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></summary><p class="ans">No. Scores come from keyword rules you can read and change. An optional AI re-rank, with your own key, is on the roadmap.</p></details>
-        <details><summary>Where do the jobs come from?<svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></summary><p class="ans">From each company's own careers page on its hiring system, like Greenhouse, Lever or Workday, plus four public job boards. A shared directory of about 21,000 companies, rebuilt weekly, tells RawJobs where to look.</p></details>
-        <details><summary>Is my data sent anywhere?<svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></summary><p class="ans">No. Your resume, roles, companies and alert settings stay on your computer, and the app has no telemetry. It talks only to the job boards it scans, GitHub for the shared directory, and Telegram if you turn on alerts.</p></details>
-        <details><summary>How fresh are the jobs?<svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></summary><p class="ans">As fresh as your last scan. Scan whenever you like, or schedule one or two scans a day and get new strong matches on Telegram.</p></details>
+        <details><summary>Where do the jobs come from?<svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></summary><p class="ans">From each company's own careers page on its hiring system, like Greenhouse, Lever or Workday, plus four public job boards. A shared directory of __COMPANIES_ROUND__ companies, rebuilt weekly, tells RawJobs where to look.</p></details>
+        <details><summary>Is my data sent anywhere?<svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></summary><p class="ans">Only one thing, and you can turn it off: when you add a company by link, its careers board is shared with the directory so everyone can find it. Your resume, roles and alert settings stay on your computer, and the app has no telemetry. It talks only to the job boards it scans, GitHub for the shared directory, the project's company inbox when you add a company (optional), and Telegram if you turn on alerts.</p></details>
+        <details><summary>How fresh are the jobs?<svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></summary><p class="ans">As fresh as your last scan. Scan whenever you like, or schedule one or two scans a day and get new matches on Telegram.</p></details>
         <details><summary>How do I run it?<svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></summary><p class="ans">You need Node 22+ and pnpm. Clone the repo, run <code>pnpm install</code>, then <code>pnpm dev</code>. The dashboard opens and walks you through setup. A hosted version is planned.</p></details>
       </div>
     </div>
@@ -847,7 +846,7 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
     <div class="foot__grid">
       <div>
         <a class="brand" href="#top" aria-label="RawJobs, back to top">__WORDMARK__</a>
-        <p class="foot__small">Built by Tanmay Mhatre. MIT licensed. RawJobs is an independent project and isn't affiliated with or endorsed by Greenhouse, Lever, Ashby, Workday or any other hiring system or job board named here; their names only say which careers pages it can read. Jobs shown on this page are made-up examples.</p>
+        <p class="foot__small">Built by Tanmay Mhatre. MIT licensed. RawJobs is an independent project and isn't affiliated with or endorsed by Greenhouse, Lever, Ashby, Workday or any other hiring system or job board named here; their names only say which careers pages it can read. Jobs shown on this page are made-up examples. This website uses Cloudflare Web Analytics (cookieless, no personal data). The app has none.</p>
       </div>
       <nav class="foot__links" aria-label="Project links">
         <a href="https://github.com/Tanmay-Mhatre/rawjobs" target="_blank" rel="noopener">GitHub</a>
@@ -903,31 +902,13 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
     else done(false);
   });
 
-  /* ---------- scoring (same rules as packages/core) ---------- */
-  var JOB = { title: 'head of product, exchange', places: ['dubai', 'abu dhabi'], remote: false, text: 'crypto exchange spot trading custody tokenization real-world assets compliance kyc launch markets' };
-  var hasWord = function (hay, term) { return new RegExp('(^|[^a-z0-9])' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '($|[^a-z0-9])', 'i').test(hay); };
-  function score(s) {
-    var titleHit = s.titles.some(function (t) { return hasWord(JOB.title, t); });
-    var placeHit = s.places.some(function (p) { return JOB.places.indexOf(p) > -1; });
-    var remoteHit = JOB.remote && s.places.indexOf('remote') > -1;
-    if (!titleHit) return { gated: 'title' };
-    if (!placeHit && !remoteHit) return { gated: 'place' };
-    var t = 20 + (s.boost && hasWord(JOB.title, 'head') ? 10 : 0);
-    var p = placeHit ? 20 : 15;
-    var f = s.age <= 3 ? 10 : s.age <= 7 ? 6 : 2;
-    var matched = s.kw.filter(function (k) { return hasWord(JOB.title + ' ' + JOB.text, k); });
-    if (!s.kw.length) return { total: Math.round((t + p + f) / 60 * 100), t: t, p: p, k: 0, f: f, matched: [], noKw: true };
-    var w = 4, k = Math.round(40 * Math.min(1, (matched.length * w) / Math.min(s.kw.length * w, 12)));
-    /* same as packages/core: a keyword in the title is worth at least 20 */
-    if (matched.some(function (m) { return hasWord(JOB.title, m); })) k = Math.max(k, 20);
-    return { total: t + p + k + f, t: t, p: p, k: k, f: f, matched: matched };
-  }
-
-  var form = $('#lab-form'), last = 83;
+  /* ---------- scoring: score.js, checked against packages/core by packages/core/test/site-demo.test.ts ---------- */
+/*__SCORE__*/
+  var form = $('#lab-form'), last = 87;
   function state() {
     var on = function (g) { return $$('[data-group="' + g + '"][aria-pressed="true"]').map(function (b) { return b.getAttribute('data-v'); }); };
-    var age = +(form.querySelector('input[name="fresh"]:checked') || { value: 5 }).value;
-    return { titles: on('titles'), boost: on('boost').length > 0, places: on('places'), kw: on('kw'), age: age };
+    var pick = function (n, d) { var el = form.querySelector('input[name="' + n + '"]:checked'); return el ? el.value : d; };
+    return { titles: on('titles'), seniority: pick('seniority', 'head'), places: on('places'), kw: on('kw'), industry: pick('industry', 'mine') };
   }
   function animateNum(el, from, to) {
     if (reduce || from === to) { el.textContent = to; return; }
@@ -935,12 +916,11 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
     (function tick(t) { var p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3); el.textContent = Math.round(from + (to - from) * e); if (p < 1) requestAnimationFrame(tick); })(t0);
   }
   function render() {
-    var s = state(), r = score(s);
+    var s = state(), r = demoScore(s);
     var badge = $('#lab-score'), glyph = $('#lab-glyph'), num = $('#lab-num'), verdict = $('#lab-verdict'), why = $('#lab-why');
-    $('#lab-age').textContent = s.age === 0 ? '2h' : s.age + 'd';
     $$('#lab-text mark').forEach(function (m) { if (s.kw.indexOf(m.getAttribute('data-kw')) > -1) m.removeAttribute('data-off'); else m.setAttribute('data-off', ''); });
     var total = r.gated ? 0 : r.total;
-    var cls = r.gated ? 'weak' : total >= 70 ? 'strong' : total >= 50 ? 'fair' : 'weak';
+    var cls = r.gated ? 'weak' : total >= 70 ? 'strong' : total >= 40 ? 'fair' : 'weak';
     badge.className = 'rj-score rj-score--lg rj-score--' + cls;
     glyph.className = 'rj-glyph rj-glyph--' + (r.gated ? 'slash' : cls === 'strong' ? 'full' : cls === 'fair' ? 'half' : 'empty');
     animateNum(num, last, total); last = total;
@@ -951,11 +931,11 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
     else if (r.gated === 'place') { verdict.innerHTML = 'Hidden<span>Dubai and Abu Dhabi aren’t in your places, and it isn’t remote.</span>'; why.textContent = '0: hidden, place gate. Add Dubai to see it.'; }
     else {
       verdict.innerHTML = name + '<span>' + (cls === 'strong' ? 'Shown near the top of your Radar' : cls === 'fair' ? 'In your Radar, below strong matches' : 'Shown, low in your Radar') + '</span>';
-      why.textContent = total + ': title ' + r.t + ', place ' + r.p + ', keywords ' + r.k + (r.matched.length ? ' (' + r.matched.join(', ') + ')' : '') + ', fresh ' + r.f + (r.noKw ? ', scaled from 60 with no keywords' : '');
+      why.textContent = total + ': title ' + r.t + ', place ' + r.p + ', keywords ' + r.k + (r.matched.length ? ' (' + r.matched.join(', ') + ')' : '') + ', industry ' + r.i + (r.noKw ? ', scaled from 60 with no keywords' : '');
     }
-    var vals = r.gated ? [0, 0, 0, 0] : [r.t / 30, r.p / 20, r.k / 40, r.f / 10];
-    ['#lab-bt', '#lab-bp', '#lab-bk', '#lab-bf'].forEach(function (id, i) { $(id).style.transform = 'scaleX(' + vals[i] + ')'; });
-    $('#lab-legend').innerHTML = '<span>title <b>' + (r.gated ? 0 : r.t) + '</b></span><span>place <b>' + (r.gated ? 0 : r.p) + '</b></span><span>keywords <b>' + (r.gated ? 0 : r.k) + '</b></span><span>fresh <b>' + (r.gated ? 0 : r.f) + '</b></span>';
+    var vals = r.gated ? [0, 0, 0, 0] : [r.t / 30, r.p / 20, r.k / 40, r.i / 10];
+    ['#lab-bt', '#lab-bp', '#lab-bk', '#lab-bi'].forEach(function (id, i) { $(id).style.transform = 'scaleX(' + vals[i] + ')'; });
+    $('#lab-legend').innerHTML = '<span>title <b>' + (r.gated ? 0 : r.t) + '</b></span><span>place <b>' + (r.gated ? 0 : r.p) + '</b></span><span>keywords <b>' + (r.gated ? 0 : r.k) + '</b></span><span>industry <b>' + (r.gated ? 0 : r.i) + '</b></span>';
   }
   form.addEventListener('click', function (e) {
     var b = e.target.closest('button[data-group]'); if (!b) return;
@@ -972,15 +952,15 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
     { s: 81, t: 'Head of Product, Payments', c: 'Lumen Pay', p: 'Remote (EMEA)', w: 'Remote', src: 'Lever', host: 'jobs.lever.co/lumen-pay', b: [30, 15, 26, 10] },
     { s: 66, t: 'Senior Product Manager, Search', c: 'Fernway Travel', p: 'Dubai', w: 'Hybrid', src: 'Greenhouse', host: 'job-boards.greenhouse.io/fernway', b: [30, 20, 6, 10] },
     { s: 79, t: 'Lead Product Manager, Custody', c: 'Orbit Vault', p: 'Dubai', w: 'On-site', src: 'Workable', host: 'apply.workable.com/orbit-vault', b: [30, 20, 19, 10] },
-    { s: 74, t: 'Group Product Manager, Patient Apps', c: 'Medline Clinics', p: 'Abu Dhabi', w: 'Hybrid', src: 'Workday', host: 'medline.wd3.myworkdayjobs.com/careers', b: [30, 20, 14, 10] },
+    { s: 69, t: 'Group Product Manager, Patient Apps', c: 'Medline Clinics', p: 'Abu Dhabi', w: 'Hybrid', src: 'Workday', host: 'medline.wd3.myworkdayjobs.com/careers', b: [30, 20, 14, 5] },
     { s: 86, t: 'Head of Product, Tokenization', c: 'Granite RWA', p: 'Abu Dhabi', w: 'Hybrid', src: 'Ashby', host: 'jobs.ashbyhq.com/granite', b: [30, 20, 26, 10] },
-    { s: 47, t: 'Product Owner, Mobile App', c: 'Brightline Retail', p: 'Dubai', w: 'On-site', src: 'SmartRecruiters', host: 'careers.smartrecruiters.com/brightline', b: [20, 20, 0, 6] },
+    { s: 45, t: 'Product Owner, Mobile App', c: 'Brightline Retail', p: 'Dubai', w: 'On-site', src: 'SmartRecruiters', host: 'careers.smartrecruiters.com/brightline', b: [20, 20, 0, 5] },
     { s: 73, t: 'Senior Product Manager, Exchange', c: 'Cobalt Exchange', p: 'Dubai', w: 'Hybrid', src: 'Teamtailor', host: 'cobalt.teamtailor.com/jobs', b: [30, 20, 13, 10] }
   ];
   var radar = $('#radar'), list = $('#radar-list'), btn = $('#radar-toggle'), icon = $('#radar-icon');
   var hostEl = $('#scan-host'), countEl = $('#scan-count'), newEl = $('#scan-new');
   var idx = 0, timer = null, userPaused = reduce, hover = false, visible = true, companies = 214, fresh = 9;
-  var cls = function (s) { return s >= 70 ? 'strong' : s >= 50 ? 'fair' : 'weak'; };
+  var cls = function (s) { return s >= 70 ? 'strong' : s >= 40 ? 'fair' : 'weak'; };
   var glyph = { strong: 'full', fair: 'half', weak: 'empty' }, word = { strong: 'Strong', fair: 'Fair', weak: 'Weak' };
   function rowHTML(j) {
     var k = cls(j.s);
@@ -992,7 +972,7 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
     $('#why-title').textContent = 'Why “' + j.t + '” scored ' + j.s;
     var max = [30, 20, 40, 10];
     $$('.radar .bd-fill').forEach(function (el, i) { el.style.transform = 'scaleX(' + (j.b[i] / max[i]) + ')'; });
-    $('#why-legend').innerHTML = '<span>title <b>' + j.b[0] + '</b></span><span>place <b>' + j.b[1] + '</b></span><span>keywords <b>' + j.b[2] + '</b></span><span>fresh <b>' + j.b[3] + '</b></span>';
+    $('#why-legend').innerHTML = '<span>title <b>' + j.b[0] + '</b></span><span>place <b>' + j.b[1] + '</b></span><span>keywords <b>' + j.b[2] + '</b></span><span>industry <b>' + j.b[3] + '</b></span>';
   }
   function tick() {
     var j = POOL[idx++ % POOL.length];
@@ -1012,7 +992,7 @@ label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); o
       });
       setWhy(j);
       companies += 3 + Math.floor(Math.random() * 6); countEl.textContent = companies;
-      if (j.s >= 50) { fresh += 1; newEl.textContent = fresh; }
+      if (j.s >= 40) { fresh += 1; newEl.textContent = fresh; }
     }, 170);
   }
   function sync() {
