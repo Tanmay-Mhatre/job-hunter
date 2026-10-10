@@ -2,7 +2,7 @@
 
 **Jobs, straight from the source.**
 
-[![CI](https://github.com/Tanmay-Mhatre/job-hunter/actions/workflows/ci.yml/badge.svg)](https://github.com/Tanmay-Mhatre/job-hunter/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) ![Node 22+](https://img.shields.io/badge/node-22%2B-informational)
+[![CI](https://github.com/Tanmay-Mhatre/rawjobs/actions/workflows/ci.yml/badge.svg)](https://github.com/Tanmay-Mhatre/rawjobs/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) ![Node 22+](https://img.shields.io/badge/node-22%2B-informational)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/radar-dark.png">

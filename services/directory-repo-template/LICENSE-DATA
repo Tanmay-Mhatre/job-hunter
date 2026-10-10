@@ -9,7 +9,7 @@ https://creativecommons.org/licenses/by/4.0/legalcode
 You may copy, share and adapt it, for any purpose, as long as you give credit, link to the
 licence and say if you changed it. Suggested credit:
 
-  "RawJobs company directory (https://github.com/Tanmay-Mhatre/job-hunter-directory), CC BY 4.0"
+  "RawJobs company directory (https://github.com/Tanmay-Mhatre/rawjobs-directory), CC BY 4.0"
 
 What this covers. The individual facts (that a company has a public job board on a given hiring
 system, and the titles and locations of jobs it posts there) come from the companies' own public
@@ -23,4 +23,4 @@ credit they ask for. Those credits travel with the data.
 No warranty. The data is provided as is. Boards close, move and change; check the company's own
 careers page before you rely on it.
 
-The software that builds this data (Tanmay-Mhatre/job-hunter) is licensed separately, under MIT.
+The software that builds this data (Tanmay-Mhatre/rawjobs) is licensed separately, under MIT.

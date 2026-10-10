@@ -10,9 +10,9 @@ import { envSetting } from "./env";
  * directory and inbox; set RAWJOBS_DIRECTORY_URL / RAWJOBS_CONTRIBUTE_URL to use your own
  * (the older JOBHUNTER_ names still work).
  */
-export const DEFAULT_DIRECTORY_URL = "https://github.com/Tanmay-Mhatre/job-hunter-directory/releases/latest/download";
+export const DEFAULT_DIRECTORY_URL = "https://github.com/Tanmay-Mhatre/rawjobs-directory/releases/latest/download";
 /** The contribution inbox (services/contribute); empty turns sharing off. */
-export const DEFAULT_CONTRIBUTE_URL = "https://job-hunter-contribute.tanmay-jobhunter.workers.dev";
+export const DEFAULT_CONTRIBUTE_URL = "https://rawjobs-contribute.tanmay-jobhunter.workers.dev";
 
 export const directoryUrl = () => (envSetting("DIRECTORY_URL") ?? DEFAULT_DIRECTORY_URL).replace(/\/$/, "");
 export const contributeUrl = () => (envSetting("CONTRIBUTE_URL") ?? DEFAULT_CONTRIBUTE_URL).replace(/\/$/, "");

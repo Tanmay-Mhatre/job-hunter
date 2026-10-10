@@ -20,7 +20,7 @@ permissions:
   actions: write
 
 env:
-  DATA_REPO: ${{ vars.DATA_REPO || 'Tanmay-Mhatre/job-hunter-directory' }}
+  DATA_REPO: ${{ vars.DATA_REPO || 'Tanmay-Mhatre/rawjobs-directory' }}
 
 jobs:
   feed:

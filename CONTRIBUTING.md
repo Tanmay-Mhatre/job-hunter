@@ -45,7 +45,7 @@ Use **Add by link** in the app (shared with the directory if sharing is on), or 
 
 ## Reporting
 
-- Questions and ideas: [Discussions](https://github.com/Tanmay-Mhatre/job-hunter/discussions).
+- Questions and ideas: [Discussions](https://github.com/Tanmay-Mhatre/rawjobs/discussions).
 - Bugs: open an issue with the **Bug report** template.
 - Something RawJobs should do: the **Feature request** template.
 - A company that wants to be removed from the directory: the **Remove a company** template. We

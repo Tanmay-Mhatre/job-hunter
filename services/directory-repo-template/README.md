@@ -1,7 +1,7 @@
 # RawJobs company directory
 
 A shared, weekly-rebuilt list of companies and their public job boards (Greenhouse, Lever, Ashby,
-SmartRecruiters, Workday), used by [RawJobs](https://github.com/Tanmay-Mhatre/job-hunter) installs
+SmartRecruiters, Workday), used by [RawJobs](https://github.com/Tanmay-Mhatre/rawjobs) installs
 for company suggestions and browsing.
 
 ## Files

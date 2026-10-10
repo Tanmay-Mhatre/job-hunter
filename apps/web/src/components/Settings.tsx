@@ -196,7 +196,7 @@ export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanni
               </Toggle>
               <p className="type-small text-muted">
                 Only the careers link is shared: the company's name, its hiring system and its board name. Never your profile, resume, searches or which jobs you look at.{" "}
-                <a href="https://github.com/Tanmay-Mhatre/job-hunter/blob/main/PRIVACY.md" target="_blank" rel="noreferrer" className="font-medium text-ink underline underline-offset-2 hover:text-muted">
+                <a href="https://github.com/Tanmay-Mhatre/rawjobs/blob/main/PRIVACY.md" target="_blank" rel="noreferrer" className="font-medium text-ink underline underline-offset-2 hover:text-muted">
                   What is sent, and where
                 </a>
               </p>

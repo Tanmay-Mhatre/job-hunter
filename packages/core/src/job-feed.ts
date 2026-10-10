@@ -14,7 +14,7 @@ import type { Profile, Workplace } from "./schema";
  * whose jobs yesterday had nothing for you is skipped, one that had is fetched live, so every job
  * shown is still checked live. Nothing about the user is sent anywhere; filtering happens here.
  */
-export const DEFAULT_JOB_FEED_URL = "https://github.com/Tanmay-Mhatre/job-hunter-directory/releases/download/jobs";
+export const DEFAULT_JOB_FEED_URL = "https://github.com/Tanmay-Mhatre/rawjobs-directory/releases/download/jobs";
 export const jobFeedUrl = () => (envSetting("JOBS_URL") ?? DEFAULT_JOB_FEED_URL).replace(/\/$/, "");
 
 /** Format version: clients ignore a feed whose schema they don't know. */
