@@ -9,6 +9,7 @@ export function SourceTag({
   age,
   isNew,
   older,
+  title,
   className,
 }: {
   source: string;
@@ -17,10 +18,12 @@ export function SourceTag({
   isNew?: boolean;
   /** Posted over two months ago: the age turns amber, as the job may be filled. */
   older?: boolean;
+  /** Tooltip for the whole tag ("Still listed · checked 2h ago"). */
+  title?: string;
   className?: string;
 }) {
   return (
-    <span className={cx("rj-source", className)}>
+    <span className={cx("rj-source", className)} title={title}>
       {isNew && <span className="rj-dot" role="img" aria-label="New this scan" />}
       {source}
       {age && (

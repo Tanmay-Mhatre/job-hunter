@@ -82,6 +82,8 @@ type Props = {
 };
 
 const FILTER_KEY = "rawjobs.radar.v2";
+/** Visits (by their "new since" line) whose closed jobs were already announced, so switching tabs doesn't repeat it. */
+const closedToldFor = new Set<number>();
 /** "Show everywhere" was picked for these profile places (JSON); a change of places brings the place filter back. */
 const EVERYWHERE_KEY = "rawjobs.radar.everywhere";
 const PAGE = 40;
@@ -329,6 +331,20 @@ export function RadarPage(p: Props) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [move, selected, wide, p]);
+
+  // ----- jobs you saved or applied to that closed since your last visit: said once per visit -----
+  useEffect(() => {
+    if (newSince === undefined || closedToldFor.has(newSince)) return;
+    closedToldFor.add(newSince);
+    const closed = p.jobs.filter((j) => j.status === "closed" && j.closedAt && Date.parse(j.closedAt) > newSince && ["saved", "applied", "interviewing", "offer"].includes(p.user[j.id]?.status ?? ""));
+    if (!closed.length) return;
+    const view = closed.some((j) => p.user[j.id]?.status === "saved") ? "saved" : "applied";
+    toast({
+      message: closed.length === 1 ? <><b>{closed[0]!.title}</b> at {closed[0]!.company} closed since your last visit.</> : <>{closed.length} jobs you saved or applied to closed since your last visit.</>,
+      actionLabel: "See",
+      onAction: () => replace({ ...base, status: view }, sort),
+    });
+  }, [newSince]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ----- hide a company, with undo -----
   const hideCompany = (company: string, hide: boolean) => {
@@ -826,6 +842,7 @@ const ageLimit = (days: number) => (days % 30 === 0 ? (days === 30 ? "1 month" :
 function MoreToggles({ filters, setFilters, olderCount, maxAgeDays }: { filters: Filters; setFilters: (p: Partial<Filters>) => void; olderCount: number; maxAgeDays: number }) {
   const rows: [keyof Filters, string][] = [
     ["salaryOnly", "Salary listed"],
+    ["hideEvergreen", "No talent pools or reposts"],
     ...(maxAgeDays ? [["showOld", `Show older jobs${olderCount ? ` (${olderCount})` : ""}: posted over ${ageLimit(maxAgeDays)} ago`] as [keyof Filters, string]] : []),
     ["showFailed", "Include jobs that failed your filters"],
     ["showClosed", "Include closed jobs"],
@@ -865,7 +882,7 @@ function MoreMenu({
   hideRules: HideRule[];
   onRemoveRule: (rule: HideRule) => void;
 }) {
-  const extra = [filters.salaryOnly, filters.showOld, filters.showFailed, filters.showClosed, filters.showHidden, filters.olderIndex].filter(Boolean).length + filters.ats.length;
+  const extra = [filters.salaryOnly, filters.hideEvergreen, filters.showOld, filters.showFailed, filters.showClosed, filters.showHidden, filters.olderIndex].filter(Boolean).length + filters.ats.length;
   return (
     <FacetMenu
       label={extra ? `More · ${extra}` : "More"}
