@@ -9,7 +9,7 @@
   <img alt="The RawJobs Radar: a list of scored jobs on the left, and on the right why the selected job matched." src="docs/images/radar-light.png">
 </picture>
 
-A free, self-hosted job radar. Tell it the roles, places and industries you want; RawJobs scans the careers pages of the companies that fit, from a directory of ~21,000 companies' hiring systems, scores every opening against your profile with clear keyword rules, and shows you the matches, with the companies you'd most like to join always on top.
+A free, self-hosted job radar. Tell it the roles, places and industries you want; RawJobs scans the careers pages of the companies that fit, from a directory of ~21,000 companies' hiring systems, scores every opening against your profile with clear keyword rules, and shows you the matches, with the companies you'd most like to join starred and their newest jobs up top.
 
 Good roles often appear on company careers pages (Greenhouse, Lever, Ashby, Workday…) before LinkedIn, or never reach it. Checking 50 careers pages by hand doesn't happen. This does it for you.
 
@@ -34,7 +34,7 @@ The dashboard walks you through setup the first time (about 3 minutes; you can s
 4. **Industries**: pick the industries you'd like to work in (Crypto, Fintech, AI… 50 in all, in 7 groups). Companies in them are scanned and suggested. Optional.
 5. **Review**: read it back in plain words, choose what counts as a strong match, and press **Save & find my jobs**.
 
-Saving runs your first scan: your companies plus every company in the directory tagged with your industries, each fetched live. Then, optionally, pick the companies you'd love to work at in the **Companies** tab (search the directory, or paste a careers link): they're checked every scan and their jobs always come first. Topics (keywords that rank a job higher) are prefilled from your resume and live in **Settings → Profile → Topics**.
+Saving runs your first scan: your companies plus every company in the directory tagged with your industries, each fetched live. Then, optionally, pick the companies you'd love to work at in the **Companies** tab (search the directory, or paste a careers link): they're checked every scan, starred, and nudged up the list. Topics (keywords that rank a job higher) are prefilled from your resume and live in **Settings → Profile → Topics**.
 
 Setup writes `rawjobs.config.local.yaml` (gitignored, commented, safe to edit by hand). After that, the Radar shows a checklist of anything still missing, explains a scan with no matches (and what to change), and flags companies whose links broke. Change anything later in **Settings**, or start over with **Settings → Your data → Start setup over**.
 
@@ -42,7 +42,7 @@ Prefer the terminal? Copy `rawjobs.config.example.yaml` to `rawjobs.config.local
 
 ## Dashboard
 
-- **Radar**: every job for you, best score first, with **your companies' jobs always on top** (★). Views: All, My companies, New, Strong, Saved, Applied, plus views you save yourself. Sort by best match, newest, highest salary or company. Filter by date posted, country, location, workplace, seniority, industry, company, keywords, match and hiring system; search.
+- **Radar**: every job for you in one list, best match first: fit, then freshness (the boost halves every 3 days), with **your companies starred (★)**, nudged up by 10 and their three newest jobs in a strip on top. Newest, salary and company sorts mean exactly that. One company shows two roles before the rest fold into "+N more". Views: All, My companies, New, Strong, Saved, Applied, plus views you save yourself. Sort by best match, newest, highest salary or company. Filter by date posted, country, location, workplace, seniority, industry, company, keywords, match and hiring system; search.
 - **Job detail**: score breakdown (why it matched), description, salary, notes, status, copy the description for CV tailoring.
 - **Pipeline**: saved → applied → interviewing → offer → rejected. Drag cards between columns (or use the keyboard; on phones, one column at a time).
 - **Companies**: My companies, with what each has for you now, scan health and broken links; companies with nothing for you in 10+ scans over a week are flagged for removal. **Suggestions** and **Browse all** search the directory; **Add by link** takes any careers page. Hidden companies, with Show again.
@@ -189,9 +189,11 @@ No AI, fully explainable. Every job is scored 0–100:
 2. **Title, up to 30.** 20 for a title match, +10 if it also has a `seniority_boost` term.
 3. **Location, up to 20.** 20 for an included place, 15 for an accepted remote region (or remote with no place named).
 4. **Topics, up to 40.** The share of your keyword weight found in title + description: 40 × matched weight ÷ min(total weight, 12). Matching about three core topics fills the bar, so a short list isn't penalised. A topic in the title alone is worth up to 20.
-5. **Freshness, up to 10.** 10 if posted in the last 3 days, 6 within 7 days, 2 after that. With no posting date, the first-seen date is used.
+5. **Industry, up to 10.** 10 if the company is in one of your `industries` (or is one of your companies, or you picked no industries), 5 if its industry isn't known, 0 if it's in another one. Your industries also add their topics (payments, trading…) at weight 2 when you haven't listed them yourself.
 
-With no `keywords` at all, title + location + freshness (out of 60) are scaled to 0–100, so a strong match means the right title, in one of your places, posted recently. Industries never change a score: they decide which companies are scanned and suggested, and filter the Radar.
+With no `keywords` at all, title + location + industry (out of 60) are scaled to 0–100.
+
+The score says how well a job fits, not how old it is. The Radar's **Best match** order adds freshness when you look: score + 15 × 0.5^(age in days ÷ 3), +10 for your companies. So a strong job posted today beats an equal one from last week, and a weak new job never leaps a strong one.
 
 Sandbox, training and test boards (e.g. "Lever Implementation Training Environment") are left out of the directory and never scanned.
 

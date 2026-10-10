@@ -39,6 +39,26 @@ describe("matchesTitle", () => {
     no("Product, Manager of Things", "product manager");
   });
 
+  it("doesn't turn a team lead or engineering manager into the product's lead or manager", () => {
+    no("Team Lead, Android Core Product - Manchester, United Kingdom", "product lead");
+    no("Team Lead, Core Product", "product lead", "product manager");
+    no("Engineering Manager, Product", "product manager");
+    no("Tech Lead, Product Platform", "product lead");
+    yes("Lead, Product", "product lead");
+    yes("Manager, Product", "product manager");
+    yes("Senior Manager, Product - Payments", "senior product manager");
+    yes("Software Engineer II, Backend", "backend engineer");
+  });
+
+  it("reads AM and PM as a shift in shift work, and SAP PM as plant maintenance", () => {
+    no("Handler / Warehouse Operator (PM)", "product manager");
+    no("Handler Hourly Sturup PM", "product manager");
+    no("Package Handler - PM Shift", "product manager");
+    no("SAP PM Consultant", "product manager");
+    yes("Senior PM, Payments", "product manager");
+    yes("PM - Warehouse Management System", "product manager");
+  });
+
   it("splits slashes into each reading", () => {
     yes("UX/UI Designer", "ux designer");
     yes("UX/UI Designer", "ui designer");

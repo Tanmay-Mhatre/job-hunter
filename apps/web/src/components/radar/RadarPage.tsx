@@ -1,12 +1,13 @@
 import { INDUSTRY_BY_ID } from "@rawjobs/core/catalog/industries";
 import { ArrowRight, ArrowUpDown, Building2, Check, Globe, LoaderCircle, MapPin, Pencil, Plus, Search, SlidersHorizontal, Star, UserRound, X } from "lucide-react";
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useOtherJobs, type DataMeta, type Job, type Profile } from "../../lib/data";
 import {
   activeChips,
   applyFilters,
   DEFAULT_FILTERS,
   facetCounts,
+  foldCompanies,
   fromQuery,
   groupJobs,
   INDEX_MAX_AGE_DAYS,
@@ -23,12 +24,14 @@ import {
   type Ctx,
   type FacetKey,
   type FacetOption,
+  type FeedRow,
   type Filters,
+  type JobGroup,
   type Sort,
 } from "../../lib/filters";
 import type { Prefs, SavedView } from "../../lib/prefs";
 import type { FilterPicks } from "../../lib/profileSync";
-import { displayPlace, timeAgo } from "../../lib/format";
+import { displayPlace, postedOrSeen, timeAgo } from "../../lib/format";
 import { useDensity } from "../../lib/theme";
 import { load, save } from "../../lib/storage";
 import type { Status, UserState } from "../../lib/userState";
@@ -57,7 +60,7 @@ type Props = {
   /** Undo a delete: put the view back at its old position. */
   onRestoreView: (view: SavedView, index: number) => void;
   onHideCompany: (company: string, hidden: boolean) => void;
-  /** Is this job at one of your companies? Their jobs always come first. */
+  /** Is this job at one of your companies? Starred, nudged up in Best match, and in a strip on top. */
   isYours: (j: Job) => boolean;
   /** How many companies you've added. */
   companyCount: number;
@@ -79,6 +82,8 @@ const FILTER_KEY = "rawjobs.radar.v2";
 /** "Show everywhere" was picked for these profile places (JSON); a change of places brings the place filter back. */
 const EVERYWHERE_KEY = "rawjobs.radar.everywhere";
 const PAGE = 40;
+/** Your companies' freshest roles shown above the list in Best match. */
+const STRIP = 3;
 const SORTS: { value: Sort; label: string }[] = [
   { value: "best", label: "Best match" },
   { value: "newest", label: "Newest" },
@@ -119,6 +124,16 @@ function useRadarFilters(base: Filters) {
     adopt.current = on;
   }, []);
   return { ...state, setFilters, setSort, replace, adoptNextProfile };
+}
+
+/** The time freshness is worked out at, moved on every hour: often enough to stay right, never while you read. */
+function useHourlyNow() {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 3_600_000);
+    return () => clearInterval(id);
+  }, []);
+  return now;
 }
 
 function useIsWide() {
@@ -184,9 +199,18 @@ export function RadarPage(p: Props) {
     [p.user, min, industriesByCompany, hidden, profileKey, p.isYours, firstScan, newSince], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
-  // Your companies' jobs always lead, whatever the sort.
-  const visible = useMemo(() => sortJobs(applyFilters(pool, filters, ctx), sort, p.isYours), [pool, filters, ctx, sort, p.isYours]);
+  // One list, in the order you picked: your companies are starred and nudged up in Best match, never pinned.
+  const now = useHourlyNow();
+  const visible = useMemo(() => sortJobs(applyFilters(pool, filters, ctx), sort, p.isYours, now), [pool, filters, ctx, sort, p.isYours, now]);
   const groups = useMemo(() => groupJobs(visible), [visible]);
+  // One company can't fill the page ("+N more at …"), except in Newest (a plain date order) and when you've
+  // picked companies yourself.
+  const [openCompanies, setOpenCompanies] = useState<ReadonlySet<string>>(() => new Set());
+  useEffect(() => setOpenCompanies(new Set()), [filters, sort]);
+  const fold = sort !== "newest" && !filters.mine && !filters.companies.length;
+  const rows: FeedRow[] = useMemo(() => (fold ? foldCompanies(groups, openCompanies) : groups.map((group) => ({ kind: "group" as const, group }))), [fold, groups, openCompanies]);
+  /** The roles J/K steps through: the list's rows, folded ones left out. */
+  const navGroups = useMemo(() => rows.flatMap((r) => (r.kind === "group" ? [r.group] : [])), [rows]);
   const counts = useMemo(() => facetCounts(pool, filters, ctx), [pool, filters, ctx]);
   const chips = activeChips(filters, ctx, base);
   // Postings older than ~6 months that the other filters would show: "Show older jobs (N)".
@@ -201,15 +225,22 @@ export function RadarPage(p: Props) {
   const newCount = open.filter((j) => isNewJob(j, ctx)).length;
   const strongCount = open.filter((j) => j.score >= min).length;
   const yourGroups = groups.filter((g) => p.isYours(g.lead)).length;
+  // Best match: your companies' freshest roles, above the list (they're in it too, at their own rank).
+  const strip = useMemo(
+    () => (sort === "best" && !filters.mine ? groups.filter((g) => p.isYours(g.lead)).sort((a, b) => postedOrSeen(b.lead).localeCompare(postedOrSeen(a.lead))).slice(0, STRIP) : []),
+    [sort, filters.mine, groups, p.isYours],
+  );
+  // The newest job in the list, said in the head when the list isn't sorted by date.
+  const newest = useMemo(() => (sort === "newest" ? undefined : visible.reduce<string | undefined>((m, j) => (!m || postedOrSeen(j) > m ? postedOrSeen(j) : m), undefined)), [sort, visible]);
   const noCompaniesYet = filters.mine && p.companyCount === 0;
 
   // ----- list paging and selection -----
   const [limit, setLimit] = useState(PAGE);
   useEffect(() => setLimit(PAGE), [filters, sort]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selectedGroup = groups.find((g) => g.jobs.some((j) => j.id === selectedId)) ?? (wide ? groups[0] : undefined);
+  const selectedGroup = groups.find((g) => g.jobs.some((j) => j.id === selectedId)) ?? (wide ? navGroups[0] : undefined);
   const selected = selectedGroup?.jobs.find((j) => j.id === selectedId) ?? selectedGroup?.lead;
-  const index = selectedGroup ? groups.indexOf(selectedGroup) : -1;
+  const index = selectedGroup ? navGroups.indexOf(selectedGroup) : -1;
   const listRef = useRef<HTMLDivElement>(null);
   const rowRefs = useRef(new Map<string, HTMLLIElement>());
   const sentinel = useRef<HTMLLIElement>(null);
@@ -220,7 +251,7 @@ export function RadarPage(p: Props) {
     const io = new IntersectionObserver((e) => e[0]?.isIntersecting && setLimit((l) => l + PAGE), { root: wide ? listRef.current : null, rootMargin: "400px" });
     io.observe(el);
     return () => io.disconnect();
-  }, [wide, groups.length, limit]);
+  }, [wide, rows.length, limit]);
 
   const select = useCallback(
     (job: Job) => {
@@ -245,16 +276,17 @@ export function RadarPage(p: Props) {
   });
   const move = useCallback(
     (d: number) => {
-      if (!groups.length) return;
-      const next = Math.max(0, Math.min(groups.length - 1, (index < 0 ? -1 : index) + d));
-      const g = groups[next]!;
-      if (next >= limit) setLimit(next + PAGE);
+      if (!navGroups.length) return;
+      const next = Math.max(0, Math.min(navGroups.length - 1, (index < 0 ? -1 : index) + d));
+      const g = navGroups[next]!;
+      const row = rows.findIndex((r) => r.kind === "group" && r.group === g);
+      if (row >= limit) setLimit(row + PAGE);
       setSelectedId(g.lead.id);
       if (!wide && p.overlayOpen) p.onOpenOverlay(g.lead);
       // Focus moves once the new row is rendered and marked current (the effect below).
       focusPending.current = g.key;
     },
-    [groups, index, limit, wide, p],
+    [navGroups, rows, index, limit, wide, p],
   );
 
   // ----- keyboard: j/k move, s/a/x status, Enter opens (phones), "/" search -----
@@ -314,15 +346,31 @@ export function RadarPage(p: Props) {
   const facet = (key: FacetKey) => counts[key];
   const relax = groups.length === 0 ? suggestRelax(pool, filters, ctx) : [];
 
-  // My companies first, then everyone else (design/components/Feed), paged together.
-  const shown = groups.slice(0, limit);
-  const feedSections =
-    !filters.mine && yourGroups > 0
-      ? [
-          { id: "mine", label: "My companies", total: yourGroups, items: shown.slice(0, yourGroups) },
-          { id: "rest", label: "Everyone else", total: groups.length - yourGroups, items: shown.slice(yourGroups) },
-        ].filter((x) => x.items.length > 0 || x.id === "mine")
-      : [{ id: "all", label: "", total: groups.length, items: shown }];
+  /** One role's row; only the list's rows (`listed`) are where J/K moves focus to. */
+  const card = (g: JobGroup, listed: boolean) => (
+    <JobCard
+      key={listed ? g.key : `strip:${g.key}`}
+      ref={
+        listed
+          ? (el) => {
+              if (el) rowRefs.current.set(g.key, el);
+              else rowRefs.current.delete(g.key);
+            }
+          : undefined
+      }
+      group={g}
+      entry={p.user[g.lead.id]}
+      min={min}
+      isNew={hasNewTag(g.lead, ctx)}
+      selected={!!selectedGroup && g.key === selectedGroup.key && (wide || p.overlayOpen)}
+      onSelect={() => select(g.lead)}
+      onStatus={(st) => p.onStatus(g.lead, st)}
+      yours={p.isYours(g.lead)}
+    />
+  );
+
+  // One list (design/components/Feed), paged; in Best match, your companies' strip above it.
+  const shown = rows.slice(0, limit);
 
   const detailProps = selected && {
     job: selected,
@@ -345,7 +393,7 @@ export function RadarPage(p: Props) {
     onHideCompany: (h: boolean) => hideCompany(selected.company, h),
     onOpenJob: (j: Job) => setSelectedId(j.id),
     onPrev: index > 0 ? () => move(-1) : undefined,
-    onNext: index < groups.length - 1 ? () => move(1) : undefined,
+    onNext: index < navGroups.length - 1 ? () => move(1) : undefined,
   };
 
   // Have the place or industry filters moved away from your profile?
@@ -473,7 +521,7 @@ export function RadarPage(p: Props) {
         <div className="rj-panel">
           <div className="rj-empty">
             <h2 className="rj-empty__title">No companies picked yet</h2>
-            <p className="rj-empty__body">Add the companies you'd love to work at. They're checked every scan, and their jobs always come first here.</p>
+            <p className="rj-empty__body">Add the companies you'd love to work at. They're checked every scan, starred in your list, and their newest jobs show on top.</p>
             <div className="rj-empty__actions">
               <Button variant="primary" onClick={p.onCompanies}>
                 Pick my companies <ArrowRight className="rj-icon" aria-hidden />
@@ -516,12 +564,20 @@ export function RadarPage(p: Props) {
         </div>
       ) : (
         <div className="lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:grid-rows-[minmax(0,1fr)] lg:gap-3">
-          {/* design/components/Feed: an L1 panel, a summary line, then one list per section. */}
+          {/* design/components/Feed: an L1 panel, a summary line, then one list (in Best match, your companies' strip first). */}
           <section aria-label="Jobs for you" className="rj-panel rj-feed lg:flex lg:h-full lg:min-h-0 lg:flex-col" data-density={density}>
             <div className="rj-feed__head">
               <span>
                 {groups.length} {groups.length === 1 ? "job" : "jobs"}
                 {!firstScan && newCount > 0 && ` · ${newCount} new`}
+                {newest && (
+                  <>
+                    {" · "}
+                    <button type="button" className="underline-offset-2 hover:underline" onClick={() => setSort("newest")} title="Sort by newest">
+                      newest {timeAgo(newest, now)}
+                    </button>
+                  </>
+                )}
                 {p.meta.runs[0] && ` · checked ${timeAgo(p.meta.runs[0].finishedAt)}`}
               </span>
               {/* Laptops show the sort control just above, and keep your profile line in the Filters panel:
@@ -546,39 +602,44 @@ export function RadarPage(p: Props) {
               )}
             </div>
             <div ref={listRef} className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
-              {feedSections.map((sec, si) => (
-                <Fragment key={sec.id}>
-                  {sec.label && (
-                    <h2 className="rj-feed__section sticky top-0 z-sticky" id={`feed-${sec.id}`}>
-                      {sec.label} <span className="tabular font-normal">{sec.total}</span>
-                    </h2>
-                  )}
-                  <ul className="rj-feed__list" aria-labelledby={sec.label ? `feed-${sec.id}` : undefined} aria-label={sec.label ? undefined : "Jobs"}>
-                    {sec.items.map((g) => (
-                      <JobCard
-                        key={g.key}
-                        ref={(el) => {
-                          if (el) rowRefs.current.set(g.key, el);
-                          else rowRefs.current.delete(g.key);
-                        }}
-                        group={g}
-                        entry={p.user[g.lead.id]}
-                        min={min}
-                        isNew={hasNewTag(g.lead, ctx)}
-                        selected={!!selectedGroup && g.key === selectedGroup.key && (wide || p.overlayOpen)}
-                        onSelect={() => select(g.lead)}
-                        onStatus={(st) => p.onStatus(g.lead, st)}
-                        yours={p.isYours(g.lead)}
-                      />
-                    ))}
-                    {si === feedSections.length - 1 && limit < groups.length && (
-                      <li ref={sentinel} className="flex items-center gap-2 px-4 py-4 type-small text-muted">
-                        <LoaderCircle className="rj-icon animate-spin" aria-hidden /> Loading more…
+              {strip.length > 0 && (
+                <>
+                  <h2 className="rj-feed__section" id="feed-mine">
+                    Latest at my companies <span className="tabular font-normal">{yourGroups}</span>
+                  </h2>
+                  <ul className="rj-feed__list" aria-labelledby="feed-mine">
+                    {strip.map((g) => card(g, false))}
+                    {yourGroups > strip.length && (
+                      <li className="px-4 py-2">
+                        <Button variant="ghost" size="sm" onClick={() => setFilters({ mine: true })}>
+                          See all {yourGroups} from my companies <ArrowRight className="rj-icon" aria-hidden />
+                        </Button>
                       </li>
                     )}
                   </ul>
-                </Fragment>
-              ))}
+                  <h2 className="rj-feed__section sticky top-0 z-sticky" id="feed-all">
+                    All jobs <span className="tabular font-normal">{groups.length}</span>
+                  </h2>
+                </>
+              )}
+              <ul className="rj-feed__list" aria-labelledby={strip.length ? "feed-all" : undefined} aria-label={strip.length ? undefined : "Jobs"}>
+                {shown.map((r) =>
+                  r.kind === "group" ? (
+                    card(r.group, true)
+                  ) : (
+                    <li key={`more:${r.company}`} className="px-4 py-2">
+                      <Button variant="ghost" size="sm" onClick={() => setOpenCompanies((s) => new Set([...s, r.company]))}>
+                        +{r.groups.length} more at {r.company}
+                      </Button>
+                    </li>
+                  ),
+                )}
+                {limit < rows.length && (
+                  <li ref={sentinel} className="flex items-center gap-2 px-4 py-4 type-small text-muted">
+                    <LoaderCircle className="rj-icon animate-spin" aria-hidden /> Loading more…
+                  </li>
+                )}
+              </ul>
             </div>
           </section>
           {wide && (

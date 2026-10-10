@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { scoreJob } from "../src/score";
+import { locationFit, rankScore, scoreJob, topicsOf } from "../src/score";
 import { profile } from "./helpers";
 
 const now = new Date("2026-10-03T12:00:00Z");
@@ -10,7 +10,6 @@ const job = (o: Partial<Parameters<typeof scoreJob>[0]> = {}) => ({
   location: "Dubai",
   workplace: "onsite" as const,
   description: "",
-  postedAt: daysAgo(1),
   ...o,
 });
 
@@ -18,27 +17,27 @@ describe("scoreJob", () => {
   it("workplace preference gates office jobs of the other kind, never remote or unknown ones", () => {
     const base = profile();
     const onsiteOnly = profile({ locations: { ...base.locations, workplace: ["onsite"] } });
-    expect(scoreJob(job({ workplace: "hybrid" }), onsiteOnly, now).why).toMatchObject({ gate: "location", locationNote: "Hybrid role: you asked for on-site only." });
-    expect(scoreJob(job({ workplace: "onsite" }), onsiteOnly, now).why.gate).toBeUndefined();
-    expect(scoreJob(job({ workplace: "unknown" }), onsiteOnly, now).why.gate).toBeUndefined();
-    expect(scoreJob(job({ workplace: "hybrid" }), base, now).why.gate).toBeUndefined();
+    expect(scoreJob(job({ workplace: "hybrid" }), onsiteOnly).why).toMatchObject({ gate: "location", locationNote: "Hybrid role: you asked for on-site only." });
+    expect(scoreJob(job({ workplace: "onsite" }), onsiteOnly).why.gate).toBeUndefined();
+    expect(scoreJob(job({ workplace: "unknown" }), onsiteOnly).why.gate).toBeUndefined();
+    expect(scoreJob(job({ workplace: "hybrid" }), base).why.gate).toBeUndefined();
   });
 
-  it("adds up title, location, keywords and freshness", () => {
-    const r = scoreJob(job({ description: "Crypto exchange, payments and KYC." }), profile(), now);
+  it("adds up title, location, keywords and industry", () => {
+    const r = scoreJob(job({ description: "Crypto exchange, payments and KYC." }), profile());
     expect(r.why).toEqual({
       title: 30,
       location: 20,
       keywords: ["crypto", "exchange", "payments", "kyc"],
       keywordPoints: 40,
-      freshness: 10,
+      industry: 10,
     });
     expect(r.score).toBe(100);
   });
 
   it("topic points are the share of min(total weight, 12) matched", () => {
     // Matched weight 5 of 12: 40 * 5/12 = 16.7 -> 17.
-    const r = scoreJob(job({ description: "A crypto company." }), profile(), now);
+    const r = scoreJob(job({ description: "A crypto company." }), profile());
     expect(r.why).toMatchObject({ keywords: ["crypto"], keywordPoints: 17 });
     expect(r.why.scale).toBeUndefined();
     expect(r.score).toBe(30 + 20 + 17 + 10);
@@ -46,69 +45,90 @@ describe("scoreJob", () => {
 
   it("three topics at weight 3 can fill the topic bar", () => {
     const three = profile({ keywords: { crypto: 3, payments: 3, kyc: 3 } });
-    expect(scoreJob(job({ description: "crypto payments kyc" }), three, now)).toMatchObject({ score: 100, why: { keywordPoints: 40 } });
-    expect(scoreJob(job({ description: "crypto payments" }), three, now)).toMatchObject({ score: 87, why: { keywordPoints: 27 } });
-    expect(scoreJob(job({ title: "Product Manager", location: "Remote - EMEA", description: "crypto", postedAt: daysAgo(30) }), three, now).score).toBe(20 + 15 + 13 + 2);
+    expect(scoreJob(job({ description: "crypto payments kyc" }), three)).toMatchObject({ score: 100, why: { keywordPoints: 40 } });
+    expect(scoreJob(job({ description: "crypto payments" }), three)).toMatchObject({ score: 87, why: { keywordPoints: 27 } });
+    expect(scoreJob(job({ title: "Product Manager", location: "Remote - EMEA", description: "crypto" }), three).score).toBe(20 + 15 + 13 + 10);
   });
 
-  it("with no topics, title + location + freshness are scaled to 0..100", () => {
+  it("with no topics, title + location + industry are scaled to 0..100", () => {
     const none = profile({ keywords: {} });
-    const best = scoreJob(job(), none, now);
+    const best = scoreJob(job(), none);
     expect(best.why).toMatchObject({ keywordPoints: 0, scale: 100 / 60 });
     expect(best.score).toBe(100);
-    // Right title and place, posted this week: a strong match.
-    expect(scoreJob(job({ title: "Product Manager", postedAt: daysAgo(5) }), none, now).score).toBe(Math.round((20 + 20 + 6) * (100 / 60)));
-    expect(scoreJob(job({ title: "Product Manager", location: "Remote - EMEA", postedAt: daysAgo(30) }), none, now).score).toBe(62);
-    expect(scoreJob(job({ location: "London" }), none, now).score).toBe(0);
+    // Right title and place: a strong match.
+    expect(scoreJob(job({ title: "Product Manager" }), none).score).toBe(Math.round((20 + 20 + 10) * (100 / 60)));
+    expect(scoreJob(job({ title: "Product Manager", location: "Remote - EMEA" }), none).score).toBe(75);
+    expect(scoreJob(job({ location: "London" }), none).score).toBe(0);
   });
 
   it("gives 20 for a title without a seniority term", () => {
-    expect(scoreJob(job({ title: "Product Manager" }), profile(), now).why.title).toBe(20);
+    expect(scoreJob(job({ title: "Product Manager" }), profile()).why.title).toBe(20);
   });
 
   it("caps keyword points at 40", () => {
     const heavy = profile({ keywords: { crypto: 5, tokenization: 5, stablecoin: 5, exchange: 5, payments: 5, fintech: 5, ai: 5, kyc: 5, defi: 5 } });
-    const r = scoreJob(job({ description: "crypto tokenization stablecoin exchange payments fintech ai kyc defi" }), heavy, now);
+    const r = scoreJob(job({ description: "crypto tokenization stablecoin exchange payments fintech ai kyc defi" }), heavy);
     expect(r.why.keywordPoints).toBe(40);
     expect(r.score).toBe(100);
   });
 
   it("scores 0 with gate=title when the title misses include or hits exclude", () => {
-    expect(scoreJob(job({ title: "Software Engineer" }), profile(), now)).toMatchObject({ score: 0, why: { gate: "title" } });
-    expect(scoreJob(job({ title: "Senior Product Marketing Manager" }), profile(), now)).toMatchObject({
+    expect(scoreJob(job({ title: "Software Engineer" }), profile())).toMatchObject({ score: 0, why: { gate: "title" } });
+    expect(scoreJob(job({ title: "Senior Product Marketing Manager" }), profile())).toMatchObject({
       score: 0,
       why: { gate: "title" },
     });
   });
 
   it("scores 0 with gate=location when the location doesn't fit", () => {
-    expect(scoreJob(job({ location: "London" }), profile(), now)).toMatchObject({ score: 0, why: { gate: "location" } });
+    expect(scoreJob(job({ location: "London" }), profile())).toMatchObject({ score: 0, why: { gate: "location" } });
   });
 
   it("accepts remote regions but not excluded ones", () => {
-    expect(scoreJob(job({ location: "Remote - EMEA" }), profile(), now).why.location).toBe(15);
-    expect(scoreJob(job({ location: "Remote (US)" }), profile(), now).why.gate).toBe("location");
-    expect(scoreJob(job({ location: "SF, NYC, Remote (US)" }), profile(), now).why.gate).toBe("location");
+    expect(scoreJob(job({ location: "Remote - EMEA" }), profile()).why.location).toBe(15);
+    expect(scoreJob(job({ location: "Remote (US)" }), profile()).why.gate).toBe("location");
+    expect(scoreJob(job({ location: "SF, NYC, Remote (US)" }), profile()).why.gate).toBe("location");
   });
 
   it("an included city wins even if an excluded region is also listed", () => {
-    expect(scoreJob(job({ location: "Dubai; Remote (US)" }), profile(), now).why.location).toBe(20);
+    expect(scoreJob(job({ location: "Dubai; Remote (US)" }), profile()).why.location).toBe(20);
   });
 
   it("treats workplace=remote as remote even when the location text doesn't say so", () => {
-    expect(scoreJob(job({ location: "", workplace: "remote" }), profile(), now).why.location).toBe(15);
-    expect(scoreJob(job({ location: "Canada", workplace: "remote" }), profile(), now).why.gate).toBe("location");
+    expect(scoreJob(job({ location: "", workplace: "remote" }), profile()).why.location).toBe(15);
+    expect(scoreJob(job({ location: "Canada", workplace: "remote" }), profile()).why.gate).toBe("location");
   });
 
-  it("freshness: 10 within 3 days, 6 within 7, else 2", () => {
-    expect(scoreJob(job({ postedAt: daysAgo(3) }), profile(), now).why.freshness).toBe(10);
-    expect(scoreJob(job({ postedAt: daysAgo(6) }), profile(), now).why.freshness).toBe(6);
-    expect(scoreJob(job({ postedAt: daysAgo(30) }), profile(), now).why.freshness).toBe(2);
+  it("industry: 10 yours or one of your companies, 5 not known, 0 another one; full when you picked none", () => {
+    const fintech = profile({ industries: ["payments", "crypto"] });
+    const industry = (fit: Parameters<typeof scoreJob>[2]) => scoreJob(job(), fintech, fit).why.industry;
+    expect(industry({ industries: ["payments"] })).toBe(10);
+    expect(industry({ industries: ["health"] })).toBe(0);
+    expect(industry({ industries: [] })).toBe(5);
+    expect(industry({})).toBe(5);
+    expect(industry({ industries: ["health"], tracked: true })).toBe(10);
+    expect(scoreJob(job(), profile(), { industries: ["health"] }).why.industry).toBe(10);
   });
 
-  it("falls back to first-seen date when the ATS gives no posting date", () => {
-    expect(scoreJob(job({ postedAt: undefined }), profile(), now, new Date(daysAgo(10))).why.freshness).toBe(2);
-    expect(scoreJob(job({ postedAt: undefined }), profile(), now).why.freshness).toBe(10);
+  it("the score is fit only: the same job scores the same whenever it was posted", () => {
+    const a = scoreJob({ ...job(), postedAt: daysAgo(0) } as ReturnType<typeof job>, profile());
+    const b = scoreJob({ ...job(), postedAt: daysAgo(90) } as ReturnType<typeof job>, profile());
+    expect(a).toEqual(b);
+    expect(a.why.freshness).toBeUndefined();
+  });
+
+  it("your industries add their topics at a low weight, so a payments role counts for a crypto-topic profile", () => {
+    const crypto = profile({ keywords: { crypto: 5, defi: 4, web3: 4 }, industries: ["crypto", "payments"] });
+    expect(topicsOf(crypto)).toMatchObject({ crypto: 5, payments: 2, merchant: 2 });
+    const r = scoreJob(job({ title: "VP Product (Payments)" }), crypto);
+    expect(r.why.keywords).toEqual(["payments"]);
+    expect(r.why.keywordPoints).toBeGreaterThan(0);
+    // Together they're a lift, never a full bar: at most two topics' worth of weight.
+    const full = scoreJob(job({ description: "payments checkout merchant acquiring issuing remittance" }), crypto);
+    expect(full.why.keywordPoints).toBe(Math.round((40 * 4) / 12));
+    // Topics you listed keep your weight, and with no topics of your own none are added.
+    expect(topicsOf(profile({ keywords: { payments: 5 }, industries: ["payments"] })).payments).toBe(5);
+    expect(topicsOf(profile({ keywords: {}, industries: ["payments"] }))).toEqual({});
   });
 });
 
@@ -121,7 +141,7 @@ describe("location: only places the user picked", () => {
       remote_exclude: [],
     },
   });
-  const loc = (location: string, workplace: "onsite" | "remote" | "hybrid" | "unknown" = "remote", p = wide) => scoreJob(job({ location, workplace }), p, now).why;
+  const loc = (location: string, workplace: "onsite" | "remote" | "hybrid" | "unknown" = "remote", p = wide) => scoreJob(job({ location, workplace }), p).why;
 
   it.each(["India", "Asia; Hong Kong; Taiwan, Taipei", "Portugal", "Argentina", "Remote, Ontario; Remote, British Columbia", "AMER - Remote", "LatAm", "Chennai or Remote, India", "Bogota"])(
     "drops remote jobs tied to somewhere else: %s",
@@ -189,11 +209,44 @@ describe("location: only places the user picked", () => {
     expect(loc("Remote", "remote", uae).location).toBe(15);
   });
 
+  it("an office job counts for a remote region only when the region is a part of its location", () => {
+    const emea = profile({ locations: { include: ["dubai"], remote_ok: ["remote", "eu", "gulf", "europe"], remote_exclude: [] } });
+    expect(locationFit("FXE-EU/GBR/Stansted", emea).points).toBe(0);
+    expect(locationFit("Holmes Beach - Gulf", emea).points).toBe(0);
+    expect(locationFit("Dubai - Gulf", emea).points).toBe(20);
+    expect(locationFit("Berlin - Europe", emea).points).toBe(15);
+    expect(locationFit("FRA - Bois-Colombes, 17 Avenue de l'Europe", emea).points).toBe(0);
+    expect(locationFit("Europe (Hybrid)", emea).points).toBe(15);
+    expect(locationFit("Home based - Europe", emea).points).toBe(15);
+    expect(locationFit("EU > BEL > Antwerp", emea).points).toBe(15);
+    expect(locationFit("Stein, EU", emea).points).toBe(15);
+    expect(locationFit("Novi Sad, South Backa, Serbia, Europe", emea).points).toBe(15);
+    expect(locationFit("Remote - EU", emea).points).toBe(15);
+  });
+
   it("still honours remote exclusions, and needs plain remote to be allowed", () => {
     const noUs = profile({ locations: { include: [], remote_ok: ["remote", "emea"], remote_exclude: ["emea"] } });
     expect(loc("Remote - EMEA", "remote", noUs).gate).toBe("location");
     const regionsOnly = profile({ locations: { include: [], remote_ok: ["emea"], remote_exclude: [] } });
     expect(loc("Remote", "remote", regionsOnly).gate).toBe("location");
     expect(loc("Remote - EMEA", "remote", regionsOnly).location).toBe(15);
+  });
+});
+
+describe("rankScore", () => {
+  const t = now.getTime();
+  it("adds freshness that halves every three days, and a nudge for your companies", () => {
+    expect(rankScore(60, daysAgo(0), t)).toBe(75);
+    expect(rankScore(60, daysAgo(3), t)).toBeCloseTo(67.5);
+    expect(rankScore(60, daysAgo(6), t)).toBeCloseTo(63.75);
+    expect(rankScore(60, daysAgo(0), t, true)).toBe(85);
+    expect(rankScore(60, undefined, t)).toBe(60);
+    // A date in the future counts as today.
+    expect(rankScore(60, daysAgo(-2), t)).toBe(75);
+  });
+
+  it("a fresh fit beats an older equal one, but a weak fresh job never leaps a strong one", () => {
+    expect(rankScore(60, daysAgo(0.4), t)).toBeGreaterThan(rankScore(60, daysAgo(3), t, false));
+    expect(rankScore(45, daysAgo(0), t)).toBeLessThan(rankScore(70, daysAgo(10), t));
   });
 });

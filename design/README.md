@@ -39,7 +39,7 @@ Plain, specific, a little dry. Show the number, skip the hype. Write to "you"; t
 | Not interested | hide this one job | dismiss, remove |
 | Hide company | never show or check this company | block, mute |
 | Remove company | take it off my companies | delete, unfollow |
-| Title, place, keywords, fresh | the four score factors | location, freshness |
+| Title, place, keywords, industry | the four score factors | location, sector |
 
 ## Color
 

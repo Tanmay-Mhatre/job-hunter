@@ -94,7 +94,8 @@ const MAX_LINES = 10;
  */
 export function digest(jobs: readonly Job[], opts: { minScore: number; scopeLabel?: string; dashboardHint?: boolean }): string | undefined {
   if (!jobs.length) return undefined;
-  const sorted = [...jobs].sort((a, b) => b.score - a.score);
+  // Best fit first; equal scores go to the newer posting (the score has no age in it).
+  const sorted = [...jobs].sort((a, b) => b.score - a.score || (b.postedAt ?? b.firstSeen).localeCompare(a.postedAt ?? a.firstSeen));
   const strong = sorted.filter((j) => j.score >= opts.minScore).length;
   const head = `<b>${sorted.length} new job${sorted.length === 1 ? "" : "s"} for you</b>${strong ? ` · ${strong} strong` : ""}${opts.scopeLabel ? `\n<i>${esc(opts.scopeLabel)}</i>` : ""}`;
   const lines = sorted.slice(0, MAX_LINES).map((j) => {

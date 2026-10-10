@@ -29,7 +29,8 @@ describe("findCandidates", () => {
     ]);
     // Posted a day before an index built 5 days ago: 6 days old now.
     expect(c[0]!.postedAt).toBe(new Date(built.getTime() - DAY).toISOString());
-    expect(c[0]!.estimate).toBeGreaterThan(c[1]!.estimate);
+    // Equal fit (the estimate has no age in it): the fresher one ranks first.
+    expect(c[0]!.estimate).toBe(c[1]!.estimate);
     expect(c[0]!.why.keywordPoints).toBe(0);
   });
 

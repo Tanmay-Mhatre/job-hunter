@@ -809,7 +809,7 @@ function printJobs(jobs: Job[], min: number): void {
     const mark = j.score >= min ? "★" : " ";
     const why = j.why.gate
       ? `failed ${j.why.gate} gate`
-      : `title ${j.why.title} · loc ${j.why.location} · kw ${j.why.keywordPoints}${j.why.keywords.length ? ` (${j.why.keywords.join(", ")})` : ""} · fresh ${j.why.freshness}`;
+      : `title ${j.why.title} · loc ${j.why.location} · kw ${j.why.keywordPoints}${j.why.keywords.length ? ` (${j.why.keywords.join(", ")})` : ""} · industry ${j.why.industry ?? "?"}`;
     const posted = j.postedAt ? j.postedAt.slice(0, 10) : "—";
     console.log(`${mark} ${String(j.score).padStart(3)}  ${j.title}`);
     console.log(`        ${j.company} · ${j.location || "location n/a"} · ${j.workplace} · posted ${posted}`);

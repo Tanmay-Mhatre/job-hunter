@@ -1,6 +1,8 @@
 import { INDUSTRY_BY_ID } from "@rawjobs/core/catalog/industries";
 import { citiesIn, placeOwner } from "@rawjobs/core/catalog/places";
 import { SENIORITY_LEVELS, type Seniority } from "@rawjobs/core/catalog/seniority";
+import { groupKey } from "@rawjobs/core/dashboard";
+import { rankScore } from "@rawjobs/core/score";
 import { ATS_LABEL } from "./companies";
 import type { Job, Profile } from "./data";
 import { ageDays, postedOrSeen } from "./format";
@@ -76,7 +78,7 @@ export type Ctx = {
   /** Industry ids per company name. */
   industriesOf: (company: string) => string[];
   hiddenCompanies: ReadonlySet<string>;
-  /** Is this job at one of your companies? (They're always listed first.) */
+  /** Is this job at one of your companies? (A nudge up in Best match, and the My companies view.) */
   isYours?: (j: Job) => boolean;
   /** The user's own countries, cities and industries (from their profile): listed first in the menus. */
   mine?: { countries: ReadonlySet<string>; locations: ReadonlySet<string>; industries: ReadonlySet<string> };
@@ -210,31 +212,64 @@ export const atsLabel = (ats: string) => ATS_LABEL[ats] ?? ats.charAt(0).toUpper
 
 const salaryOf = (j: Job) => j.salary?.max ?? j.salary?.min ?? -1;
 
-/** Sort the list; with `isYours`, jobs at your companies come first whatever the order. */
-export function sortJobs(jobs: Job[], sort: Sort, isYours?: (j: Job) => boolean): Job[] {
+/**
+ * Sort the list. Every sort means what it says: your companies are never pinned on top. In "best",
+ * `isYours` gives them a nudge (rankScore), and freshness counts, worked out at `now`.
+ */
+export function sortJobs(jobs: Job[], sort: Sort, isYours?: (j: Job) => boolean, now = Date.now()): Job[] {
+  const rank = sort === "best" ? new Map(jobs.map((j) => [j, rankScore(j.score, postedOrSeen(j), now, !!isYours?.(j))])) : undefined;
   const by: Record<Sort, (a: Job, b: Job) => number> = {
-    // Equal scores (several jobs max out at 100) go to the one mentioning more of your topics, then the newer.
-    best: (a, b) => b.score - a.score || b.why.keywords.length - a.why.keywords.length || postedOrSeen(b).localeCompare(postedOrSeen(a)),
+    // Equal ranks go to the one mentioning more of your topics, then the newer.
+    best: (a, b) => rank!.get(b)! - rank!.get(a)! || b.why.keywords.length - a.why.keywords.length || postedOrSeen(b).localeCompare(postedOrSeen(a)),
     newest: (a, b) => postedOrSeen(b).localeCompare(postedOrSeen(a)) || b.score - a.score,
     // Only compares like with like loosely: listed salaries first, highest first.
     salary: (a, b) => salaryOf(b) - salaryOf(a) || b.score - a.score,
     company: (a, b) => a.company.localeCompare(b.company) || b.score - a.score,
   };
-  const order = by[sort];
-  return [...jobs].sort(isYours ? (a, b) => Number(isYours(b)) - Number(isYours(a)) || order(a, b) : order);
+  return [...jobs].sort(by[sort]);
 }
 
 /** One role posted in several places: the best posting leads, the others ride along. */
 export type JobGroup = { key: string; lead: Job; jobs: Job[] };
 
+/** Groups by role with the place left out of the title (groupKey), so older saved data groups the same way. */
 export function groupJobs(sorted: Job[]): JobGroup[] {
   const groups = new Map<string, JobGroup>();
   for (const j of sorted) {
-    const g = groups.get(j.group);
+    const key = groupKey(j.company, j.title);
+    const g = groups.get(key);
     if (g) g.jobs.push(j);
-    else groups.set(j.group, { key: j.group, lead: j, jobs: [j] });
+    else groups.set(key, { key, lead: j, jobs: [j] });
   }
   return [...groups.values()];
+}
+
+/** Roles shown per company before the rest fold into one "+N more at …" row. */
+export const PER_COMPANY = 2;
+
+/** A row of the feed: a role, or a company's folded roles. */
+export type FeedRow = { kind: "group"; group: JobGroup } | { kind: "more"; company: string; groups: JobGroup[] };
+
+/**
+ * One company can't fill the page: after its first PER_COMPANY roles, the rest fold into one row
+ * where the next one would have been ("+253 more at Speechify"), until you open it (`open`).
+ */
+export function foldCompanies(groups: JobGroup[], open: ReadonlySet<string> = new Set()): FeedRow[] {
+  const seen = new Map<string, number>();
+  const folded = new Map<string, JobGroup[]>();
+  const rows: FeedRow[] = [];
+  for (const group of groups) {
+    const company = group.lead.company;
+    const n = (seen.get(company) ?? 0) + 1;
+    seen.set(company, n);
+    if (n <= PER_COMPANY || open.has(company)) rows.push({ kind: "group", group });
+    else {
+      let rest = folded.get(company);
+      if (!rest) folded.set(company, (rest = [])), rows.push({ kind: "more", company, groups: rest });
+      rest.push(group);
+    }
+  }
+  return rows;
 }
 
 /**

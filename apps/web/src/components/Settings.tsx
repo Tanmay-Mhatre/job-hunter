@@ -133,7 +133,7 @@ export function Settings({ draft, update, revert, dirty, onSaved, onScan, scanni
         </Group>
 
         <Group id="my-companies" label="My companies">
-          <Section id="companies" title="My companies" hint="Companies you'd love to work at: scanned every time, and their jobs always come first on your Radar.">
+          <Section id="companies" title="My companies" hint="Companies you'd love to work at: scanned every time, starred on your Radar, and their newest jobs shown on top.">
             <div className="flex flex-wrap items-center gap-3">
               <p className="type-small">
                 You've picked <b className="tabular">{draft.companies.length}</b> compan{draft.companies.length === 1 ? "y" : "ies"}

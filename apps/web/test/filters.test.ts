@@ -7,6 +7,7 @@ import {
   isNewJob,
   DEFAULT_FILTERS,
   facetCounts,
+  foldCompanies,
   fromQuery,
   groupJobs,
   sortJobs,
@@ -33,7 +34,7 @@ const job = (o: Partial<Job> = {}): Job => ({
   postedAt: daysAgo(1),
   status: "open",
   score: 75,
-  why: { title: 30, location: 20, keywords: ["crypto"], keywordPoints: 5, freshness: 10 },
+  why: { title: 30, location: 20, keywords: ["crypto"], keywordPoints: 5, industry: 10 },
   countries: ["United Arab Emirates"],
   cities: ["Dubai, United Arab Emirates"],
   seniority: "senior",
@@ -49,7 +50,7 @@ const jobs = [
   job({ id: "a", company: "Kraken", score: 90, postedAt: daysAgo(1) }),
   job({ id: "b", company: "Rain", score: 60, countries: ["United Kingdom"], cities: ["London, United Kingdom"], location: "London", postedAt: daysAgo(20), firstSeen: daysAgo(20) }),
   job({ id: "c", company: "OKX", score: 80, workplace: "remote", countries: [], cities: [], location: "Remote - EMEA", seniority: "leadership", postedAt: daysAgo(5), firstSeen: daysAgo(5) }),
-  job({ id: "d", company: "Acme", score: 0, why: { title: 0, location: 20, keywords: [], keywordPoints: 0, freshness: 2, gate: "title" } }),
+  job({ id: "d", company: "Acme", score: 0, why: { title: 0, location: 20, keywords: [], keywordPoints: 0, industry: 10, gate: "title" } }),
 ];
 
 describe("applyFilters", () => {
@@ -98,17 +99,26 @@ describe("sorting, grouping, chips, suggestions, URL", () => {
     expect(sortJobs(jobs.slice(0, 3), "company").map((j) => j.company)).toEqual(["Kraken", "OKX", "Rain"]);
   });
 
-  it("breaks a tie on best match by topics mentioned, then by date", () => {
+  it("breaks a tie on best match by topics mentioned", () => {
     const tied = [
-      job({ id: "few-new", score: 100, postedAt: daysAgo(0), why: { title: 30, location: 20, keywords: ["api"], keywordPoints: 40, freshness: 10 } }),
-      job({ id: "many-old", score: 100, postedAt: daysAgo(2), why: { title: 30, location: 20, keywords: ["api", "payments", "b2b"], keywordPoints: 40, freshness: 10 } }),
-      job({ id: "many-new", score: 100, postedAt: daysAgo(1), why: { title: 30, location: 20, keywords: ["api", "payments", "b2b"], keywordPoints: 40, freshness: 10 } }),
+      job({ id: "few", score: 100, postedAt: daysAgo(1), why: { title: 30, location: 20, keywords: ["api"], keywordPoints: 40, industry: 10 } }),
+      job({ id: "many", score: 100, postedAt: daysAgo(1), why: { title: 30, location: 20, keywords: ["api", "payments", "b2b"], keywordPoints: 40, industry: 10 } }),
     ];
-    expect(sortJobs(tied, "best").map((j) => j.id)).toEqual(["many-new", "many-old", "few-new"]);
+    expect(sortJobs(tied, "best", undefined, NOW).map((j) => j.id)).toEqual(["many", "few"]);
+  });
+
+  it("best match counts freshness: an equal fit posted today beats last week's, a weak fresh one never leaps a strong one", () => {
+    const list = [
+      job({ id: "old", score: 60, postedAt: daysAgo(7) }),
+      job({ id: "today", score: 60, postedAt: daysAgo(0.4) }),
+      job({ id: "strong-old", score: 85, postedAt: daysAgo(20) }),
+      job({ id: "weak-today", score: 45, postedAt: daysAgo(0) }),
+    ];
+    expect(sortJobs(list, "best", undefined, NOW).map((j) => j.id)).toEqual(["strong-old", "today", "old", "weak-today"]);
   });
 
   it("groups one role posted in several places, best posting first", () => {
-    const g = groupJobs([job({ id: "1", group: "K|pm", location: "Dubai" }), job({ id: "2", group: "K|pm", location: "London" }), job({ id: "3", group: "R|pm" })]);
+    const g = groupJobs([job({ id: "1", company: "K", title: "PM", location: "Dubai" }), job({ id: "2", company: "K", title: "PM", location: "London" }), job({ id: "3", company: "R", title: "PM" })]);
     expect(g.map((x) => [x.lead.id, x.jobs.length])).toEqual([
       ["1", 2],
       ["3", 1],
@@ -151,11 +161,34 @@ describe("your companies and directory jobs", () => {
   const directory = job({ id: "index:lever:far:1", company: "Far", score: 56, estimated: true, companyKey: "lever:far", postedAt: daysAgo(3), firstSeen: daysAgo(3) });
   const stale = job({ id: "index:lever:old:1", company: "Old", score: 56, estimated: true, companyKey: "lever:old", postedAt: daysAgo(45), firstSeen: daysAgo(45) });
 
-  it("lists your companies' jobs first in every sort, then the rest in that sort", () => {
+  it("never pins your companies: every sort means what it says, Best match gives them +10", () => {
     const list = applyFilters(jobs, f(), mine);
-    expect(sortJobs(list, "best", mine.isYours).map((j) => j.id)).toEqual(["b", "a", "c"]);
-    expect(sortJobs(list, "newest", mine.isYours).map((j) => j.id)).toEqual(["b", "a", "c"]);
-    expect(sortJobs(list, "best").map((j) => j.id)).toEqual(["a", "c", "b"]);
+    // b (Rain, yours) is 60 and 20 days old: +10 isn't enough to pass a (90) or c (80).
+    expect(sortJobs(list, "best", mine.isYours, NOW).map((j) => j.id)).toEqual(["a", "c", "b"]);
+    expect(sortJobs(list, "newest", mine.isYours, NOW).map((j) => j.id)).toEqual(["a", "c", "b"]);
+    // ...but it decides between two equal jobs.
+    const tie = [job({ id: "other", company: "Acme", score: 70, postedAt: daysAgo(2) }), job({ id: "yours", company: "Rain", score: 70, postedAt: daysAgo(2) })];
+    expect(sortJobs(tie, "best", mine.isYours, NOW).map((j) => j.id)).toEqual(["yours", "other"]);
+  });
+
+  it("groups one role posted per city, whichever side of the title the city is on", () => {
+    const sp = (id: string, title: string) => job({ id, company: "Speechify", title });
+    const g = groupJobs([
+      sp("1", "Team Lead, Android Core Product - Manchester, United Kingdom"),
+      sp("2", "Team Lead, Android Core Product - Oxford, United Kingdom"),
+      sp("3", "Dubai - Team Lead, Android Core Product"),
+      sp("4", "Team Lead, Android Core Product (Remote)"),
+      sp("5", "Product Manager - Payments"),
+    ]);
+    expect(g.map((x) => x.jobs.length)).toEqual([4, 1]);
+  });
+
+  it("folds a company's roles after the first two into one row, until opened", () => {
+    const role = (company: string, n: number) => ({ key: `${company}${n}`, lead: job({ id: `${company}${n}`, company }), jobs: [] });
+    const groups = [role("S", 1), role("S", 2), role("K", 1), role("S", 3), role("S", 4), role("K", 2)];
+    const rows = foldCompanies(groups);
+    expect(rows.map((r) => (r.kind === "group" ? r.group.key : `+${r.groups.length} ${r.company}`))).toEqual(["S1", "S2", "K1", "+2 S", "K2"]);
+    expect(foldCompanies(groups, new Set(["S"]))).toHaveLength(6);
   });
 
   it("'My companies' shows only theirs", () => {

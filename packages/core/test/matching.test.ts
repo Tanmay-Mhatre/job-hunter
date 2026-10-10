@@ -25,8 +25,8 @@ describe("title gate reads titles the way people write them", () => {
   );
 
   it("counts short-form seniority", () => {
-    expect(scoreJob(job({ title: "Sr. PM" }), profile(), now).why.title).toBe(30);
-    expect(scoreJob(job({ title: "PM" }), profile(), now).why.title).toBe(20);
+    expect(scoreJob(job({ title: "Sr. PM" }), profile()).why.title).toBe(30);
+    expect(scoreJob(job({ title: "PM" }), profile()).why.title).toBe(20);
   });
 
   it("designers and UX/UI titles", () => {
@@ -42,34 +42,34 @@ describe("title gate reads titles the way people write them", () => {
 describe("topics from the title when there's no description", () => {
   it("a topic in the title counts, up to half the bar", () => {
     // payments (3) of top weight 5: 20 * 3/5 = 12, more than 40 * 3/12 = 10.
-    expect(scoreJob(job({ title: "Senior Product Manager, Payments" }), profile(), now).why).toMatchObject({ keywords: ["payments"], keywordPoints: 12 });
+    expect(scoreJob(job({ title: "Senior Product Manager, Payments" }), profile()).why).toMatchObject({ keywords: ["payments"], keywordPoints: 12 });
     // Your top topic fills the title's half: 20.
-    expect(scoreJob(job({ title: "Crypto PM" }), profile(), now)).toMatchObject({ score: 20 + 20 + 20 + 10, why: { keywordPoints: 20 } });
-    expect(scoreJob(job({ title: "Product Manager" }), profile(), now).why.keywordPoints).toBe(0);
+    expect(scoreJob(job({ title: "Crypto PM" }), profile())).toMatchObject({ score: 20 + 20 + 20 + 10, why: { keywordPoints: 20 } });
+    expect(scoreJob(job({ title: "Product Manager" }), profile()).why.keywordPoints).toBe(0);
   });
 
   it("short forms in the title count as the topic", () => {
     const ml = profile({ titles: { include: ["engineer"], exclude: [] }, keywords: { "machine learning": 4, python: 4, "distributed systems": 4 } });
-    expect(scoreJob(job({ title: "Senior ML Engineer" }), ml, now).why).toMatchObject({ keywords: ["machine learning"], keywordPoints: 20 });
+    expect(scoreJob(job({ title: "Senior ML Engineer" }), ml).why).toMatchObject({ keywords: ["machine learning"], keywordPoints: 20 });
   });
 
   it("never puts a job without a description ahead of the same job with one", () => {
     for (const title of ["Senior Product Manager, Payments", "Crypto PM", "AI Product Manager", "Product Manager"])
       for (const description of ["", "We build things.", "Payments and KYC.", "crypto exchange stablecoin tokenization"]) {
-        const bare = scoreJob(job({ title }), profile(), now).score;
-        expect(scoreJob(job({ title, description }), profile(), now).score, `${title} / ${description}`).toBeGreaterThanOrEqual(bare);
+        const bare = scoreJob(job({ title }), profile()).score;
+        expect(scoreJob(job({ title, description }), profile()).score, `${title} / ${description}`).toBeGreaterThanOrEqual(bare);
       }
   });
 
   it("keeps the 0..100 bounds", () => {
     const one = profile({ keywords: { crypto: 1 } });
-    expect(scoreJob(job({ title: "Senior Crypto PM", description: "crypto" }), one, now).score).toBe(100);
+    expect(scoreJob(job({ title: "Senior Crypto PM", description: "crypto" }), one).score).toBe(100);
   });
 });
 
 describe("place aliases", () => {
   const places = (include: string[], remote_ok: string[] = [], remote_exclude: string[] = []) => profile({ locations: { include, remote_ok, remote_exclude } });
-  const fit = (location: string, p: ReturnType<typeof places>, workplace: "onsite" | "remote" = "onsite") => scoreJob(job({ location, workplace }), p, now).why;
+  const fit = (location: string, p: ReturnType<typeof places>, workplace: "onsite" | "remote" = "onsite") => scoreJob(job({ location, workplace }), p).why;
 
   it.each([
     [["san francisco"], "SF"],

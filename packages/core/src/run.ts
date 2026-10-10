@@ -33,6 +33,8 @@ export type RunOptions = {
   skip?: ReadonlySet<string>;
   /** Stop starting new companies once this returns true (companies in flight finish). */
   stopped?: () => boolean;
+  /** A company's industry ids, when the directory knows them (for the industry part of the score). */
+  industriesOf?: (c: CompanyRef) => readonly string[] | undefined;
 };
 
 /**
@@ -77,6 +79,8 @@ export async function runRadar(config: Config, opts: RunOptions = {}): Promise<R
     const h: CompanyHealth = { company: company.name, ats: company.ats, slug: company.slug, key: jobCompanyKey(company), ok: false, jobsFound: 0, matches: 0, durationMs: 0 };
     const kept: Job[] = [];
     const connector = getConnector(company.ats);
+    // Extra checks are directory companies; the rest are yours, which always count as your industry.
+    const fit = { tracked: !extra, industries: opts.industriesOf?.(company) };
     try {
       if (!connector) {
         h.unsupported = true;
@@ -85,7 +89,7 @@ export async function runRadar(config: Config, opts: RunOptions = {}): Promise<R
       // Boards that ask for few requests a day: between fetches, keep the jobs from the last one.
       const recent = connector.minIntervalHours ? recentJobs(jobCompanyKey(company), connector.minIntervalHours) : undefined;
       for (const j of recent ?? []) {
-        const { score, why } = scoreJob(j, config.profile, now, new Date(j.firstSeen));
+        const { score, why } = scoreJob(j, config.profile, fit);
         if (!extra || !why.gate) kept.push({ ...j, score, why });
         if (!why.gate) h.matches++;
       }
@@ -95,7 +99,7 @@ export async function runRadar(config: Config, opts: RunOptions = {}): Promise<R
         const base = connector.normalize(raw, company);
         const prev = previous.get(base.id);
         const firstSeen = prev?.firstSeen ?? nowIso;
-        let { score, why } = scoreJob(base, config.profile, now, new Date(firstSeen));
+        let { score, why } = scoreJob(base, config.profile, fit);
         // Lists without descriptions (or with only "3 Locations"): reuse what's stored, else fetch the
         // job's page for jobs that pass the gates (or pass the title gate, when the location is vague).
         const vague = !!connector.vagueLocation?.(raw);
@@ -107,7 +111,7 @@ export async function runRadar(config: Config, opts: RunOptions = {}): Promise<R
             if (typeof d === "string") base.description = d;
             else for (const [k, v] of Object.entries(d)) if (v) Object.assign(base, { [k]: v });
           }
-          ({ score, why } = scoreJob(base, config.profile, now, new Date(firstSeen)));
+          ({ score, why } = scoreJob(base, config.profile, fit));
         }
         // Your companies keep every job (the Radar can show the rest); extra checks only matches.
         if (!extra || !why.gate) kept.push({ ...base, firstSeen, lastSeen: nowIso, status: "open", score, why });
