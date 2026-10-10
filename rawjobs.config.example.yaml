@@ -12,7 +12,8 @@ profile:
     # ...and none of these.
     exclude: ["associate", "intern", "product marketing", "product designer", "junior"]
 
-  # +10 points when the title also contains one of these.
+  # +10 points when the title contains one of these or is at the level they name
+  # (senior; principal/staff/lead; head/director/vp), +5 when it's one level away.
   seniority_boost: ["senior", "lead", "principal", "head", "director", "staff", "group"]
 
   locations:

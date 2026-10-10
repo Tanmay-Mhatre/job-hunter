@@ -19,6 +19,17 @@ const CUES: [Seniority, string[]][] = [
 ];
 
 export function seniorityOf(title: string): Seniority {
-  for (const [level, cues] of CUES) if (matchesAny(title, cues)) return level;
-  return "mid";
+  return seniorityCue(title) ?? "mid";
+}
+
+/** The level a title or term names outright; undefined when it has no cue ("Product Manager", "group"). */
+export function seniorityCue(text: string): Seniority | undefined {
+  for (const [level, cues] of CUES) if (matchesAny(text, cues)) return level;
+  return undefined;
+}
+
+/** Steps between two levels, in SENIORITY_LEVELS order: senior to mid is 1, senior to director is 2. */
+export function seniorityGap(a: Seniority, b: Seniority): number {
+  const at = (l: Seniority) => SENIORITY_LEVELS.findIndex((x) => x.id === l);
+  return Math.abs(at(a) - at(b));
 }

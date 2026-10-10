@@ -148,7 +148,7 @@ export type DashboardJob = Omit<Job, "description" | "missedRuns"> & {
   hasDescription: boolean;
   /**
    * From the shared weekly index, not checked live (data/discover.json): no description, so the score
-   * is an estimate (title, location, freshness), and `url` is the company's careers page.
+   * is an estimate (title, location, industry and topics in the title), and `url` is the company's careers page.
    */
   estimated?: boolean;
   /** Directory key of the job's company ("ats:slug"); set on index jobs. */

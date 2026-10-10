@@ -186,7 +186,7 @@ Source attribution: see `scripts/curate/sources/NOTICE.md` and the source list i
 No AI, fully explainable. Every job is scored 0–100:
 
 1. **Gates.** The title must contain a `titles.include` term and no `titles.exclude` term. The location must match `locations.include`, or `locations.remote_ok` without also matching `locations.remote_exclude`, and the workplace (on-site, hybrid, remote) must be one you accept. Fail either and the job scores 0 and is hidden by default.
-2. **Title, up to 30.** 20 for a title match, +10 if it also has a `seniority_boost` term.
+2. **Title, up to 30.** 20 for a title match, plus how close its level is to yours: +10 if it has a `seniority_boost` term or is at a level one of them names (Senior, Principal/Staff/Lead, Head/Director/VP), +5 one level away (a plain "Product Manager" when you're senior), nothing two or more levels away. With no seniority words, nothing is added.
 3. **Location, up to 20.** 20 for an included place, 15 for an accepted remote region (or remote with no place named).
 4. **Topics, up to 40.** The share of your keyword weight found in title + description: 40 × matched weight ÷ min(total weight, 12). Matching about three core topics fills the bar, so a short list isn't penalised. A topic in the title alone is worth up to 20.
 5. **Industry, up to 10.** 10 if the company is in one of your `industries` (or is one of your companies, or you picked no industries), 5 if its industry isn't known, 0 if it's in another one. Your industries also add their topics (payments, trading…) at weight 2 when you haven't listed them yourself.

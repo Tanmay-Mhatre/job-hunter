@@ -35,6 +35,14 @@ describe("digest", () => {
     expect(text).toContain('⭐ <b>85</b> <a href="https://example.com/Head%20of%20Product">Head of Product</a>\nCo &lt;&amp;&gt; · Dubai, UAE');
   });
 
+  it("uses the Radar's best-match order: a slightly lower job posted today beats an older one", () => {
+    const now = Date.parse("2026-10-10T12:00:00Z");
+    const old = job("Old", 80, { postedAt: "2026-09-30T12:00:00Z" });
+    const fresh = job("Fresh", 76, { postedAt: "2026-10-10T12:00:00Z" });
+    const text = digest([old, fresh], { minScore: 70, now })!;
+    expect(text.indexOf(">Fresh<")).toBeLessThan(text.indexOf(">Old<"));
+  });
+
   it("caps at 10 lines and points to the rest", () => {
     const text = digest(Array.from({ length: 13 }, (_, i) => job(`Role ${i}`, 50 + i)), { minScore: 90 })!;
     expect(text.match(/<a /g)).toHaveLength(10);
