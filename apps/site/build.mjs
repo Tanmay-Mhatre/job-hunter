@@ -128,6 +128,9 @@ if (process.argv.includes("--og")) writeFileSync(join(DIST, "og.html"), page("og
 for (const f of readdirSync(join(DS, "fonts"))) copyFileSync(join(DS, "fonts", f), join(DIST, "fonts", f));
 copyFileSync(join(DS, "logos/rawjobs-mark.svg"), join(DIST, "favicon.svg"));
 cpSync(join(SITE, "public"), DIST, { recursive: true });
+// The dashboard screenshots the README uses (pnpm design:shots, demo data only).
+mkdirSync(join(DIST, "images"));
+for (const f of ["radar-light.png", "radar-dark.png"]) copyFileSync(join(ROOT, "docs/images", f), join(DIST, "images", f));
 writeFileSync(join(DIST, "robots.txt"), `User-agent: *\nAllow: /\n\nSitemap: ${SITE_URL}/sitemap.xml\n`);
 writeFileSync(
   join(DIST, "sitemap.xml"),
