@@ -1,5 +1,5 @@
 import { INDUSTRY_BY_ID } from "@rawjobs/core/catalog/industries";
-import { ArrowRight, ArrowUpDown, Building2, Check, Globe, LoaderCircle, MapPin, Pencil, Plus, Search, SlidersHorizontal, Star, UserRound, X } from "lucide-react";
+import { ArrowRight, ArrowUpDown, ChevronDown, Building2, Check, Globe, LoaderCircle, MapPin, Pencil, Plus, Search, SlidersHorizontal, Star, UserRound, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useOtherJobs, type DataMeta, type Job, type Profile } from "../../lib/data";
 import {
@@ -39,7 +39,7 @@ import type { Status, UserState } from "../../lib/userState";
 import { Dialog } from "../Dialog";
 import { JobDetail } from "../JobDetail";
 import { toast } from "../Toast";
-import { Chip, IconButton, SearchField, Tabs } from "../primitives";
+import { Chip, IconButton, Menu, SearchField, Tabs } from "../primitives";
 import { Button, Card, cx } from "../ui";
 import { FacetMenu, OptionList } from "./FacetMenu";
 import { JobCard } from "./JobCard";
@@ -220,9 +220,17 @@ export function RadarPage(p: Props) {
   const [openCompanies, setOpenCompanies] = useState<ReadonlySet<string>>(() => new Set());
   useEffect(() => setOpenCompanies(new Set()), [filters, sort]);
   const fold = sort !== "newest" && !filters.mine && !filters.companies.length;
-  const rows: FeedRow[] = useMemo(() => (fold ? foldCompanies(groups, openCompanies) : groups.map((group) => ({ kind: "group" as const, group }))), [fold, groups, openCompanies]);
-  /** The roles J/K steps through: the list's rows, folded ones left out. */
-  const navGroups = useMemo(() => rows.flatMap((r) => (r.kind === "group" ? [r.group] : [])), [rows]);
+  // Best match: your companies' freshest roles in a strip above the list, and not again in it.
+  const strip = useMemo(
+    () => (sort === "best" && !filters.mine ? groups.filter((g) => p.isYours(g.lead)).sort((a, b) => postedOrSeen(b.lead).localeCompare(postedOrSeen(a.lead))).slice(0, STRIP) : []),
+    [sort, filters.mine, groups, p.isYours],
+  );
+  const rows: FeedRow[] = useMemo(() => {
+    const rest = strip.length ? groups.filter((g) => !strip.includes(g)) : groups;
+    return fold ? foldCompanies(rest, openCompanies) : rest.map((group) => ({ kind: "group" as const, group }));
+  }, [fold, groups, strip, openCompanies]);
+  /** The roles J/K steps through: the strip, then the list's rows, folded ones left out. */
+  const navGroups = useMemo(() => [...strip, ...rows.flatMap((r) => (r.kind === "group" ? [r.group] : []))], [strip, rows]);
   const counts = useMemo(() => facetCounts(pool, filters, ctx), [pool, filters, ctx]);
   const chips = activeChips(filters, ctx, base);
   // Postings past your age limit that the other filters would show: "Show older jobs (N)".
@@ -236,12 +244,10 @@ export function RadarPage(p: Props) {
   const open = useMemo(() => applyFilters(p.jobs, base, ctx), [p.jobs, base, ctx]);
   const newCount = open.filter((j) => isNewJob(j, ctx)).length;
   const strongCount = open.filter((j) => j.score >= min).length;
+  // Saved and Applied keep jobs that closed or aged out, so they're counted with their own view's filters.
+  const savedCount = useMemo(() => applyFilters(p.jobs, { ...base, status: "saved" }, ctx).length, [p.jobs, base, ctx]);
+  const appliedCount = useMemo(() => applyFilters(p.jobs, { ...base, status: "applied" }, ctx).length, [p.jobs, base, ctx]);
   const yourGroups = groups.filter((g) => p.isYours(g.lead)).length;
-  // Best match: your companies' freshest roles, above the list (they're in it too, at their own rank).
-  const strip = useMemo(
-    () => (sort === "best" && !filters.mine ? groups.filter((g) => p.isYours(g.lead)).sort((a, b) => postedOrSeen(b.lead).localeCompare(postedOrSeen(a.lead))).slice(0, STRIP) : []),
-    [sort, filters.mine, groups, p.isYours],
-  );
   // The newest job in the list, said in the head when the list isn't sorted by date.
   const newest = useMemo(() => (sort === "newest" ? undefined : visible.reduce<string | undefined>((m, j) => (!m || postedOrSeen(j) > m ? postedOrSeen(j) : m), undefined)), [sort, visible]);
   const noCompaniesYet = filters.mine && p.companyCount === 0;
@@ -373,21 +379,19 @@ export function RadarPage(p: Props) {
   const [sheet, setSheet] = useState(false);
   /** Laptops and up: the filter row under the search, opened with Filters. */
   const [filtersOpen, setFiltersOpen] = useState(false);
+  /** Seniority, industry, company and keywords: shown on request, so the first row holds the common ones. */
+  const [moreFacets, setMoreFacets] = useState(false);
   const facet = (key: FacetKey) => counts[key];
   const relax = groups.length === 0 ? suggestRelax(pool, filters, ctx) : [];
 
-  /** One role's row; only the list's rows (`listed`) are where J/K moves focus to. */
-  const card = (g: JobGroup, listed: boolean) => (
+  /** One role's row, in the strip or the list: each role shows once, and J/K moves focus to it. */
+  const card = (g: JobGroup) => (
     <JobCard
-      key={listed ? g.key : `strip:${g.key}`}
-      ref={
-        listed
-          ? (el) => {
-              if (el) rowRefs.current.set(g.key, el);
-              else rowRefs.current.delete(g.key);
-            }
-          : undefined
-      }
+      key={g.key}
+      ref={(el) => {
+        if (el) rowRefs.current.set(g.key, el);
+        else rowRefs.current.delete(g.key);
+      }}
       group={g}
       entry={p.user[g.lead.id]}
       min={min}
@@ -469,7 +473,7 @@ export function RadarPage(p: Props) {
             filters={filters}
             sort={sort}
             views={p.prefs.views}
-            counts={{ all: open.length, mine: open.filter(p.isYours).length, new: newCount, strong: strongCount, saved: open.filter((j) => p.user[j.id]?.status === "saved").length }}
+            counts={{ all: open.length, mine: open.filter(p.isYours).length, new: newCount, strong: strongCount, saved: savedCount, applied: appliedCount }}
             hideNew={firstScan}
             onPick={replace}
             onSave={(name) => p.onSaveView(name, filters, sort)}
@@ -515,12 +519,16 @@ export function RadarPage(p: Props) {
               <FacetMenu label="Country" searchable options={facet("countries")} selected={filters.countries} onChange={(v) => setFilters({ countries: v })} />
               <FacetMenu label="Location" searchable options={facet("locations")} selected={filters.locations} onChange={(v) => setFilters({ locations: v })} />
               <FacetMenu label="Workplace" options={facet("workplace")} selected={filters.workplace} onChange={(v) => setFilters({ workplace: v as Filters["workplace"] })} />
-              <FacetMenu label="Seniority" options={facet("seniority")} selected={filters.seniority} onChange={(v) => setFilters({ seniority: v as Filters["seniority"] })} />
-              {facet("industries").length > 0 && <FacetMenu label="Industry" options={facet("industries")} selected={filters.industries} onChange={(v) => setFilters({ industries: v })} />}
-              <FacetMenu label="Company" searchable options={facet("companies")} selected={filters.companies} onChange={(v) => setFilters({ companies: v })} />
-              {facet("topics").length > 0 && <FacetMenu label="Keywords" searchable options={facet("topics")} selected={filters.topics} onChange={(v) => setFilters({ topics: v })} />}
               <FacetMenu label="Match" single options={facet("match")} selected={filters.match === "all" ? [] : [filters.match]} onChange={(v) => setFilters({ match: (v[0] as Filters["match"]) ?? "all" })} />
+              {/* The rest on request; one that's filtering something always shows. */}
+              {(moreFacets || filters.seniority.length > 0) && <FacetMenu label="Seniority" options={facet("seniority")} selected={filters.seniority} onChange={(v) => setFilters({ seniority: v as Filters["seniority"] })} />}
+              {(moreFacets || filters.industries.length > 0) && facet("industries").length > 0 && <FacetMenu label="Industry" options={facet("industries")} selected={filters.industries} onChange={(v) => setFilters({ industries: v })} />}
+              {(moreFacets || filters.companies.length > 0) && <FacetMenu label="Company" searchable options={facet("companies")} selected={filters.companies} onChange={(v) => setFilters({ companies: v })} />}
+              {(moreFacets || filters.topics.length > 0) && facet("topics").length > 0 && <FacetMenu label="Keywords" searchable options={facet("topics")} selected={filters.topics} onChange={(v) => setFilters({ topics: v })} />}
               <MoreMenu filters={filters} setFilters={setFilters} ats={facet("ats")} olderCount={olderCount} maxAgeDays={maxAgeDays} hiddenCompanies={p.prefs.hiddenCompanies} onUnhide={(c) => p.onHideCompany(c, false)} hideRules={p.prefs.hideRules} onRemoveRule={removeRule} />
+              <Button variant="ghost" size="sm" aria-expanded={moreFacets} onClick={() => setMoreFacets((o) => !o)}>
+                {moreFacets ? "Fewer filters" : "More filters"}
+              </Button>
             </div>
           </div>
         )}
@@ -638,7 +646,7 @@ export function RadarPage(p: Props) {
                     Latest at my companies <span className="tabular font-normal">{yourGroups}</span>
                   </h2>
                   <ul className="rj-feed__list" aria-labelledby="feed-mine">
-                    {strip.map((g) => card(g, false))}
+                    {strip.map((g) => card(g))}
                     {yourGroups > strip.length && (
                       <li className="px-4 py-2">
                         <Button variant="ghost" size="sm" onClick={() => setFilters({ mine: true })}>
@@ -648,14 +656,14 @@ export function RadarPage(p: Props) {
                     )}
                   </ul>
                   <h2 className="rj-feed__section sticky top-0 z-sticky" id="feed-all">
-                    All jobs <span className="tabular font-normal">{groups.length}</span>
+                    Everything else <span className="tabular font-normal">{groups.length - strip.length}</span>
                   </h2>
                 </>
               )}
               <ul className="rj-feed__list" aria-labelledby={strip.length ? "feed-all" : undefined} aria-label={strip.length ? undefined : "Jobs"}>
                 {shown.map((r) =>
                   r.kind === "group" ? (
-                    card(r.group, true)
+                    card(r.group)
                   ) : (
                     <li key={`more:${r.company}`} className="px-4 py-2">
                       <Button variant="ghost" size="sm" onClick={() => setOpenCompanies((s) => new Set([...s, r.company]))}>
@@ -711,6 +719,11 @@ export function RadarPage(p: Props) {
           <SheetSection label="Company">
             <OptionList label="Company" searchable options={facet("companies")} selected={filters.companies} onChange={(v) => setFilters({ companies: v })} />
           </SheetSection>
+          {facet("topics").length > 0 && (
+            <SheetSection label="Keywords">
+              <OptionList label="Keywords" searchable options={facet("topics")} selected={filters.topics} onChange={(v) => setFilters({ topics: v })} />
+            </SheetSection>
+          )}
           <SheetSection label="More">
             <MoreToggles filters={filters} setFilters={setFilters} olderCount={olderCount} maxAgeDays={maxAgeDays} />
           </SheetSection>
@@ -734,9 +747,9 @@ const BUILT_IN: { id: string; label: string; filters: Partial<Filters>; count: k
   { id: "new", label: "New", filters: { status: "new" }, count: "new" },
   { id: "strong", label: "Strong", filters: { match: "strong" }, count: "strong" },
   { id: "saved", label: "Saved", filters: { status: "saved" }, count: "saved" },
-  { id: "applied", label: "Applied", filters: { status: "applied" }, count: "all" },
+  { id: "applied", label: "Applied", filters: { status: "applied" }, count: "applied" },
 ];
-type ViewCounts = { all: number; mine: number; new: number; strong: number; saved: number };
+type ViewCounts = { all: number; mine: number; new: number; strong: number; saved: number; applied: number };
 
 function ViewsBar(props: {
   className?: string;
@@ -764,6 +777,8 @@ function ViewsBar(props: {
     setNaming(null);
   };
 
+  /** Something worth saving: not a saved view already, and not just a built-in tab in Best match. */
+  const canSave = !customActive && (!builtInActive || props.sort !== "best");
   const builtIns = BUILT_IN.filter((b) => !(b.id === "new" && props.hideNew));
   const tabValue = builtInActive && !customActive ? builtInActive.id : "";
   return (
@@ -778,38 +793,45 @@ function ViewsBar(props: {
           const b = builtIns.find((x) => x.id === id);
           if (b) props.onPick({ ...props.base, ...b.filters }, props.sort);
         }}
-        items={builtIns.map((b) => ({ id: b.id, label: b.label, count: b.id === "applied" ? undefined : props.counts[b.count] }))}
+        items={builtIns.map((b) => ({ id: b.id, label: b.label, count: props.counts[b.count] }))}
       />
-      {(props.views.length > 0 || naming || !customActive) && (
-        <div className="flex flex-wrap items-center gap-2 pb-1">
-          {props.views.map((v) =>
-            naming?.id === v.id ? (
-              <NameInput key={v.id} value={naming.value} onChange={(value) => setNaming({ id: v.id, value })} onSubmit={submit} onCancel={() => setNaming(null)} />
-            ) : (
-              <span key={v.id} className="inline-flex items-center gap-0.5">
-                <Chip pressed={customActive?.id === v.id} onClick={() => props.onPick(v.filters, v.sort)} onDoubleClick={() => setNaming({ id: v.id, value: v.name })}>
-                  {v.name}
-                </Chip>
-                <IconButton label={`Rename view ${v.name}`} size="sm" onClick={() => setNaming({ id: v.id, value: v.name })}>
-                  <Pencil className="rj-icon" aria-hidden />
-                </IconButton>
-                <IconButton label={`Delete view ${v.name}`} size="sm" onClick={() => props.onDelete(v)}>
-                  <X className="rj-icon" aria-hidden />
-                </IconButton>
-              </span>
-            ),
-          )}
-          {naming && !naming.id ? (
-            <NameInput value={naming.value} onChange={(value) => setNaming({ value })} onSubmit={submit} onCancel={() => setNaming(null)} />
-          ) : (
-            !customActive &&
-            (!builtInActive || props.sort !== "best") && (
-              <Button size="sm" variant="ghost" onClick={() => setNaming({ value: "" })}>
-                <Plus className="rj-icon" aria-hidden /> Save view
-              </Button>
-            )
-          )}
+      {naming ? (
+        <div className="flex items-center pb-1">
+          <NameInput value={naming.value} onChange={(value) => setNaming({ ...naming, value })} onSubmit={submit} onCancel={() => setNaming(null)} />
         </div>
+      ) : props.views.length > 0 ? (
+        // Your saved views in one menu, so the row keeps room for the built-in tabs.
+        <div className="flex items-center pb-1">
+          <Menu
+            label="Saved views"
+            align="end"
+            trigger={(t) => (
+              <button type="button" {...t} className={cx("rj-chip max-w-48", customActive && "border-[var(--chip-on-bg)] bg-[var(--chip-on-bg)] text-[var(--chip-on-fg)]")}>
+                <span className="truncate">{customActive ? customActive.name : "Views"}</span>
+                <ChevronDown className="size-3.5 shrink-0" aria-hidden />
+              </button>
+            )}
+            items={[
+              ...props.views.map((v) => ({ id: v.id, label: v.name, onSelect: () => props.onPick(v.filters, v.sort) })),
+              ...(canSave || customActive ? [{ separator: true as const, id: "sep" }] : []),
+              ...(canSave ? [{ id: "save", label: "Save current view…", onSelect: () => setNaming({ value: "" }) }] : []),
+              ...(customActive
+                ? [
+                    { id: "rename", label: `Rename "${customActive.name}"…`, onSelect: () => setNaming({ id: customActive.id, value: customActive.name }) },
+                    { id: "delete", label: `Delete "${customActive.name}"`, danger: true, onSelect: () => props.onDelete(customActive) },
+                  ]
+                : []),
+            ]}
+          />
+        </div>
+      ) : (
+        canSave && (
+          <div className="flex items-center pb-1">
+            <Button size="sm" variant="ghost" onClick={() => setNaming({ value: "" })}>
+              <Plus className="rj-icon" aria-hidden /> Save view
+            </Button>
+          </div>
+        )
       )}
     </div>
   );
