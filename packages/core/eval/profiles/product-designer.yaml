@@ -1,0 +1,25 @@
+# Invented candidate. No real person.
+id: product-designer
+summary: Senior product designer, B2B SaaS and design systems, Lisbon or EU remote, 7 years
+about: |
+  Product designer with 7 years: 4 at a B2B analytics SaaS (owned the design system, data-heavy
+  dashboards, accessibility), 3 at a digital agency doing web and app UX. Figma expert, runs her own
+  user research (interviews, usability tests), prototypes in Figma and a little HTML/CSS.
+  Level: Senior; has led a squad's design but never managed designers.
+  Location: Lisbon. Portuguese citizen. Remote within Europe or hybrid in Lisbon.
+  Salary floor: EUR 60k.
+  Dealbreakers: graphic/brand/marketing-only design, agency roles, on-site outside Portugal,
+  junior roles.
+profile:
+  name: Product designer
+  titles:
+    include: [product designer, ux designer, ui/ux designer, interaction designer]
+    exclude: [graphic, intern, junior]
+  seniority_boost: [senior, lead]
+  locations:
+    include: [lisbon, portugal]
+    remote_ok: [europe, emea, remote]
+    remote_exclude: [us, united states]
+  industries: [saas, devtools, fintech]
+  keywords: { design systems: 5, figma: 4, user research: 4, prototyping: 3, b2b: 3, accessibility: 2 }
+  min_score: 70
