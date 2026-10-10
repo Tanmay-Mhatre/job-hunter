@@ -10,7 +10,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   case "$remote_ref" in
     refs/heads/main | refs/heads/master)
       echo "pre-push: not pushing to ${remote_ref#refs/heads/} directly." >&2
-      echo "  Push a branch and open a pull request (label it 'automerge' to merge once CI passes)." >&2
+      echo "  Push a branch and open a pull request (gh pr merge --auto --merge merges it once CI passes)." >&2
       exit 1
       ;;
   esac

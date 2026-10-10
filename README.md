@@ -1,5 +1,14 @@
 # RawJobs
 
+**Jobs, straight from the source.**
+
+[![CI](https://github.com/Tanmay-Mhatre/job-hunter/actions/workflows/ci.yml/badge.svg)](https://github.com/Tanmay-Mhatre/job-hunter/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) ![Node 22+](https://img.shields.io/badge/node-22%2B-informational)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/radar-dark.png">
+  <img alt="The RawJobs Radar: a list of scored jobs on the left, and on the right why the selected job matched." src="docs/images/radar-light.png">
+</picture>
+
 A free, self-hosted job radar. Tell it the roles, places and industries you want; RawJobs scans the careers pages of the companies that fit, from a directory of ~21,000 companies' hiring systems, scores every opening against your profile with clear keyword rules, and shows you the matches, with the companies you'd most like to join always on top.
 
 Good roles often appear on company careers pages (Greenhouse, Lever, Ashby, Workday…) before LinkedIn, or never reach it. Checking 50 careers pages by hand doesn't happen. This does it for you.
@@ -22,7 +31,7 @@ The dashboard walks you through setup the first time (about 3 minutes; you can s
 1. **Resume**: paste your resume, or, if you keep several versions for different roles, copy the provided prompt into your own Claude or ChatGPT, attach them all, and paste the answer back. You get one master resume plus suggested roles, places and topics. It's saved to `profile/resume.md` (gitignored, never sent anywhere). Optional.
 2. **Roles**: pick your job family; its titles appear as chips to select or deselect. Switching family resets titles and exclusions to that family's defaults (with Undo). Add titles from any of the 33 families with search.
 3. **Locations**: search any country, city or region in the world. A country is one selection (its short names and main cities included); remove it in one click, or expand it to drop single cities. Choose whether remote roles count, and where.
-4. **Industries**: pick the industries you'd like to work in (Crypto, Fintech, AI… 26 in all). Companies in them are scanned and suggested. Optional.
+4. **Industries**: pick the industries you'd like to work in (Crypto, Fintech, AI… 50 in all, in 7 groups). Companies in them are scanned and suggested. Optional.
 5. **Review**: read it back in plain words, choose what counts as a strong match, and press **Save & find my jobs**.
 
 Saving runs your first scan: your companies plus every company in the directory tagged with your industries, each fetched live. Then, optionally, pick the companies you'd love to work at in the **Companies** tab (search the directory, or paste a careers link): they're checked every scan and their jobs always come first. Topics (keywords that rank a job higher) are prefilled from your resume and live in **Settings → Profile → Topics**.
@@ -208,6 +217,8 @@ Your config lists the companies you're targeting. If you run RawJobs from GitHub
 
 RawJobs only reads public job postings that companies publish for their own careers pages. A scan makes one request per company it fetches, and the shared job feed lets it skip most companies with nothing for you. It spaces requests to the same host (about one a second), identifies itself with a User-Agent, slows down on rate limits, links to the original posting and never touches apply endpoints or candidate data. Keep it that way: prefer the default scope, keep your own list to the companies you really want (the Companies tab flags ones that never have anything for you), and don't scan more than a couple of times a day.
 
+RawJobs is an independent project. It isn't affiliated with or endorsed by Greenhouse, Lever, Ashby, Workday or any other hiring system or job board named here; their names are used only to say which careers pages it can read.
+
 ## Development
 
 ```bash
@@ -216,7 +227,7 @@ pnpm test:watch
 pnpm hooks:install  # once per clone: no direct pushes to main, and pnpm check before every push
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Changes go through pull requests. Label a PR `automerge` and the Automerge workflow merges it once CI's `check` passes on its latest commit (a free stand-in for branch protection, which private repos on GitHub Free don't get). It never merges a red or running PR, but doesn't stop a manual merge.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Changes go through pull requests. `main` is protected: a pull request can only merge once CI's `check` passes on its latest commit. To merge it as soon as CI goes green, run `gh pr merge --auto --merge`.
 
 ```
 packages/core       connectors, normalise, score, scan scopes, job feed, directory sync,
@@ -240,8 +251,8 @@ Connector tests use saved feed responses in `packages/core/test/fixtures`, so te
 | --- | --- |
 | 0. Core ✅ | Schema, config validation, Greenhouse / Lever / Ashby, scoring, CLI, tests |
 | 1. Daily radar | ✅ 23 hiring systems, shared directory and daily job feed, run history, scheduled scans on your computer, Telegram alerts. To do: scheduled scans in your own GitHub Actions |
-| 2. Dashboard | ✅ Radar, job detail, pipeline, companies, settings, four themes. To do: hosted deploy (Cloudflare Pages) |
-| 3. Open-source launch | ✅ Setup wizard, contributor docs, privacy page, self-hosting guide. To do: README screenshots |
+| 2. Dashboard | ✅ Radar, job detail, pipeline, companies, settings, light and dark themes, each with an increased-contrast version. To do: hosted deploy |
+| 3. Open-source launch | ✅ Setup wizard, contributor docs, privacy page, self-hosting guide. To do: more README screenshots |
 | 4. Later | GitHub status sync, optional AI re-rank (your own key), email alerts |
 
 ## License

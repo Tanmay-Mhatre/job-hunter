@@ -1,0 +1,37 @@
+name: Feature request
+description: Something RawJobs should do that it doesn't yet.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. This issue is public: leave out your resume, config and anything else personal. Not sure yet? Start in Discussions instead.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you're trying to do
+      description: The job search task, and what gets in the way today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help
+      description: How you'd like it to work. A rough idea is fine.
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options:
+        - Web dashboard
+        - Command line
+        - A new hiring system or job board
+        - Shared directory or job index
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Example
+      description: For a new hiring system or job board, paste a public careers link that uses it.
