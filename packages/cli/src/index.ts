@@ -532,12 +532,15 @@ async function runNdjson(values: RunValues): Promise<number> {
 }
 
 /** Send the scan's new matches (or, with only_new off, every strong one) to Telegram. Never throws. */
+/** Your companies as Telegram messages match them: lowercase "ats:slug". */
+const yourCompanies = (config: Config) => new Set(config.companies.map((c) => `${c.ats}:${c.slug}`.toLowerCase()));
+
 async function notifyScan(config: Config, result: RunResult, merged: MergeResult, scope: ScanScope): Promise<string> {
   const secrets = telegramSecrets();
   if (!config.alerts.telegram || !secrets.token || !secrets.chatId) return "off";
   const matches = result.jobs.filter((j) => !j.why.gate);
   const jobs = config.alerts.only_new ? matches.filter((j) => merged.newIds.has(j.id)) : matches.filter((j) => j.score >= config.profile.min_score);
-  const text = digest(jobs, { minScore: config.profile.min_score, scopeLabel: scope === "all" ? "All companies" : "My companies + my industries" });
+  const text = digest(jobs, { minScore: config.profile.min_score, scopeLabel: scope === "all" ? "All companies" : "My companies + my industries", yours: yourCompanies(config) });
   if (!text) return "nothing-new";
   try {
     await sendTelegram(text, secrets);
@@ -552,7 +555,7 @@ async function notifyFinished(config: Config, matches: number, newJobs: Job[], s
   const secrets = telegramSecrets();
   if (!secrets.token || !secrets.chatId) return "off";
   try {
-    await sendTelegram(finishedMessage({ scopeLabel: scope === "all" ? "All companies" : "My companies + my industries", matches, newJobs, minScore: config.profile.min_score, yours: new Set(config.companies.map((c) => `${c.ats}:${c.slug}`.toLowerCase())), ...o }), secrets);
+    await sendTelegram(finishedMessage({ scopeLabel: scope === "all" ? "All companies" : "My companies + my industries", matches, newJobs, minScore: config.profile.min_score, yours: yourCompanies(config), ...o }), secrets);
     return "sent";
   } catch (err) {
     return `failed: ${(err as Error).message}`;
