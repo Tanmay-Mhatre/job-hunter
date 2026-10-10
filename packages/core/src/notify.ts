@@ -93,26 +93,33 @@ const MAX_LINES = 10;
  * One message for a scan: the jobs to tell the user about, best first, up to 10 with links and
  * "+n more". Undefined when there's nothing to say (no message beats an empty one).
  */
-export function digest(jobs: readonly Job[], opts: { minScore: number; scopeLabel?: string; dashboardHint?: boolean; now?: number }): string | undefined {
+export function digest(
+  jobs: readonly Job[],
+  opts: { minScore: number; scopeLabel?: string; dashboardHint?: boolean; now?: number; /** Companies in the user's config, as lowercase "ats:slug". */ yours?: ReadonlySet<string> },
+): string | undefined {
   if (!jobs.length) return undefined;
   const strong = jobs.filter((j) => j.score >= opts.minScore).length;
   const head = `<b>${jobs.length} new job${jobs.length === 1 ? "" : "s"} for you</b>${strong ? ` · ${strong} strong` : ""}${opts.scopeLabel ? `\n<i>${esc(opts.scopeLabel)}</i>` : ""}`;
   const more = jobs.length > MAX_LINES ? `\n…and ${jobs.length - MAX_LINES} more on your Radar.` : opts.dashboardHint ? "\nSee them all on your Radar." : "";
-  return `${head}\n\n${jobLines(jobs, opts.minScore, opts.now)}${more}`;
+  return `${head}\n\n${jobLines(jobs, opts.minScore, opts.now, opts.yours)}${more}`;
 }
 
-/** The first 10 jobs, best first, one link each. */
-function jobLines(jobs: readonly Job[], minScore: number, now = Date.now()): string {
+/**
+ * The first 10 jobs, best first, one link each. As on the Radar, ⭐ marks your companies; a strong fit
+ * says so after its score.
+ */
+function jobLines(jobs: readonly Job[], minScore: number, now = Date.now(), yours?: ReadonlySet<string>): string {
   // The Radar's best-match order (fit plus freshness), so an alert lists jobs the way the Radar shows them.
   const rank = new Map(jobs.map((j) => [j, rankScore(j.score, j.postedAt ?? j.firstSeen, now)]));
   const sorted = [...jobs].sort((a, b) => rank.get(b)! - rank.get(a)! || (b.postedAt ?? b.firstSeen).localeCompare(a.postedAt ?? a.firstSeen));
   return sorted
     .slice(0, MAX_LINES)
     .map((j) => {
-      const star = j.score >= minScore ? "⭐ " : "";
+      const star = yours?.has(companyKey(j)) ? "⭐ " : "";
+      const strong = j.score >= minScore ? " · strong fit" : "";
       const where = j.location ? ` · ${esc(j.location.split(/[;|]/)[0]!.trim())}` : "";
       // The score sits after the company, labelled: before the title it read as part of it ("63 Staff Product Manager").
-      return `${star}<a href="${esc(j.url)}">${esc(j.title)}</a>\n${esc(j.company)}${where} · score ${j.score}/100`;
+      return `${star}<a href="${esc(j.url)}">${esc(j.title)}</a>\n${esc(j.company)}${where} · score ${j.score}/100${strong}`;
     })
     .join("\n\n");
 }
@@ -154,10 +161,10 @@ export function finishedMessage(o: {
   const strong = o.newJobs.filter((j) => !isYours(j) && j.score >= o.minScore).length;
   const rest = o.newJobs.length - yours.length - strong;
   const breakdown = [
-    `🏢 ${yours.length.toLocaleString()} from your companies${yoursStrong ? ` (${yoursStrong} strong fit)` : ""}`,
-    `⭐ ${plural(strong, "strong fit", "strong fits")} (score ${o.minScore}+) from other companies`,
+    `⭐ ${yours.length.toLocaleString()} from your companies${yoursStrong ? ` (${yoursStrong} strong fit)` : ""}`,
+    `🎯 ${plural(strong, "strong fit", "strong fits")} (score ${o.minScore}+) from other companies`,
     `• ${plural(rest, "other match", "other matches")}`,
   ].join("\n");
   const more = o.newJobs.length > MAX_LINES ? `\n…and ${o.newJobs.length - MAX_LINES} more.` : "";
-  return `${head}\n${totals}\n\n<b>${plural(o.newJobs.length, "new job", "new jobs")}</b>\n${breakdown}\n\n${jobLines(o.newJobs, o.minScore, o.now)}${more}\n\n${footer}`;
+  return `${head}\n${totals}\n\n<b>${plural(o.newJobs.length, "new job", "new jobs")}</b>\n${breakdown}\n\n${jobLines(o.newJobs, o.minScore, o.now, o.yours)}${more}\n\n${footer}`;
 }
