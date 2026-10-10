@@ -25,6 +25,13 @@ describe("rebaseDraft", () => {
   });
 });
 
+describe("clearing a Locations section", () => {
+  it("clearing Work style or the only places blocks the step until something is picked again", () => {
+    expect(stepBlocker(STEP.locations, { ...base, office: [], remote: false })).toBe("Pick at least one work style.");
+    expect(stepBlocker(STEP.locations, { ...base, office: ["onsite"], places: [] })).toBe("Add a place you can work from.");
+  });
+});
+
 describe("work style", () => {
   it("round-trips through the config: both kinds save as any, one kind is kept, remote only drops places", () => {
     expect(draftToConfig(base).profile.locations.workplace).toEqual([]);

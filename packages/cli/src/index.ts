@@ -12,6 +12,7 @@ import {
   loadConfig,
   readIndex,
   readResume,
+  deleteResume,
   saveResume,
   saveConfig,
   resetConfig,
@@ -757,6 +758,10 @@ async function cmdSetup(args: string[]): Promise<number> {
       console.log(JSON.stringify(resetConfig()));
       return 0;
     case "resume": {
+      if (positionals[1] === "delete") {
+        console.log(JSON.stringify(deleteResume()));
+        return 0;
+      }
       if (positionals[1] === "save") {
         const body = JSON.parse(await readStdin()) as { text?: string };
         const result = saveResume(body.text ?? "");

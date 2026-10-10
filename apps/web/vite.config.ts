@@ -94,7 +94,7 @@ function suggestions(body: string): Promise<string> {
  *   POST /api/setup/config    validate and save rawjobs.config.local.yaml
  *   POST /api/setup/reset     start setup over: move the config to rawjobs.config.local.backup.yaml
  *   POST /api/setup/check    detect + live-check careers URLs
- *   GET/POST /api/setup/resume  read / save the master resume (profile/resume.md, gitignored)
+ *   GET/POST/DELETE /api/setup/resume  read / save / remove the master resume (profile/resume.md, gitignored)
  *   GET  /api/directory       the shared company directory's local copy (and what's waiting to be shared)
  *   POST /api/directory/update download the latest shared directory and share waiting additions
  *   POST /api/companies/suggest  companies that fit a profile ({ profile?, watched?, hidden? }), with lookalikes of past employers
@@ -132,6 +132,7 @@ function localApi(): Plugin {
           }
           if (url === "/api/setup/resume" && req.method === "GET") return await respondJson(res, ["setup", "resume"]);
           if (url === "/api/setup/resume" && req.method === "POST") return await respondJson(res, ["setup", "resume", "save"], await readBody(req));
+          if (url === "/api/setup/resume" && req.method === "DELETE") return await respondJson(res, ["setup", "resume", "delete"]);
           if (url === "/api/setup/check" && req.method === "POST") return await respondJson(res, ["setup", "check", "--data", dataDir], await readBody(req));
           if (url === "/api/directory" && req.method === "GET") return await respondJson(res, ["directory", "status", "--json", "--data", dataDir]);
           if (url === "/api/directory/update" && req.method === "POST") return await respondJson(res, ["directory", "update", "--json", "--data", dataDir]);
