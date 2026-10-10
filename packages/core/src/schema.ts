@@ -11,7 +11,7 @@ export const ATS_TYPES = [
   "personio",
   "bamboohr",
   "breezy",
-  // Recognised only (no connector yet): found by the careers-page resolver, saved as "coming soon".
+  // Added after the first five; each has a connector now (see connectors/index.ts).
   "successfactors",
   "teamtailor",
   "comeet",
