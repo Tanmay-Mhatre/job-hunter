@@ -25,7 +25,7 @@ pnpm site:dev       # build, then serve it locally with wrangler
 One-time setup, in the repo's **Settings → Secrets and variables → Actions**:
 
 - Secrets: `CLOUDFLARE_API_TOKEN` (a token with **Edit Cloudflare Workers** permission) and `CLOUDFLARE_ACCOUNT_ID`.
-- Variables, optional: `SITE_URL` and `CF_ANALYTICS_TOKEN`.
+- Optional: the `SITE_URL` variable, and `CF_ANALYTICS_TOKEN` as a variable or a secret (it's a public token, so either works).
 
 To deploy without pushing, run the workflow from the Actions tab with **Run workflow**.
 

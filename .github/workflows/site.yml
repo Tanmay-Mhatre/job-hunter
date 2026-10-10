@@ -2,8 +2,8 @@ name: Site
 
 # Builds apps/site and deploys it to Cloudflare (Worker "www", static assets only).
 # Needs two repository secrets: CLOUDFLARE_API_TOKEN (a token with "Edit Cloudflare Workers"
-# permission) and CLOUDFLARE_ACCOUNT_ID. Optional repository variables: SITE_URL (once a custom
-# domain is connected) and CF_ANALYTICS_TOKEN (Cloudflare Web Analytics site token).
+# permission) and CLOUDFLARE_ACCOUNT_ID. Optional: the SITE_URL variable (once a custom domain is
+# connected) and CF_ANALYTICS_TOKEN (Cloudflare Web Analytics site token), as a variable or a secret.
 
 on:
   push:
@@ -43,7 +43,7 @@ jobs:
         run: node apps/site/build.mjs
         env:
           SITE_URL: ${{ vars.SITE_URL }}
-          CF_ANALYTICS_TOKEN: ${{ vars.CF_ANALYTICS_TOKEN }}
+          CF_ANALYTICS_TOKEN: ${{ vars.CF_ANALYTICS_TOKEN || secrets.CF_ANALYTICS_TOKEN }}
       - name: Deploy to Cloudflare
         # Skipped (not failed) until the two Cloudflare secrets are added.
         if: github.event_name != 'pull_request' && env.HAS_CF_TOKEN == 'true'
