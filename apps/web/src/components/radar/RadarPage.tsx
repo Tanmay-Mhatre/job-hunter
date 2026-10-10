@@ -1,6 +1,5 @@
-import { INDUSTRY_BY_ID } from "@rawjobs/core/catalog/industries";
-import { ArrowRight, ArrowUpDown, ChevronDown, Building2, Check, Globe, LoaderCircle, MapPin, Pencil, Plus, Search, SlidersHorizontal, Star, UserRound, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ArrowRight, ArrowUpDown, LoaderCircle, SlidersHorizontal, UserRound, X } from "lucide-react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useOtherJobs, type DataMeta, type Job, type Profile } from "../../lib/data";
 import {
   activeChips,
@@ -10,9 +9,7 @@ import {
   foldCompanies,
   fromQuery,
   groupJobs,
-  INDEX_MAX_AGE_DAYS,
   hasNewTag,
-  REMOTE,
   isNewJob,
   profileFilters,
   profilePlaces,
@@ -22,27 +19,29 @@ import {
   toQuery,
   type Ctx,
   type FacetKey,
-  type FacetOption,
   type FeedRow,
   type Filters,
   type JobGroup,
   type Sort,
 } from "../../lib/filters";
-import { offerWhat, ruleKey, ruleLabel, type HideRule } from "../../lib/notForMe";
+import { offerWhat, type HideRule } from "../../lib/notForMe";
 import type { Prefs, SavedView } from "../../lib/prefs";
 import type { FilterPicks } from "../../lib/profileSync";
-import { displayPlace, postedOrSeen, timeAgo } from "../../lib/format";
+import { postedOrSeen, timeAgo } from "../../lib/format";
 import { newSinceLastVisit } from "../../lib/newSince";
 import { useDensity, useMaxAge } from "../../lib/theme";
 import { load, save } from "../../lib/storage";
 import type { Status, UserState } from "../../lib/userState";
-import { Dialog } from "../Dialog";
 import { JobDetail } from "../JobDetail";
 import { toast } from "../Toast";
-import { Chip, IconButton, Menu, SearchField, Tabs } from "../primitives";
-import { Button, Card, cx } from "../ui";
+import { Chip, SearchField } from "../primitives";
+import { Button, Card } from "../ui";
 import { FacetMenu, OptionList } from "./FacetMenu";
+import { FilterSheet, SheetSection, SORTS, SortOptions } from "./FilterSheet";
 import { JobCard } from "./JobCard";
+import { ageLimit, MoreMenu, MoreToggles } from "./MoreFilters";
+import { ProfileBar } from "./ProfileBar";
+import { ViewsBar } from "./ViewsBar";
 
 type Props = {
   jobs: Job[];
@@ -89,12 +88,6 @@ const EVERYWHERE_KEY = "rawjobs.radar.everywhere";
 const PAGE = 40;
 /** Your companies' freshest roles shown above the list in Best match. */
 const STRIP = 3;
-const SORTS: { value: Sort; label: string }[] = [
-  { value: "best", label: "Best match" },
-  { value: "newest", label: "Newest" },
-  { value: "salary", label: "Highest salary" },
-  { value: "company", label: "Company A–Z" },
-];
 
 /**
  * Filters + sort: from the URL (shareable, Back works), else your own changes if you made any,
@@ -213,7 +206,10 @@ export function RadarPage(p: Props) {
   );
 
   // One list, in the order you picked: your companies are starred and nudged up in Best match, never pinned.
-  const visible = useMemo(() => sortJobs(applyFilters(pool, filters, ctx), sort, p.isYours, now), [pool, filters, ctx, sort, p.isYours, now]);
+  // Typing in search updates the box at once; the list catches up when React has a moment (useDeferredValue).
+  const q = useDeferredValue(filters.q);
+  const listFilters = useMemo(() => (q === filters.q ? filters : { ...filters, q }), [filters, q]);
+  const visible = useMemo(() => sortJobs(applyFilters(pool, listFilters, ctx), sort, p.isYours, now), [pool, listFilters, ctx, sort, p.isYours, now]);
   const groups = useMemo(() => groupJobs(visible), [visible]);
   // One company can't fill the page ("+N more at …"), except in Newest (a plain date order) and when you've
   // picked companies yourself.
@@ -231,12 +227,12 @@ export function RadarPage(p: Props) {
   }, [fold, groups, strip, openCompanies]);
   /** The roles J/K steps through: the strip, then the list's rows, folded ones left out. */
   const navGroups = useMemo(() => [...strip, ...rows.flatMap((r) => (r.kind === "group" ? [r.group] : []))], [strip, rows]);
-  const counts = useMemo(() => facetCounts(pool, filters, ctx), [pool, filters, ctx]);
-  const chips = activeChips(filters, ctx, base);
+  const counts = useMemo(() => facetCounts(pool, listFilters, ctx), [pool, listFilters, ctx]);
+  const chips = useMemo(() => activeChips(filters, ctx, base), [filters, ctx, base]);
   // Postings past your age limit that the other filters would show: "Show older jobs (N)".
   const olderCount = useMemo(
-    () => (filters.showOld ? 0 : applyFilters(pool, { ...filters, showOld: true }, ctx).length - visible.length),
-    [pool, filters, ctx, visible.length],
+    () => (listFilters.showOld ? 0 : applyFilters(pool, { ...listFilters, showOld: true }, ctx).length - visible.length),
+    [pool, listFilters, ctx, visible.length],
   );
 
   // Summary numbers over all matches (not the current filters).
@@ -309,8 +305,15 @@ export function RadarPage(p: Props) {
 
   // ----- keyboard: j/k move, s/a/x status, Enter opens (phones), "/" search -----
   const searchRef = useRef<HTMLInputElement>(null);
+  // One listener for the page's life; it calls the latest handler (props change on every render).
+  const onKeyRef = useRef<(e: KeyboardEvent) => void>(() => {});
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
+    const onKey = (e: KeyboardEvent) => onKeyRef.current(e);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+  useEffect(() => {
+    onKeyRef.current = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (t?.closest?.("input, textarea, select") || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === "/") {
@@ -334,9 +337,7 @@ export function RadarPage(p: Props) {
       else if (e.key === "a") p.onStatus(selected, "applied");
       else if (e.key === "x") p.onStatus(selected, "dismissed");
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [move, selected, wide, p]);
+  });
 
   // ----- jobs you saved or applied to that closed since your last visit: said once per visit -----
   useEffect(() => {
@@ -382,7 +383,7 @@ export function RadarPage(p: Props) {
   /** Seniority, industry, company and keywords: shown on request, so the first row holds the common ones. */
   const [moreFacets, setMoreFacets] = useState(false);
   const facet = (key: FacetKey) => counts[key];
-  const relax = groups.length === 0 ? suggestRelax(pool, filters, ctx) : [];
+  const relax = useMemo(() => (groups.length === 0 ? suggestRelax(pool, listFilters, ctx) : []), [groups.length, pool, listFilters, ctx]);
 
   /** One role's row, in the strip or the list: each role shows once, and J/K moves focus to it. */
   const card = (g: JobGroup) => (
@@ -735,372 +736,6 @@ export function RadarPage(p: Props) {
         </FilterSheet>
       )}
 
-    </div>
-  );
-}
-
-// ---------- views ----------
-
-const BUILT_IN: { id: string; label: string; filters: Partial<Filters>; count: keyof ViewCounts }[] = [
-  { id: "all", label: "All", filters: {}, count: "all" },
-  { id: "mine", label: "My companies", filters: { mine: true }, count: "mine" },
-  { id: "new", label: "New", filters: { status: "new" }, count: "new" },
-  { id: "strong", label: "Strong", filters: { match: "strong" }, count: "strong" },
-  { id: "saved", label: "Saved", filters: { status: "saved" }, count: "saved" },
-  { id: "applied", label: "Applied", filters: { status: "applied" }, count: "applied" },
-];
-type ViewCounts = { all: number; mine: number; new: number; strong: number; saved: number; applied: number };
-
-function ViewsBar(props: {
-  className?: string;
-  /** Your profile's filters: the built-in views start from them. */
-  base: Filters;
-  filters: Filters;
-  sort: Sort;
-  views: SavedView[];
-  counts: ViewCounts;
-  /** First scan: every job would be new, so there's no New view. */
-  hideNew?: boolean;
-  onPick: (f: Filters, s: Sort) => void;
-  onSave: (name: string) => SavedView;
-  onRename: (id: string, name: string) => void;
-  onDelete: (view: SavedView) => void;
-}) {
-  const [naming, setNaming] = useState<{ id?: string; value: string } | null>(null);
-  const matchesView = (f: Filters) => sameFilters(f, props.filters);
-  const builtInActive = BUILT_IN.find((b) => matchesView({ ...props.base, ...b.filters }));
-  const customActive = props.views.find((v) => matchesView(v.filters) && v.sort === props.sort);
-  const submit = () => {
-    if (!naming?.value.trim()) return setNaming(null);
-    if (naming.id) props.onRename(naming.id, naming.value);
-    else props.onSave(naming.value);
-    setNaming(null);
-  };
-
-  /** Something worth saving: not a saved view already, and not just a built-in tab in Best match. */
-  const canSave = !customActive && (!builtInActive || props.sort !== "best");
-  const builtIns = BUILT_IN.filter((b) => !(b.id === "new" && props.hideNew));
-  const tabValue = builtInActive && !customActive ? builtInActive.id : "";
-  return (
-    <div className={cx("flex flex-wrap items-end gap-x-4 gap-y-2 lg:flex-nowrap", props.className)}>
-      {/* design/components/Tabs: views of one list, ink underline. */}
-      <Tabs
-        label="Radar views"
-        idPrefix="view"
-        className="min-w-0 flex-1"
-        value={tabValue}
-        onChange={(id) => {
-          const b = builtIns.find((x) => x.id === id);
-          if (b) props.onPick({ ...props.base, ...b.filters }, props.sort);
-        }}
-        items={builtIns.map((b) => ({ id: b.id, label: b.label, count: props.counts[b.count] }))}
-      />
-      {naming ? (
-        <div className="flex items-center pb-1">
-          <NameInput value={naming.value} onChange={(value) => setNaming({ ...naming, value })} onSubmit={submit} onCancel={() => setNaming(null)} />
-        </div>
-      ) : props.views.length > 0 ? (
-        // Your saved views in one menu, so the row keeps room for the built-in tabs.
-        <div className="flex items-center pb-1">
-          <Menu
-            label="Saved views"
-            align="end"
-            trigger={(t) => (
-              <button type="button" {...t} className={cx("rj-chip max-w-48", customActive && "border-[var(--chip-on-bg)] bg-[var(--chip-on-bg)] text-[var(--chip-on-fg)]")}>
-                <span className="truncate">{customActive ? customActive.name : "Views"}</span>
-                <ChevronDown className="size-3.5 shrink-0" aria-hidden />
-              </button>
-            )}
-            items={[
-              ...props.views.map((v) => ({ id: v.id, label: v.name, onSelect: () => props.onPick(v.filters, v.sort) })),
-              ...(canSave || customActive ? [{ separator: true as const, id: "sep" }] : []),
-              ...(canSave ? [{ id: "save", label: "Save current view…", onSelect: () => setNaming({ value: "" }) }] : []),
-              ...(customActive
-                ? [
-                    { id: "rename", label: `Rename "${customActive.name}"…`, onSelect: () => setNaming({ id: customActive.id, value: customActive.name }) },
-                    { id: "delete", label: `Delete "${customActive.name}"`, danger: true, onSelect: () => props.onDelete(customActive) },
-                  ]
-                : []),
-            ]}
-          />
-        </div>
-      ) : (
-        canSave && (
-          <div className="flex items-center pb-1">
-            <Button size="sm" variant="ghost" onClick={() => setNaming({ value: "" })}>
-              <Plus className="rj-icon" aria-hidden /> Save view
-            </Button>
-          </div>
-        )
-      )}
-    </div>
-  );
-}
-
-function NameInput({ value, onChange, onSubmit, onCancel }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onCancel: () => void }) {
-  return (
-    <span className="inline-flex shrink-0 items-center gap-1">
-      <input
-        autoFocus
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => (e.key === "Enter" ? onSubmit() : e.key === "Escape" && onCancel())}
-        placeholder="Name this view"
-        aria-label="View name"
-        className="h-8 w-40 rounded-md border border-control bg-raised px-2 type-small"
-      />
-      <IconButton label="Save view name" size="sm" onClick={onSubmit}>
-        <Check className="rj-icon" aria-hidden />
-      </IconButton>
-    </span>
-  );
-}
-
-// ---------- "More" filters ----------
-
-/** "3 months", "1 month", "60 days". */
-const ageLimit = (days: number) => (days % 30 === 0 ? (days === 30 ? "1 month" : `${days / 30} months`) : `${days} days`);
-
-function MoreToggles({ filters, setFilters, olderCount, maxAgeDays }: { filters: Filters; setFilters: (p: Partial<Filters>) => void; olderCount: number; maxAgeDays: number }) {
-  const rows: [keyof Filters, string][] = [
-    ["salaryOnly", "Salary listed"],
-    ["hideEvergreen", "No talent pools or reposts"],
-    ...(maxAgeDays ? [["showOld", `Show older jobs${olderCount ? ` (${olderCount})` : ""}: posted over ${ageLimit(maxAgeDays)} ago`] as [keyof Filters, string]] : []),
-    ["showFailed", "Include jobs that failed your filters"],
-    ["showClosed", "Include closed jobs"],
-    ["showHidden", "Include hidden jobs and companies"],
-    ["olderIndex", `Include not-yet-scanned jobs older than ${INDEX_MAX_AGE_DAYS} days`],
-  ];
-  return (
-    <div className="space-y-0.5">
-      {rows.map(([k, label]) => (
-        <label key={k} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 type-small hover:bg-inset">
-          <input type="checkbox" checked={filters[k] as boolean} onChange={(e) => setFilters({ [k]: e.target.checked })} className="size-4 accent-ink" />
-          {label}
-        </label>
-      ))}
-    </div>
-  );
-}
-
-function MoreMenu({
-  filters,
-  setFilters,
-  ats,
-  olderCount,
-  maxAgeDays,
-  hiddenCompanies,
-  onUnhide,
-  hideRules,
-  onRemoveRule,
-}: {
-  filters: Filters;
-  setFilters: (p: Partial<Filters>) => void;
-  ats: FacetOption[];
-  olderCount: number;
-  maxAgeDays: number;
-  hiddenCompanies: string[];
-  onUnhide: (company: string) => void;
-  hideRules: HideRule[];
-  onRemoveRule: (rule: HideRule) => void;
-}) {
-  const extra = [filters.salaryOnly, filters.hideEvergreen, filters.showOld, filters.showFailed, filters.showClosed, filters.showHidden, filters.olderIndex].filter(Boolean).length + filters.ats.length;
-  return (
-    <FacetMenu
-      label={extra ? `More · ${extra}` : "More"}
-      options={ats.length > 1 ? ats : []}
-      optionsLabel="Hiring system"
-      selected={filters.ats}
-      onChange={(v) => setFilters({ ats: v })}
-      footer={
-        <div className="mt-1 border-t border-line pt-1">
-          <MoreToggles filters={filters} setFilters={setFilters} olderCount={olderCount} maxAgeDays={maxAgeDays} />
-          {hiddenCompanies.length > 0 && (
-            <div className="mt-1 border-t border-line px-2 pt-2">
-              <p className="mb-1 type-label">Hidden companies</p>
-              <ul className="space-y-0.5">
-                {hiddenCompanies.map((c) => (
-                  <li key={c} className="flex items-center justify-between type-small">
-                    <span className="truncate">{c}</span>
-                    <Button size="sm" variant="ghost" onClick={() => onUnhide(c)} aria-label={`Show ${c} again`}>
-                      Show
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {hideRules.length > 0 && (
-            <div className="mt-1 border-t border-line px-2 pt-2">
-              <p className="mb-1 type-label">Hidden by your Not interested rules</p>
-              <ul className="space-y-0.5">
-                {hideRules.map((r) => (
-                  <li key={ruleKey(r)} className="flex items-center justify-between gap-2 type-small">
-                    <span className="min-w-0 truncate">{ruleLabel(r)}</span>
-                    <Button size="sm" variant="ghost" onClick={() => onRemoveRule(r)} aria-label={`Show ${offerWhat({ kind: "rule", rule: r })} again`}>
-                      Show
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      }
-    />
-  );
-}
-
-// ---------- phone filter sheet ----------
-
-function FilterSheet({ children, count, onClose, onClear }: { children: ReactNode; count: number; onClose: () => void; onClear: () => void }) {
-  return (
-    <Dialog open onClose={onClose} labelledBy="filter-sheet-title" placement="bottom">
-      <div className="flex max-h-[85dvh] flex-col rounded-t-md border border-line bg-raised shadow-l3 sm:rounded-md">
-        <header className="flex items-center justify-between border-b border-line px-4 py-3">
-          <h2 id="filter-sheet-title" className="type-body font-semibold">
-            Filters
-          </h2>
-          <div className="flex items-center gap-1">
-            <Button size="sm" variant="ghost" onClick={onClear}>
-              Clear all
-            </Button>
-            <IconButton label="Close" onClick={onClose}>
-              <X className="size-4" />
-            </IconButton>
-          </div>
-        </header>
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">{children}</div>
-        <footer className="border-t border-line p-3">
-          <Button variant="primary" className="w-full" onClick={onClose}>
-            Show {count} {count === 1 ? "job" : "jobs"}
-          </Button>
-        </footer>
-      </div>
-    </Dialog>
-  );
-}
-
-/** The sort choices in the phone filter sheet: one always picked, styled like the single-choice filters. */
-function SortOptions({ sort, onChange }: { sort: Sort; onChange: (s: Sort) => void }) {
-  return (
-    <ul>
-      {SORTS.map((s) => {
-        const on = s.value === sort;
-        return (
-          <li key={s.value}>
-            <button
-              type="button"
-              aria-pressed={on}
-              onClick={() => onChange(s.value)}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left type-small hover:bg-inset"
-            >
-              <span className={cx("flex size-4 shrink-0 items-center justify-center rounded-dot border", on ? "border-ink bg-ink text-raised" : "border-control")}>
-                {on && <Check className="size-3" />}
-              </span>
-              {s.label}
-            </button>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-function SheetSection({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <section>
-      <h3 className="mb-1 type-label">{label}</h3>
-      {children}
-    </section>
-  );
-}
-
-// ---------- your profile ----------
-
-/**
- * What your profile searches for, always visible, with Edit. When the place or industry filters
- * differ from it: Reset, or Save to my profile (updates Settings and rescans).
- */
-function ProfileBar({
-  profile,
-  placeFilter,
-  everywhere,
-  onEverywhere,
-  changed,
-  onEdit,
-  onReset,
-  onSave,
-}: {
-  profile: Profile;
-  /** The place filter your profile puts on the Radar ("Germany", "Remote"). */
-  placeFilter: string[];
-  /** "Show everywhere" is on: the place filter is off. */
-  everywhere: boolean;
-  onEverywhere: (on: boolean) => void;
-  changed: boolean;
-  onEdit: () => void;
-  onReset: () => void;
-  onSave?: () => Promise<string | null>;
-}) {
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const regions = profile.locations.remote_ok.filter((r) => r !== "remote");
-  // The places you actually picked ("Berlin"), not the countries we filter by.
-  const yourPlaces = profile.locations.include.map(displayPlace);
-  const parts = [
-    profile.titles.include.slice(0, 3).join(", ") + (profile.titles.include.length > 3 ? ` +${profile.titles.include.length - 3}` : ""),
-    yourPlaces.length ? yourPlaces.slice(0, 4).join(", ") + (yourPlaces.length > 4 ? ` +${yourPlaces.length - 4}` : "") : null,
-    profile.locations.remote_ok.length ? (regions.length ? `Remote in ${regions.slice(0, 3).map((r) => (r.length <= 4 ? r.toUpperCase() : displayPlace(r))).join(", ")}` : "Remote") : null,
-    profile.industries.length ? profile.industries.map((i) => INDUSTRY_BY_ID.get(i)?.label ?? i).join(", ") : null,
-  ].filter(Boolean);
-
-  const save = async () => {
-    if (!onSave) return;
-    setSaving(true);
-    setError(null);
-    const err = await onSave();
-    setSaving(false);
-    setError(err);
-  };
-
-  const places = placeFilter.map((c) => (c === REMOTE ? "Remote" : displayPlace(c))).join(", ");
-  return (
-    <div className={cx("rounded-md border px-3 py-2 type-small", changed ? "border-warning bg-warning-subtle" : "border-line bg-raised")}>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <UserRound className="rj-icon hidden text-muted sm:block" aria-hidden />
-        {/* One line: what your profile searches for, truncated; the full text is in Settings. On phones the
-            buttons wrap below it. */}
-        <p className="min-w-0 basis-full truncate sm:flex-1 sm:basis-0" title={parts.join(" · ")}>
-          <span className="font-medium">Your profile:</span> <span className="text-muted">{parts.join(" · ")}</span>
-        </p>
-        {placeFilter.length > 0 && !changed && (
-          <Button size="sm" variant="ghost" className="shrink-0" onClick={() => onEverywhere(!everywhere)} title={everywhere ? "Showing jobs everywhere" : `Showing your places: ${places}`}>
-            {everywhere ? <MapPin className="rj-icon" aria-hidden /> : <Globe className="rj-icon" aria-hidden />}
-            {everywhere ? "Only my places" : "Show everywhere"}
-          </Button>
-        )}
-        <Button size="sm" variant="ghost" className="shrink-0" onClick={onEdit}>
-          <Pencil className="rj-icon" aria-hidden /> Edit
-        </Button>
-      </div>
-      {changed && (
-        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-hairline pt-2">
-          <p className="min-w-0 flex-1 type-small text-ink">
-            Your place filters differ from your profile. This only changes what you see here; your scans and alerts still use your profile.
-          </p>
-          <Button size="sm" variant="ghost" onClick={onReset} disabled={saving}>
-            Reset to my profile
-          </Button>
-          {onSave && (
-            <Button size="sm" variant="primary" onClick={() => void save()} disabled={saving}>
-              {saving ? <LoaderCircle className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
-              {saving ? "Saving…" : "Save to my profile"}
-            </Button>
-          )}
-        </div>
-      )}
-      {error && <p className="mt-1.5 type-small text-danger-text">{error}</p>}
     </div>
   );
 }
