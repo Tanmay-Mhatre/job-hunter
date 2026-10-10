@@ -168,14 +168,27 @@ const SCREENS: Screen[] = [
     },
   },
   {
-    id: "radar-not-interested",
+    id: "radar-not-interested-short",
     viewportOnly: true,
-    what: "Radar after X on the first row and Too senior: the reasons toast offers the matching rule",
+    what: "Radar right after X on the first row: one line with Why? and Undo",
     scenario: "demo",
     hash: "#radar",
     ready: strong,
     act: async (page) => {
       await page.locator("li.rj-row").first().getByRole("button", { name: "Not interested" }).click();
+      await page.getByRole("button", { name: "Why?" }).waitFor();
+    },
+  },
+  {
+    id: "radar-not-interested",
+    viewportOnly: true,
+    what: "Radar after X on the first row, Why? and Too senior: the reasons toast offers the matching rule",
+    scenario: "demo",
+    hash: "#radar",
+    ready: strong,
+    act: async (page) => {
+      await page.locator("li.rj-row").first().getByRole("button", { name: "Not interested" }).click();
+      await page.getByRole("button", { name: "Why?" }).click();
       await page.getByRole("button", { name: "Too senior" }).click();
       await page.getByText(/^Hide all /).waitFor();
     },

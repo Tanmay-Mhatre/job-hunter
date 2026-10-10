@@ -76,16 +76,28 @@ export function useNotForMeApi(o: {
   return useMemo(() => ({ entryOf, setReason, restore, isOn, apply, undo, askWhy }), [entryOf, setReason, restore, isOn, apply, undo, askWhy]);
 }
 
-/** The toast after X: what happened, Undo, and the reasons. */
+/** The toast after X: what happened, Undo, and a one-line "Why?" that opens the reasons (so it stays short on phones). */
 function WhyToast({ job, prev, onDone }: { job: Job; prev?: Status; onDone: () => void }) {
   const api = useNotForMe();
+  const [open, setOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // Opening moves focus to the first reason, so keyboard and screen reader users land in the list.
+    if (open) pickerRef.current?.querySelector<HTMLElement>("button")?.focus();
+  }, [open]);
   if (!api) return null;
   return (
     <div className="grid gap-2">
       <p className="flex items-start gap-2">
-        <span className="min-w-0 flex-1 pt-1">
+        {/* Two lines at most, so a long title never makes the toast tall; the full title is in the label. */}
+        <span className="line-clamp-2 min-w-0 flex-1 pt-1" title={`${job.title}, ${job.company}`}>
           Not interested: <b className="font-medium">{job.title}</b>, {job.company}.
         </span>
+        {!open && (
+          <Button size="sm" variant="quiet" className="shrink-0" aria-expanded={false} onClick={() => setOpen(true)}>
+            Why?
+          </Button>
+        )}
         <Button
           size="sm"
           variant="quiet"
@@ -98,7 +110,11 @@ function WhyToast({ job, prev, onDone }: { job: Job; prev?: Status; onDone: () =
           Undo
         </Button>
       </p>
-      <ReasonPicker job={job} label="Why? Optional." />
+      {open && (
+        <div ref={pickerRef}>
+          <ReasonPicker job={job} label="Why? Optional." />
+        </div>
+      )}
     </div>
   );
 }

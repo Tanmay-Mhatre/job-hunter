@@ -155,6 +155,7 @@ describe("Not interested, with a reason", () => {
     expect(last.user.a?.status).toBe("dismissed");
     expect(last.user.a?.reason).toBeUndefined();
     expect(screen.getByRole("status").textContent).toContain("Not interested: Senior Product Manager, Acme.");
+    await u.click(screen.getByRole("button", { name: "Why?" }));
     await u.click(screen.getByRole("button", { name: "Not my field" }));
     expect(last.user.a?.reason).toBe("field");
     expect(screen.getByRole("status").textContent).toContain("Noted. This helps tune your matches later.");
@@ -164,6 +165,7 @@ describe("Not interested, with a reason", () => {
   it("offers a rule, applies it on one tap, says what changed, and undoes it", async () => {
     const { last, u } = setup();
     await u.click(screen.getByRole("button", { name: "Not interested" }));
+    await u.click(screen.getByRole("button", { name: "Why?" }));
     await u.click(screen.getByRole("button", { name: "Too senior" }));
     expect(last.user.a?.reason).toBe("too-senior");
     expect(screen.getByRole("status").textContent).toContain("Hide all senior roles?");
@@ -179,6 +181,15 @@ describe("Not interested, with a reason", () => {
     expect(screen.getByRole("status").textContent).toContain("Showing senior roles again.");
   });
 
+  it("keeps the toast to one line until you ask why, then focuses the first reason", async () => {
+    const { u } = setup();
+    await u.click(screen.getByRole("button", { name: "Not interested" }));
+    expect(screen.queryByRole("button", { name: "Too senior" })).toBeNull();
+    await u.click(screen.getByRole("button", { name: "Why?" }));
+    expect(screen.queryByRole("button", { name: "Why?" })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Too senior" }));
+  });
+
   it("Undo on the toast puts the job back", async () => {
     const { last, u } = setup();
     await u.click(screen.getByRole("button", { name: "Not interested" }));
@@ -189,6 +200,7 @@ describe("Not interested, with a reason", () => {
   it("drops the reason when the job moves to another status", async () => {
     const { last, u } = setup();
     await u.click(screen.getByRole("button", { name: "Not interested" }));
+    await u.click(screen.getByRole("button", { name: "Why?" }));
     await u.click(screen.getByRole("button", { name: "Other" }));
     expect(last.user.a?.reason).toBe("other");
     await u.click(screen.getByRole("button", { name: "Not interested" }));
