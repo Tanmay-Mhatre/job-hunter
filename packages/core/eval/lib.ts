@@ -26,7 +26,7 @@ export type EvalJob = {
   /** Missing on title-only postings, like estimated index jobs. */
   description?: string;
 };
-export type Label = { label: number; why: string; by: "draft" | "user" };
+export type Label = { label: number; why: string; by: "draft" | "reconciled" | "user" };
 export type EvalSet = { profiles: EvalProfile[]; jobs: EvalJob[]; labels: Record<string, Record<string, Label>> };
 
 export function loadSet(dir = EVAL_DIR): EvalSet {
@@ -62,7 +62,7 @@ export function problems(set: EvalSet): string[] {
       else {
         if (!Number.isInteger(l.label) || l.label < 0 || l.label > 4) out.push(`${p.id}/${j.id}: label must be 0..4`);
         if (!l.why?.trim()) out.push(`${p.id}/${j.id}: no why`);
-        if (l.by !== "draft" && l.by !== "user") out.push(`${p.id}/${j.id}: by must be draft or user`);
+        if (l.by !== "draft" && l.by !== "reconciled" && l.by !== "user") out.push(`${p.id}/${j.id}: by must be draft, reconciled or user`);
       }
     }
     for (const id of Object.keys(mine)) if (!ids.has(id)) out.push(`${p.id}/${id}: no such job`);

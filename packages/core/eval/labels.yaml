@@ -1,14 +1,50 @@
 # Relevance labels: one per profile x posting pair.
 #
-# Rubric (judge from the profile's `about` and the posting; never from the scorer's output):
+# Rubric (judge from the profile's `about` and the full posting; never from the scorer's output).
+# The question behind every label: would this person, triaging their inbox, apply?
 #   4 Strong   would apply today: meets the must-haves, right level, no dealbreaker.
-#   3 Good     worth applying: minor gaps (a nice-to-have, one level off, adjacent domain).
-#   2 Stretch  plausible but real gaps (missing a must-have, two levels off, new domain).
-#   1 Poor     same field but clearly wrong (wrong specialisation, far level, keyword match only).
-#   0 No       not relevant, or a dealbreaker (different job, visa / location / salary blocker).
-# Unknowns (no description, no salary) are judged on what is known, not counted as failures.
+#   3 Good     worth applying: minor gaps only (a nice-to-have, one level below, adjacent domain, a key unknown).
+#   2 Stretch  plausible but a real gap (a missing must-have, new domain, one level up without its must-haves).
+#   1 Poor     same field but clearly wrong (domain-locked or wrong specialisation, far level, two real gaps).
+#   0 No       not relevant, or a dealbreaker (different job, a stated dealbreaker, visa / location / salary blocker).
 #
-# by: draft = labelled by Claude from the rubric; by: user = confirmed or corrected by a person.
+# Tie-break rules, applied in order. Each fact gives a cap; the label is the lowest cap.
+#   1. Dealbreakers -> 0. Anything the candidate lists as a dealbreaker, including a specialisation
+#      (frontend, marketing-only design, credit risk, AP/AR, insurance sales, operations, agency, junior),
+#      a location or relocation they rule out, and "no sponsorship" for someone who needs it.
+#   2. Different job -> 0. The day-to-day work is another profession and the candidate's core skills aren't
+#      what it uses, whatever the title words or industry share (an IT business analyst for an FP&A analyst).
+#   3. Salary, base and same period, against the stated floor, using the top of the range:
+#        top >= floor (above or straddling)        no gap
+#        top below the floor by up to 5%           real gap (cap 2): negotiable at a stretch
+#        top below the floor by more than 5%       blocker (0)
+#        no salary stated                          no gap; judged on the rest
+#   4. Unknowns cap, they don't subtract, and they don't stack:
+#        title-only posting (no description)       cap 3: the must-haves can't be checked; lower if the title
+#                                                  itself shows a gap
+#        sponsorship not stated or only "for exceptional candidates", for someone who needs it   cap 3
+#        a requirement the candidate's `about` doesn't mention (e.g. a language)  counts as not met
+#   5. Level, on the ladder junior < mid < senior < lead/staff < director/principal:
+#        the candidate's level or their stated next step, with the must-haves met    no gap
+#        one level below                           minor gap (cap 3); junior when ruled out -> 0
+#        one level up that they aren't ready for, missing its level-defining must-haves
+#        (years, staff scope, people management)   real gap (cap 2)
+#        two or more levels away, or required years at least double theirs           far (cap 1)
+#      Years: having at least two-thirds of a stated minimum is no gap at the right level; the
+#      requirements that define a level gap are that one gap, not extra gaps.
+#   6. Function and domain:
+#        same job, adjacent domain (knowledge transfers, domain only nice-to-have)  minor (cap 3)
+#        same job, new domain where domain knowledge is a must-have                 real gap (cap 2)
+#        same job, but the domain is locked in as required years or a network in it  wrong specialisation (cap 1)
+#        adjacent function (product owner vs PM, partnerships vs AE, UX research vs product design,
+#        DevOps/SRE vs platform): same work under another name -> no gap; must-haves accept the
+#        candidate's function -> minor (cap 3); must-haves need years in the other function that the
+#        candidate has only done in part -> real gap (cap 2); not at all -> cap 1
+#   7. Combining: any number of minor gaps stays 3 (three or more -> 2); two real gaps -> 1.
+#      A partly met must-have is a minor gap; an unmet one is a real gap.
+#
+# by: draft = labelled by Claude from the first rubric; by: reconciled = re-labelled under the rules above after
+# comparing with a blind second labeller; by: user = confirmed or corrected by a person.
 
 fintech-pm:
   ml-01: { label: 0, why: "Different job (data science / ML).", by: draft }
@@ -42,23 +78,23 @@ fintech-pm:
   fin-06: { label: 0, why: "Business analyst on a banking IT project: different job, and in Singapore.", by: draft }
   fin-07: { label: 0, why: "Different job (finance).", by: draft }
   fin-08: { label: 0, why: "Different job (finance).", by: draft }
-  pm-01: { label: 4, why: "Senior PM for card payments in London hybrid, GBP 100-120k; her exact domain and level.", by: draft }
-  pm-02: { label: 2, why: "Right domain but a level down (2-4 years) and GBP 70-85k is under her 95k floor.", by: draft }
-  pm-03: { label: 1, why: "Director leading six PMs, needs 5+ years managing PMs; she has never managed PMs.", by: draft }
-  pm-04: { label: 0, why: "Associate (entry) programme at GBP 48-55k: junior roles are a dealbreaker.", by: draft }
-  pm-05: { label: 0, why: "On-site in Amsterdam, must already live in NL, no relocation: dealbreaker.", by: draft }
-  pm-06: { label: 0, why: "Payments operations, not product management: dealbreaker despite the payments words.", by: draft }
-  pm-07: { label: 3, why: "Product Owner for open banking APIs and pay-by-bank, London, GBP 90-105k; adjacent title, bank setting.", by: draft }
-  pm-08: { label: 4, why: "Lead PM on card routing and 3DS, remote EMEA; her gateway background and next level.", by: draft }
-  pm-09: { label: 3, why: "Title only: Senior PM at a London payments company; nothing known against it.", by: draft }
-  pm-10: { label: 1, why: "Senior PM in ad measurement: right level, wrong domain entirely.", by: draft }
-  pm-11: { label: 0, why: "KYC and onboarding is her domain, but GBP 60-72k is far under her 95k floor.", by: draft }
+  pm-01: { label: 4, why: "Senior PM for card acceptance, payouts, 3DS and disputes, London hybrid, GBP 100-120k; her domain and level, must-haves met.", by: reconciled }
+  pm-02: { label: 0, why: "GBP 70-85k tops out 11% under her 95k floor (salary blocker); also a mid-level role reporting to a Senior PM.", by: reconciled }
+  pm-03: { label: 1, why: "Director leading six PMs: two levels up, 12+ years and 5+ years managing PMs; she has never managed PMs.", by: reconciled }
+  pm-04: { label: 0, why: "Associate PM programme for 0-2 years: junior roles are her dealbreaker.", by: reconciled }
+  pm-05: { label: 0, why: "On-site in Amsterdam, must already live in NL, no relocation: on-site outside the UK is her dealbreaker.", by: reconciled }
+  pm-06: { label: 0, why: "Payments operations specialist, not product management: operations roles are her dealbreaker.", by: reconciled }
+  pm-07: { label: 3, why: "Product Owner (same job) for open banking and pay-by-bank, London hybrid, GBP 90-105k straddles the floor; PSD2 met via 3DS/SCA, UK open banking standards only partly (adjacent domain).", by: reconciled }
+  pm-08: { label: 4, why: "Lead PM on card routing, 3DS and gateways, remote EMEA; Lead is her stated next step and she meets the must-haves; salary unknown.", by: reconciled }
+  pm-09: { label: 3, why: "Title only: Senior PM at a London payments company, hybrid; fits on what's known, must-haves unseen (cap 3).", by: reconciled }
+  pm-10: { label: 2, why: "Right level, London hybrid, GBP 95-110k, but adtech is a new domain and 'understanding of digital advertising and attribution' is a must-have she lacks.", by: reconciled }
+  pm-11: { label: 0, why: "KYC/onboarding is her domain, but GBP 60-72k tops out 24% under her 95k floor: salary blocker.", by: reconciled }
   ae-01: { label: 0, why: "Different job (B2B sales).", by: draft }
   ae-02: { label: 0, why: "Different job (B2B sales).", by: draft }
   ae-03: { label: 0, why: "Different job (B2B sales).", by: draft }
   ae-04: { label: 0, why: "Different job (B2B sales).", by: draft }
   ae-05: { label: 0, why: "Different job (B2B sales).", by: draft }
-  ae-06: { label: 0, why: "Partnerships sales at a payments company: payments words, but not product management.", by: draft }
+  ae-06: { label: 0, why: "Partnerships sales in Dubai: a different job, and outside the UK.", by: reconciled }
   ae-07: { label: 0, why: "Different job (B2B sales).", by: draft }
 
 platform-eng:
@@ -76,15 +112,15 @@ platform-eng:
   des-05: { label: 0, why: "Different job (product design).", by: draft }
   des-06: { label: 0, why: "Different job (product design).", by: draft }
   des-07: { label: 0, why: "Different job (product design).", by: draft }
-  eng-01: { label: 4, why: "Senior platform role on EKS, Go, Terraform, Postgres in Berlin, EUR 90-110k; his exact stack.", by: draft }
-  eng-02: { label: 2, why: "Same team a level down (2+ years) and EUR 65-78k is under his 85k floor.", by: draft }
-  eng-03: { label: 2, why: "Staff: wants 10+ years and multi-team leadership; he has 6 years and none.", by: draft }
-  eng-04: { label: 4, why: "Senior SRE, k8s, Golang, PostgreSQL, remote Europe, EUR 85-100k; same work under other names.", by: draft }
-  eng-05: { label: 0, why: "React/TypeScript canvas editor: a frontend role, his dealbreaker; Go/Kubernetes are only boilerplate.", by: draft }
-  eng-06: { label: 2, why: "Senior backend in Berlin but Java/Spring and German B2 required; a retrain, not his stack.", by: draft }
-  eng-07: { label: 0, why: "Remote but US residents only, no sponsorship: he's in Berlin.", by: draft }
-  eng-08: { label: 3, why: "Title only: Senior Backend Engineer, remote EMEA; backend rather than platform, otherwise fits.", by: draft }
-  eng-09: { label: 4, why: "DevOps title, but Kubernetes, Terraform, Argo CD, AWS, Postgres, Go in Berlin at EUR 82-96k.", by: draft }
+  eng-01: { label: 4, why: "Senior platform on EKS, Go, Terraform, Postgres, Prometheus/Grafana, Berlin hybrid, EUR 90-110k: his exact stack and level.", by: reconciled }
+  eng-02: { label: 0, why: "EUR 65-78k tops out 8% under his 85k floor (more than 5%: salary blocker); also a level down (2+ years).", by: reconciled }
+  eng-03: { label: 2, why: "Staff, one level up, but lacks the level-defining must-haves: 10+ years with 4 at staff (he has 6) and multi-team leadership.", by: reconciled }
+  eng-04: { label: 4, why: "Senior SRE: k8s, Golang, PostgreSQL ops, remote Europe, EUR 85-100k, fair on-call; GKE/Pulumi vs EKS/Terraform is only a nice-to-have gap.", by: reconciled }
+  eng-05: { label: 0, why: "React/TypeScript canvas editor: a frontend role, his dealbreaker; the Go/Kubernetes mentions are about other teams.", by: reconciled }
+  eng-06: { label: 1, why: "Two real gaps: 5+ years Java/Spring (his own 'stretch') and German B2 for a team that works in German, which his profile doesn't show.", by: reconciled }
+  eng-07: { label: 0, why: "Remote for US residents only, no sponsorship: US-only remote is his dealbreaker.", by: reconciled }
+  eng-08: { label: 3, why: "Title only: Senior Backend Engineer, remote EMEA; backend is part of his record, but must-haves unseen (cap 3).", by: reconciled }
+  eng-09: { label: 4, why: "DevOps title, same work: Kubernetes on AWS, Terraform, Argo CD, Postgres, Go, Berlin hybrid, EUR 82-96k straddles the floor.", by: reconciled }
   fin-01: { label: 0, why: "Different job (finance).", by: draft }
   fin-02: { label: 0, why: "Different job (finance).", by: draft }
   fin-03: { label: 0, why: "Different job (finance).", by: draft }
@@ -113,13 +149,13 @@ platform-eng:
   ae-07: { label: 0, why: "Different job (B2B sales).", by: draft }
 
 ml-ds:
-  ml-01: { label: 4, why: "Senior DS on clinical NLP, NYC hybrid, sponsors H-1B, USD 165-190k; matches her NLP years exactly.", by: draft }
-  ml-02: { label: 3, why: "Experimentation DS in NYC fits her first job; USD 140-160k straddles her floor, sponsorship not stated.", by: draft }
-  ml-03: { label: 0, why: "LLM work she'd like, but no visa sponsorship: dealbreaker.", by: draft }
-  ml-04: { label: 2, why: "Sponsors and pays well, but production ranking/recsys engineering is outside her experience.", by: draft }
-  ml-05: { label: 1, why: "Staff scientist: PhD, 10+ years and leading a team; she has 4 years and an MS.", by: draft }
-  ml-06: { label: 3, why: "Title only: ML Scientist in NYC; sponsorship and salary unknown.", by: draft }
-  ml-07: { label: 2, why: "Senior DS at her level, but credit risk and model governance are a new domain; sponsorship only maybe.", by: draft }
+  ml-01: { label: 4, why: "Senior DS on clinical NLP, NYC hybrid, sponsors H-1B, USD 165-190k; 4+ years with 2 in NLP is exactly her record.", by: reconciled }
+  ml-02: { label: 3, why: "Experimentation DS fits her work, NYC hybrid, USD 140-160k straddles the floor; sponsorship not stated, which she needs (cap 3).", by: reconciled }
+  ml-03: { label: 0, why: "LLM/retrieval work she'd like, but explicitly no visa sponsorship: dealbreaker.", by: reconciled }
+  ml-04: { label: 2, why: "Sponsors, pays well, NYC; but an ML engineering role needing 4+ years building production ML and recsys/ranking, which she has only partly (retrieval, shipped with MLE help).", by: reconciled }
+  ml-05: { label: 1, why: "Staff Applied Scientist leading four: PhD, 10+ years post-PhD and publications required; she has an MS and 4 years (far level).", by: reconciled }
+  ml-06: { label: 3, why: "Title only: ML Scientist in NYC; must-haves, salary and sponsorship all unknown (cap 3; unknowns don't stack).", by: reconciled }
+  ml-07: { label: 2, why: "Senior DS at her level, but credit risk, model governance and bureau/fair-lending knowledge are must-haves she lacks; sponsorship only conditional.", by: reconciled }
   des-01: { label: 0, why: "Different job (product design).", by: draft }
   des-02: { label: 0, why: "Different job (product design).", by: draft }
   des-03: { label: 0, why: "Different job (product design).", by: draft }
@@ -171,13 +207,13 @@ product-designer:
   ml-05: { label: 0, why: "Different job (data science / ML).", by: draft }
   ml-06: { label: 0, why: "Different job (data science / ML).", by: draft }
   ml-07: { label: 0, why: "Different job (data science / ML).", by: draft }
-  des-01: { label: 4, why: "Senior PD on B2B data dashboards, remote Europe, EUR 70-85k, design systems and research.", by: draft }
-  des-02: { label: 2, why: "Same company a level down (2+ years) and EUR 45-55k is under her 60k floor.", by: draft }
-  des-03: { label: 4, why: "IC lead of a design system in Lisbon, EUR 75-90k; exactly what she did, title one step up.", by: draft }
-  des-04: { label: 0, why: "Marketing website and landing pages for growth marketing: her marketing-only dealbreaker.", by: draft }
-  des-05: { label: 0, why: "Agency, on-site, EUR 40-48k: agency roles and the salary are both dealbreakers.", by: draft }
-  des-06: { label: 2, why: "UX researcher: she does research, but it's a different job from product design.", by: draft }
-  des-07: { label: 2, why: "Interaction design in Lisbon, but in-car HMI needs hardware/automotive experience she lacks.", by: draft }
+  des-01: { label: 4, why: "Senior PD on B2B data dashboards, remote Europe, EUR 70-85k; design system, own research, Figma: every must-have met.", by: reconciled }
+  des-02: { label: 0, why: "EUR 45-55k tops out 8% under her 60k floor (more than 5%: salary blocker); also a mid-level role under a Senior PD.", by: reconciled }
+  des-03: { label: 4, why: "Lead PD owning a design system as an IC, Lisbon hybrid, EUR 75-90k; 2+ years running a design system is exactly her record.", by: reconciled }
+  des-04: { label: 0, why: "Marketing website and campaign pages for Growth Marketing: marketing-only design is her dealbreaker.", by: reconciled }
+  des-05: { label: 0, why: "Digital agency, on-site: agency roles are her dealbreaker (EUR 40-48k is also far under the floor).", by: reconciled }
+  des-06: { label: 2, why: "UX researcher: an adjacent function; she runs research as a designer but lacks the required 5+ years dedicated research. Design background is a plus there.", by: reconciled }
+  des-07: { label: 2, why: "Lisbon on-site is fine and EUR 55-65k straddles the floor, but hardware/automotive screen experience is a must-have she lacks.", by: reconciled }
   eng-01: { label: 0, why: "Different job (software engineering).", by: draft }
   eng-02: { label: 0, why: "Different job (software engineering).", by: draft }
   eng-03: { label: 0, why: "Different job (software engineering).", by: draft }
@@ -257,13 +293,13 @@ b2b-ae:
   pm-09: { label: 0, why: "Different job (product management).", by: draft }
   pm-10: { label: 0, why: "Different job (product management).", by: draft }
   pm-11: { label: 0, why: "Different job (product management).", by: draft }
-  ae-01: { label: 4, why: "Senior mid-market AE selling HR SaaS in UAE/KSA, AED 28-32k base; his exact role, next level.", by: draft }
-  ae-02: { label: 0, why: "SMB AE at AED 15-18k base, far under his 25k floor, and a step back.", by: draft }
-  ae-03: { label: 1, why: "BDM selling construction chemicals: B2B sales but not SaaS, different buyers and product.", by: draft }
-  ae-04: { label: 0, why: "Motor insurance account manager, AED 12-15k: insurance sales is a dealbreaker.", by: draft }
-  ae-05: { label: 3, why: "Title only: Senior AE at a SaaS company in Dubai; nothing known against it.", by: draft }
-  ae-06: { label: 2, why: "Channel partnerships in GCC payments: adjacent to direct sales, new domain.", by: draft }
-  ae-07: { label: 0, why: "Must relocate to Riyadh full-time; he won't relocate, and it wants 7+ years enterprise.", by: draft }
+  ae-01: { label: 4, why: "Senior mid-market AE selling HR/payroll SaaS in UAE/KSA, Dubai hybrid, AED 28-32k base over the 25k floor; his work at his stated next level.", by: reconciled }
+  ae-02: { label: 0, why: "SMB AE for 1-2 year sellers; base AED 15-18k tops out 28% under the 25k floor (salary blocker), and a step down.", by: reconciled }
+  ae-03: { label: 1, why: "B2B sales, but must-haves are 5+ years in construction chemicals and a contractor network: domain-locked, his SaaS years don't count.", by: reconciled }
+  ae-04: { label: 0, why: "Motor insurance account manager: insurance sales is his dealbreaker (and AED 12-15k is far under the floor).", by: reconciled }
+  ae-05: { label: 3, why: "Title only: Senior AE at a SaaS company, Dubai hybrid; title, level and place fit but must-haves can't be checked (cap 3).", by: reconciled }
+  ae-06: { label: 3, why: "Partnerships is an adjacent function, but the must-haves accept 5+ years B2B sales, which he has; Dubai hybrid, AED 30-35k; GCC tech-partner network only partly there.", by: reconciled }
+  ae-07: { label: 0, why: "Must be based in Riyadh full time; he won't relocate (dealbreaker). Also 7+ years enterprise asked.", by: reconciled }
 
 finance-analyst:
   ml-01: { label: 0, why: "Different job (data science / ML).", by: draft }
@@ -289,14 +325,14 @@ finance-analyst:
   eng-07: { label: 0, why: "Different job (software engineering).", by: draft }
   eng-08: { label: 0, why: "Different job (software engineering).", by: draft }
   eng-09: { label: 0, why: "Different job (software engineering).", by: draft }
-  fin-01: { label: 4, why: "Senior FP&A at an e-commerce marketplace in Singapore, SGD 7-9k; exactly her work and next step.", by: draft }
-  fin-02: { label: 2, why: "FP&A support role with 1-2 years asked, and SGD 5-6k is under her 6.5k floor.", by: draft }
-  fin-03: { label: 4, why: "Strategic finance (FP&A) at SaaS, remote APAC, forecasts, budgets, SQL; salary unknown.", by: draft }
-  fin-04: { label: 0, why: "Credit risk and IFRS 9 provisioning: credit/lending risk is her dealbreaker.", by: draft }
-  fin-05: { label: 0, why: "AP/AR operations at SGD 3.8-4.5k: payables/receivables work is her dealbreaker.", by: draft }
-  fin-06: { label: 1, why: "IT business analyst on a core banking migration: the title matches, the job doesn't.", by: draft }
-  fin-07: { label: 3, why: "Title only: Senior Financial Analyst at a SaaS company in Singapore.", by: draft }
-  fin-08: { label: 1, why: "Finance Manager leading three analysts, 7+ years and CA/CPA/CFA; far above her level.", by: draft }
+  fin-01: { label: 4, why: "Senior FP&A at an e-commerce marketplace, Singapore hybrid, SGD 7-9k over the floor; forecasts, budget, unit economics, board pack, SQL: her work, next level.", by: reconciled }
+  fin-02: { label: 0, why: "SGD 5-6k tops out 8% under her 6.5k floor (more than 5%: salary blocker); also a 1-2 year support role.", by: reconciled }
+  fin-03: { label: 4, why: "Strategic finance/FP&A at SaaS, remote APAC, 2-5 years, modelling and SQL: meets every must-have; salary unknown, not counted against.", by: reconciled }
+  fin-04: { label: 0, why: "Credit risk and IFRS 9 provisioning: credit/lending risk is her stated dealbreaker.", by: reconciled }
+  fin-05: { label: 0, why: "AP/AR finance operations: her stated dealbreaker (and SGD 3.8-4.5k is far under the floor).", by: reconciled }
+  fin-06: { label: 0, why: "Core-banking IT business analyst (requirements, UAT, BPMN, 5+ years BA): a different job from FP&A; only the title word matches.", by: reconciled }
+  fin-07: { label: 3, why: "Title only: Senior Financial Analyst at a SaaS company, Singapore hybrid; fits on what's known, must-haves unseen (cap 3).", by: reconciled }
+  fin-08: { label: 1, why: "Finance Manager leading three analysts: two levels up, 7+ years (she has 3), people management and CA/CPA/CFA all missing.", by: reconciled }
   pm-01: { label: 0, why: "Different job (product management).", by: draft }
   pm-02: { label: 0, why: "Different job (product management).", by: draft }
   pm-03: { label: 0, why: "Different job (product management).", by: draft }
