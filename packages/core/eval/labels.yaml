@@ -86,7 +86,7 @@ fintech-pm:
   pm-04: { label: 0, why: "Associate PM programme for 0-2 years: junior roles are her dealbreaker.", by: reconciled }
   pm-05: { label: 0, why: "On-site in Amsterdam, must already live in NL, no relocation: on-site outside the UK is her dealbreaker.", by: reconciled }
   pm-06: { label: 0, why: "Payments operations specialist, not product management: operations roles are her dealbreaker.", by: reconciled }
-  pm-07: { label: 3, why: "Product Owner (same job) for open banking and pay-by-bank, London hybrid, GBP 90-105k straddles the floor; PSD2 met via 3DS/SCA, UK open banking standards only partly (adjacent domain).", by: reconciled }
+  pm-07: { label: 3, why: "Product Owner (same job) for open banking and pay-by-bank, London hybrid, GBP 90-105k straddles the floor; PSD2 met via 3DS/SCA, UK open banking standards only partly (adjacent domain).", by: user }
   pm-08: { label: 4, why: "Lead PM on card routing, 3DS and gateways, remote EMEA; Lead is her stated next step and she meets the must-haves; salary unknown.", by: reconciled }
   pm-09: { label: 3, why: "Title only: Senior PM at a London payments company, hybrid; fits on what's known, must-haves unseen (cap 3).", by: reconciled }
   pm-10: { label: 2, why: "Right level, London hybrid, GBP 95-110k, but adtech is a new domain and 'understanding of digital advertising and attribution' is a must-have she lacks.", by: reconciled }
@@ -116,7 +116,7 @@ platform-eng:
   des-07: { label: 0, why: "Different job (product design).", by: draft }
   eng-01: { label: 4, why: "Senior platform on EKS, Go, Terraform, Postgres, Prometheus/Grafana, Berlin hybrid, EUR 90-110k: his exact stack and level.", by: reconciled }
   eng-02: { label: 0, why: "EUR 65-78k tops out 8% under his 85k floor (more than 5%: salary blocker); also a level down (2+ years).", by: reconciled }
-  eng-03: { label: 2, why: "Staff, one level up, but lacks the level-defining must-haves: 10+ years with 4 at staff (he has 6) and multi-team leadership.", by: reconciled }
+  eng-03: { label: 2, why: "Staff, one level up, but lacks the level-defining must-haves: 10+ years with 4 at staff (he has 6) and multi-team leadership.", by: user }
   eng-04: { label: 4, why: "Senior SRE: k8s, Golang, PostgreSQL ops, remote Europe, EUR 85-100k, fair on-call; GKE/Pulumi vs EKS/Terraform is only a nice-to-have gap.", by: reconciled }
   eng-05: { label: 0, why: "React/TypeScript canvas editor: a frontend role, his dealbreaker; the Go/Kubernetes mentions are about other teams.", by: reconciled }
   eng-06: { label: 1, why: "Two real gaps: 5+ years Java/Spring (his own 'stretch') and German B2 for a team that works in German, which his profile doesn't show.", by: reconciled }
@@ -154,7 +154,7 @@ ml-ds:
   ml-01: { label: 4, why: "Senior DS on clinical NLP, NYC hybrid, sponsors H-1B, USD 165-190k; 4+ years with 2 in NLP is exactly her record.", by: reconciled }
   ml-02: { label: 3, why: "Experimentation DS fits her work, NYC hybrid, USD 140-160k straddles the floor; sponsorship not stated, which she needs (cap 3).", by: reconciled }
   ml-03: { label: 0, why: "LLM/retrieval work she'd like, but explicitly no visa sponsorship: dealbreaker.", by: reconciled }
-  ml-04: { label: 2, why: "Sponsors, pays well, NYC; but an ML engineering role needing 4+ years building production ML and recsys/ranking, which she has only partly (retrieval, shipped with MLE help).", by: reconciled }
+  ml-04: { label: 2, why: "Sponsors, pays well, NYC; but an ML engineering role needing 4+ years building production ML and recsys/ranking, which she has only partly (retrieval, shipped with MLE help).", by: user }
   ml-05: { label: 1, why: "Staff Applied Scientist leading four: PhD, 10+ years post-PhD and publications required; she has an MS and 4 years (far level).", by: reconciled }
   ml-06: { label: 3, why: "Title only: ML Scientist in NYC; must-haves, salary and sponsorship all unknown (cap 3; unknowns don't stack).", by: reconciled }
   ml-07: { label: 2, why: "Senior DS at her level, but credit risk, model governance and bureau/fair-lending knowledge are must-haves she lacks; sponsorship only conditional.", by: reconciled }
@@ -214,7 +214,7 @@ product-designer:
   des-03: { label: 4, why: "Lead PD owning a design system as an IC, Lisbon hybrid, EUR 75-90k; 2+ years running a design system is exactly her record.", by: reconciled }
   des-04: { label: 0, why: "Marketing website and campaign pages for Growth Marketing: marketing-only design is her dealbreaker.", by: reconciled }
   des-05: { label: 0, why: "Digital agency, on-site: agency roles are her dealbreaker (EUR 40-48k is also far under the floor).", by: reconciled }
-  des-06: { label: 2, why: "UX researcher: an adjacent function; she runs research as a designer but lacks the required 5+ years dedicated research. Design background is a plus there.", by: reconciled }
+  des-06: { label: 2, why: "UX researcher: an adjacent function; she runs research as a designer but lacks the required 5+ years dedicated research. Design background is a plus there.", by: user }
   des-07: { label: 2, why: "Lisbon on-site is fine and EUR 55-65k straddles the floor, but hardware/automotive screen experience is a must-have she lacks.", by: reconciled }
   eng-01: { label: 0, why: "Different job (software engineering).", by: draft }
   eng-02: { label: 0, why: "Different job (software engineering).", by: draft }
