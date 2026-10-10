@@ -156,7 +156,7 @@ export function JobDetail(p: JobDetailProps) {
       </header>
 
       <div ref={scrollRef} className="rj-drawer__body min-h-0 flex-1">
-        <WhyItMatches job={job} profile={profile} />
+        <WhyItMatches job={job} profile={profile} yours={!!p.yours} />
 
         {job.estimated && <NotCheckedYet indexGeneratedAt={p.indexGeneratedAt} onCheck={p.onCheck} />}
 
@@ -373,7 +373,7 @@ function NotCheckedYet({ indexGeneratedAt, onCheck }: { indexGeneratedAt?: strin
 }
 
 /** The score, its band against your threshold, the score bars, then a plain-language checklist of why. */
-function WhyItMatches({ job, profile }: { job: Job; profile: Profile }) {
+function WhyItMatches({ job, profile, yours }: { job: Job; profile: Profile; yours: boolean }) {
   const w = job.why;
   const band = BAND_WORD[scoreBandOf(job.score, profile.min_score)];
   const titleTerm = useMemo(() => profile.titles.include.find((t) => new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(job.title)), [job.title, profile]);
@@ -384,7 +384,9 @@ function WhyItMatches({ job, profile }: { job: Job; profile: Profile }) {
       text: w.location === 20 ? <>In one of your places{job.countries.length ? <> (<b>{job.countries.join(", ")}</b>)</> : null}</> : w.location === 15 ? "Remote, open to your regions" : (w.locationNote ?? "Not in one of your places"),
     },
     ...(w.scale ? [] : [{ ok: w.keywords.length > 0, text: w.keywords.length ? <>Mentions your topics: <b>{w.keywords.join(", ")}</b></> : "Doesn't mention your topics" }]),
-    { ok: w.freshness >= 6, text: w.freshness === 10 ? "Posted in the last 3 days" : w.freshness === 6 ? "Posted this week" : "Posted more than a week ago" },
+    w.industry === undefined
+      ? { ok: (w.freshness ?? 0) >= 6, text: w.freshness === 10 ? "Posted in the last 3 days" : w.freshness === 6 ? "Posted this week" : "Posted more than a week ago" }
+      : { ok: w.industry > 0, text: w.industry === 10 ? "In one of your industries" : w.industry === 5 ? "Company's industry not known" : "Not one of your industries" },
   ];
   return (
     <section className="rj-drawer__section gap-4">
@@ -393,7 +395,7 @@ function WhyItMatches({ job, profile }: { job: Job; profile: Profile }) {
         <div className="min-w-0">
           <h3 className="rj-h">Why it matched</h3>
           <p className="type-small text-muted">
-            {band} match. {job.estimated ? "Estimated from title, place and date." : `Threshold ${profile.min_score}.`}
+            {band} match. {job.estimated ? "Estimated from title, place and industry." : `Threshold ${profile.min_score}.`}
           </p>
         </div>
       </div>
@@ -407,7 +409,10 @@ function WhyItMatches({ job, profile }: { job: Job; profile: Profile }) {
           </li>
         ))}
       </ul>
-      {w.scale && <p className="type-small text-muted">No topics set: title, place and freshness make up the whole score.</p>}
+      {w.scale && <p className="type-small text-muted">No topics set: title, place and industry make up the whole score.</p>}
+      <p className="type-small text-muted">
+        The score is how well the job fits. In Best match, newer jobs rank higher (the boost halves every 3 days){yours ? ", and your companies get +10" : ""}.
+      </p>
     </section>
   );
 }

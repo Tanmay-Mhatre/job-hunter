@@ -1,4 +1,4 @@
-import { INDUSTRY_BY_ID } from "./catalog/industries";
+import { companyIndustries, INDUSTRY_BY_ID } from "./catalog/industries";
 import { COUNTRIES, countryTerms, groupPlaces } from "./catalog/places";
 import { connectors } from "./connectors";
 import type { Profile } from "./schema";
@@ -194,7 +194,7 @@ export function suggestCompanies(
         const posted = rowPostedAt(age, fetchedAt);
         matches += count;
         if (posted && now.getTime() - posted.getTime() <= 7 * DAY_MS) fresh += count;
-        scores.push(scoreJob({ title, location, workplace: workplace as never, description: "", postedAt: posted?.toISOString() }, profile, now).score);
+        scores.push(scoreJob({ title, location, workplace: workplace as never, description: "" }, profile, { industries: companyIndustries(c) }).score);
         if (examples.length < 3) examples.push(example);
       } else if (gate === "location") {
         if (workplace === "remote" || matchesAny(location, near)) {

@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { companyIndustries } from "./catalog/industries";
 import { companyKey, jobCompanyKey } from "./connectors";
 import { mergeHistory, type MergeResult } from "./diff";
 import { keptChecked, readLedger, recordChecks, writeLedger } from "./discover";
@@ -113,6 +114,9 @@ export async function scan(config: Config, opts: ScanOptions): Promise<ScanResul
   const checkOnly = !!opts.checkKeys?.length;
   const fullScan = !checkOnly && !opts.only?.length;
   const directory = checkOnly || fullScan ? readDirectory(opts.dataDir) : [];
+  // Each company's industries, for the industry part of the score (the store reads the same directory).
+  const tagged = new Map((directory.length ? directory : readDirectory(opts.dataDir)).map((c) => [c.key, companyIndustries(c)] as const));
+  const industriesOf = (c: CompanyRef) => tagged.get(companyKey(c));
   let ledger = readLedger(opts.dataDir);
 
   const wanted = new Set(opts.checkKeys?.map((k) => k.toLowerCase()));
@@ -173,6 +177,7 @@ export async function scan(config: Config, opts: ScanOptions): Promise<ScanResul
     checks,
     skip: done,
     stopped: opts.stopped,
+    industriesOf,
     onCompanyDone: opts.onCompanyDone,
     onCompanyResult: (h, jobs) => {
       progress.health.push(h);
@@ -190,7 +195,7 @@ export async function scan(config: Config, opts: ScanOptions): Promise<ScanResul
   // Your companies whose board is gone, but which the directory lists on another board: fetch that.
   const moves = fullScan && !stopped ? findMoves(config, directory, result.health) : [];
   if (moves.length) {
-    const moved = await runRadar({ ...config, companies: moves.map((m) => m.to) }, { http, now, previous });
+    const moved = await runRadar({ ...config, companies: moves.map((m) => m.to) }, { http, now, previous, industriesOf });
     const from = new Set(moves.map((m) => jobCompanyKey(m.from)));
     result.health = [...result.health.filter((h) => !from.has(h.key ?? jobCompanyKey(h))), ...moved.health];
     result.jobs = [...result.jobs, ...moved.jobs];

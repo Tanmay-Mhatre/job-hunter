@@ -42,8 +42,8 @@ export type Salary = { min?: number; max?: number; currency?: string; period?: s
 
 /** Why a job got its score. Every number is the points awarded for that part. */
 /**
- * How a score was made. Points out of: title 30, location 20, keywordPoints 40, freshness 10.
- * score = round((title + location + keywordPoints + freshness) * (scale ?? 1)).
+ * How a score was made. Points out of: title 30, location 20, keywordPoints 40, industry 10.
+ * score = round((title + location + keywordPoints + industry) * (scale ?? 1)).
  */
 export type ScoreBreakdown = {
   title: number;
@@ -51,9 +51,12 @@ export type ScoreBreakdown = {
   keywords: string[];
   /** Topic points, 0..40: share of the profile's topic weight matched (min(total, 12) fills it). */
   keywordPoints: number;
-  freshness: number;
+  /** Industry points: 10 your industry or your company, 5 not known, 0 another industry. Missing on jobs scored before it existed. */
+  industry?: number;
+  /** Older scores only: points for being recent (10/6/2), now part of the Radar's order instead. */
+  freshness?: number;
   /**
-   * Set (100/60) when the profile has no topics: title + location + freshness, out of 60, are
+   * Set (100/60) when the profile has no topics: title + location + industry, out of 60, are
    * scaled to 0..100 and there's no topic part. The other fields stay raw points.
    */
   scale?: number;

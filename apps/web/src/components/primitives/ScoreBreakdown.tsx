@@ -4,14 +4,17 @@ import { cx } from "../ui";
 /** One score factor: points earned of its maximum. */
 export type ScorePart = { label: string; earned: number; max: number };
 
-/** The four factors and their maximums (One word per meaning: title, place, keywords, fresh). */
-export function scoreParts(why: { title: number; location: number; keywordPoints: number; freshness: number; scale?: number }): ScorePart[] {
+/**
+ * The four factors and their maximums (one word per meaning: title, place, keywords, industry). Jobs
+ * scored before the industry part existed have freshness in its place until the next scan.
+ */
+export function scoreParts(why: { title: number; location: number; keywordPoints: number; industry?: number; freshness?: number; scale?: number }): ScorePart[] {
   return [
     { label: "Title", earned: why.title, max: 30 },
     { label: "Place", earned: why.location, max: 20 },
     // With no keywords in the profile the score is scaled from the other three, so there's no keyword part.
     ...(why.scale ? [] : [{ label: "Keywords", earned: why.keywordPoints, max: 40 }]),
-    { label: "Fresh", earned: why.freshness, max: 10 },
+    why.industry === undefined ? { label: "Fresh", earned: why.freshness ?? 0, max: 10 } : { label: "Industry", earned: why.industry, max: 10 },
   ];
 }
 

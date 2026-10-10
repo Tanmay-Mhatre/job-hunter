@@ -1,3 +1,4 @@
+import { INDUSTRY_BY_ID } from "./catalog/industries";
 import { allPlaceNames, countriesIn, expandPlaces, LOCATION_SEGMENTS, placeOwner, placeOwnerName, spellOutPlaces, SUBDIVISIONS } from "./catalog/places";
 import type { NormalizedJob, Profile, ScoreBreakdown } from "./schema";
 import { matchesAny, matchesTerm, matchesTitle, mayMatchTitle, termRegex, titleForms } from "./text";
@@ -12,17 +13,28 @@ export const POINTS = {
   keywordTarget: 12,
   /** Most topic points a job's title alone can give: half the bar, so a description can still prove more. */
   titleKeywordCap: 20,
-  fresh3d: 10,
-  fresh7d: 6,
-  older: 2,
+  /** The company is in one of your industries (or is one of yours, or you picked no industries). */
+  industryMatch: 10,
+  /** Nobody has told us the company's industry: half, so an untagged company isn't pushed down. */
+  industryUnknown: 5,
+  /** Weight of the topics your industries add (payments, trading…) when you haven't listed them yourself... */
+  industryTopic: 2,
+  /** ...and the most they add together: two topics' worth, a lift, never a full bar. */
+  industryTopicCap: 4,
 } as const;
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+type Scorable = Pick<NormalizedJob, "title" | "location" | "workplace" | "description">;
 
-type Scorable = Pick<NormalizedJob, "title" | "location" | "workplace" | "description" | "postedAt">;
+/** What's known about the job's company, for the industry part. */
+export type CompanyFit = {
+  /** The company's industry ids; undefined when unknown. */
+  industries?: readonly string[];
+  /** One of your companies: always counts as your industry. */
+  tracked?: boolean;
+};
 
-/** Most points title + location + freshness can give (30 + 20 + 10). */
-const NON_KEYWORD_MAX = POINTS.titleMatch + POINTS.seniority + POINTS.locationCity + POINTS.fresh3d;
+/** Most points title + location + industry can give (30 + 20 + 10). */
+const NON_KEYWORD_MAX = POINTS.titleMatch + POINTS.seniority + POINTS.locationCity + POINTS.industryMatch;
 
 /**
  * Transparent keyword scoring, 0..100. No AI.
@@ -34,16 +46,17 @@ const NON_KEYWORD_MAX = POINTS.titleMatch + POINTS.seniority + POINTS.locationCi
  *              A topic in the title counts on its own too: up to 20, your top topic filling it, so
  *              jobs with no description ("Payments PM") aren't 0 on topics. The title is part of
  *              every job, so this never puts a job without a description ahead of the same job with one.
- *   freshness  10 within 3 days, 6 within 7, else 2
- * With no topics at all, title + location + freshness (max 60) is scaled to 0..100 (`why.scale`),
- * so a strong match means the right title, in your place, posted recently.
+ *              Your industries add their topics you didn't list at weight 2, at most 4 together (topicsOf).
+ *   industry   10 the company is in one of your industries (or is yours), 5 not known, 0 another industry
+ * With no topics at all, title + location + industry (max 60) is scaled to 0..100 (`why.scale`).
+ *
+ * The score is how well a job fits, never how old it is: recency is part of the Radar's order
+ * (rankScore), worked out when you look, so it doesn't go stale between scans.
  *
  * Gates: the title must match an include term and no exclude term, and the location must be one
  * the user picked (see locationFit). Failing a gate scores 0.
- *
- * @param seenAt used for freshness when the ATS gives no posting date (first time we saw the job).
  */
-export function scoreJob(job: Scorable, profile: Profile, now: Date, seenAt: Date = now): { score: number; why: ScoreBreakdown } {
+export function scoreJob(job: Scorable, profile: Profile, company: CompanyFit = {}): { score: number; why: ScoreBreakdown } {
   const title = job.title;
   const forms = titleForms(title);
   const location = gateLocation(job);
@@ -53,14 +66,19 @@ export function scoreJob(job: Scorable, profile: Profile, now: Date, seenAt: Dat
   const locationPts = fit.points;
 
   const description = job.description ?? "";
-  const inTitle = new Set(Object.keys(profile.keywords).filter((k) => matchesTitle(title, [k], forms)));
-  const matched = Object.entries(profile.keywords)
+  const keywords = topicsOf(profile);
+  const inTitle = new Set(Object.keys(keywords).filter((k) => matchesTitle(title, [k], forms)));
+  const matched = Object.entries(keywords)
     .filter(([k]) => inTitle.has(k) || matchesTerm(description, k))
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  // Your own topics set the bar; your industries' topics add at most industryTopicCap of weight to it.
+  const own = (k: string) => k in profile.keywords;
   const weights = Object.values(profile.keywords);
   const totalWeight = weights.reduce((sum, w) => sum + w, 0);
-  const matchedWeight = matched.reduce((sum, [, w]) => sum + w, 0);
-  const titleWeight = matched.reduce((sum, [k, w]) => sum + (inTitle.has(k) ? w : 0), 0);
+  const weigh = (list: [string, number][]) =>
+    list.reduce((sum, [k, w]) => sum + (own(k) ? w : 0), 0) + Math.min(POINTS.industryTopicCap, list.reduce((sum, [k, w]) => sum + (own(k) ? 0 : w), 0));
+  const matchedWeight = weigh(matched);
+  const titleWeight = weigh(matched.filter(([k]) => inTitle.has(k)));
   const keywordPoints =
     totalWeight > 0
       ? Math.max(
@@ -69,22 +87,75 @@ export function scoreJob(job: Scorable, profile: Profile, now: Date, seenAt: Dat
         )
       : 0;
 
-  const posted = job.postedAt ? new Date(job.postedAt) : seenAt;
-  const ageDays = Number.isNaN(posted.getTime()) ? Infinity : (now.getTime() - posted.getTime()) / DAY_MS;
-  const freshness = ageDays <= 3 ? POINTS.fresh3d : ageDays <= 7 ? POINTS.fresh7d : POINTS.older;
+  const industry = industryFit(company, profile);
 
   const why: ScoreBreakdown = {
     title: titlePts,
     location: locationPts,
     keywords: matched.map(([k]) => k),
     keywordPoints,
-    freshness,
+    industry,
     ...(totalWeight > 0 ? {} : { scale: 100 / NON_KEYWORD_MAX }),
   };
   if (!titleOk) return { score: 0, why: { ...why, gate: "title" } };
   if (locationPts === 0) return { score: 0, why: { ...why, gate: "location", ...(fit.note ? { locationNote: fit.note } : {}) } };
-  const raw = titlePts + locationPts + keywordPoints + freshness;
+  const raw = titlePts + locationPts + keywordPoints + industry;
   return { score: Math.min(100, Math.round(raw * (why.scale ?? 1))), why };
+}
+
+/** 10 your industry (or your company, or you picked none), 5 not known, 0 known and another one. */
+function industryFit(company: CompanyFit, profile: Profile): number {
+  if (company.tracked || !profile.industries.length) return POINTS.industryMatch;
+  if (!company.industries?.length) return POINTS.industryUnknown;
+  return company.industries.some((i) => profile.industries.includes(i)) ? POINTS.industryMatch : 0;
+}
+
+const topicsCache = new WeakMap<Profile, Record<string, number>>();
+
+/**
+ * Your topics, plus each of your industries' topics you didn't list (weight industryTopic): a payments
+ * PM role is worth something to someone in payments even when their topics are all about crypto.
+ * They never change where the bar fills (your own topics set that), and add at most industryTopicCap.
+ * With no topics of your own, none are added: the score stays title, place and industry.
+ */
+export function topicsOf(profile: Profile): Record<string, number> {
+  let out = topicsCache.get(profile);
+  if (out) return out;
+  out = { ...profile.keywords };
+  if (Object.keys(out).length) {
+    const listed = new Set(Object.keys(out).map((k) => k.toLowerCase()));
+    for (const id of profile.industries)
+      for (const t of INDUSTRY_BY_ID.get(id)?.topics ?? []) {
+        if (listed.has(t.toLowerCase())) continue;
+        listed.add(t.toLowerCase());
+        out[t] = POINTS.industryTopic;
+      }
+  }
+  topicsCache.set(profile, out);
+  return out;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export const RANK = {
+  /** Extra for one of your companies: a nudge, not a wall. */
+  tracked: 10,
+  /** What freshness is worth on the day a job is posted... */
+  fresh: 15,
+  /** ...halving every this many days. */
+  halfLifeDays: 3,
+} as const;
+
+/**
+ * The "best match" order: fit, a nudge for your companies, and freshness that halves every three days,
+ * so a strong job posted today beats an equal one from last week, and a weak one never leaps a strong one.
+ *   rank = score + 10 (your company) + 15 x 0.5^(age in days / 3)
+ * Worked out when the list is shown, so it never goes stale. Dates in the future count as today.
+ */
+export function rankScore(score: number, postedOrSeen: string | undefined, now: number, tracked = false): number {
+  const t = postedOrSeen ? Date.parse(postedOrSeen) : NaN;
+  const age = Number.isNaN(t) ? Infinity : Math.max(0, (now - t) / DAY_MS);
+  return score + (tracked ? RANK.tracked : 0) + RANK.fresh * 0.5 ** (age / RANK.halfLifeDays);
 }
 
 /** An on-site or hybrid job when the user only takes the other kind: fails the location gate. */
@@ -207,7 +278,7 @@ export function locationFit(location: string, profile: Profile): { points: numbe
   if (inYourPlaces(text, r)) return { points: POINTS.locationCity };
   const excluded = matchesAny(text, r.exclude);
   const remote = matchesTerm(location, "remote");
-  if (!excluded && (matchesAny(text, r.regions) || (remote && matchesAny(text, r.remoteRegions)))) return { points: POINTS.locationRemote };
+  if (!excluded && (remote ? matchesAny(text, r.regions) || matchesAny(text, r.remoteRegions) : namesRegion(text, r.regions))) return { points: POINTS.locationRemote };
   if (!remote) return { points: 0 };
   // What's left once remote wording and punctuation are gone is a place: the job is remote there only.
   const rest = plain.replace(REMOTE_WORDS, " ").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
@@ -218,6 +289,31 @@ export function locationFit(location: string, profile: Profile): { points: numbe
   const known = allPlaceNames().find((p) => matchesTerm(rest, p));
   const where = known && placeOwnerName(known);
   return { points: 0, note: where ? `Remote, but only in ${where}: not one of your places.` : `Remote, but limited to "${rest.slice(0, 40)}": not one of your places.` };
+}
+
+/** Office words around a place: "Home based - EMEA", "Europe (Hybrid)". */
+const OFFICE_WORDS = /\b(?:hybrid|on[- ]?site|office|home|based|in)\b/gi;
+/** Pieces of one place in a location: "EMEA > BEL > Antwerp", "Home based - EMEA". Commas split places. */
+const PLACE_PIECES = /\s*>\s*|\s+[-–—]\s+/;
+
+/**
+ * An office job in one of your remote regions counts when the region is a piece of its location of its
+ * own ("Stein, EU", "Novi Sad, Serbia, EMEA", "EMEA > BEL > Antwerp"), with only places or office words
+ * before it after a dash ("Home based - EMEA"); not when the name sits inside other text: "FXE-EU/GBR" is
+ * a FedEx site code, "Holmes Beach - Gulf" a street in a US branch list.
+ */
+function namesRegion(text: string, regions: readonly string[]): boolean {
+  if (!regions.length || !matchesAny(text, regions)) return false;
+  const clean = (s: string) => s.replace(OFFICE_WORDS, " ").replace(/[^\p{L}\p{N}]+/gu, " ").trim().toLowerCase();
+  const isPlace = (p: string) => !p || regions.includes(p) || !!placeOwner(p) || countriesIn(p).length > 0;
+  return text
+    .split(LOCATION_SEGMENTS)
+    .flatMap((s) => s.split(","))
+    .some((part) => {
+      const pieces = part.split(PLACE_PIECES).map(clean);
+      const at = pieces.findIndex((p) => regions.includes(p));
+      return at >= 0 && pieces.slice(0, at).every(isPlace);
+    });
 }
 
 /** Which gate a job fails (title is checked first), or undefined if it passes both. No scoring. */

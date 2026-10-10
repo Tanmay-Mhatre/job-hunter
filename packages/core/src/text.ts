@@ -134,15 +134,29 @@ function slashVariants(words: string[]): string[][] {
 
 /** Times of day ("3:00 P.M.", "7 pm"): not the "PM" job title. Lowercase text. */
 const TIME_OF_DAY = /(?<!\p{L})[ap]\.m\.?(?!\p{L})|(?<=\d\s?)[ap]m(?!\p{L})/gu;
+/**
+ * Shift work ("Handler / Warehouse Operator (PM)", "Package Handler - PM Shift"): there "AM" and "PM" name
+ * the shift. Checked on the whole title, since "(PM)" is a piece of its own.
+ */
+const SHIFT_WORK = /(?<!\p{L})(?:shifts?|hourly|handlers?|loaders?|pickers?|packers?|sortation|overnight|night|weekends?)(?!\p{L})/iu;
+const SHIFT = /(?<!\p{L})[ap]m(?!\p{L})/giu;
+/** "SAP PM", "EAM PM": plant maintenance, a module, not a product manager. */
+const PLANT_MAINTENANCE = /(?<!\p{L})(sap|eam|maximo)([\s/-]+)pm(?!\p{L})/gu;
 
 function wordsOf(text: string): string[] {
-  const lower = text.toLowerCase().replace(TIME_OF_DAY, " ");
+  const lower = text.toLowerCase().replace(TIME_OF_DAY, " ").replace(PLANT_MAINTENANCE, "$1$2plant maintenance");
   return (/[^\x00-\x7f]/.test(lower) ? lower.normalize("NFKD") : lower)
     .replace(/[\u0300-\u036f'’.]/g, "")
     .replace(/&/g, " and ")
     .split(/[^\p{L}\p{N}+#/]+/u)
     .filter((w) => w && w !== "/");
 }
+
+/**
+ * Words that make "<word> lead" or "<word> manager" a different job: a team lead, tech lead or
+ * engineering manager for a product isn't that product's lead or manager.
+ */
+const ROLE_QUALIFIERS = new Set(["team", "tech", "technical", "engineering", "project", "program", "delivery", "release", "store", "shift", "site"]);
 
 const formsCache = new Map<string, string>();
 
@@ -154,7 +168,7 @@ const formsCache = new Map<string, string>();
 export function titleForms(title: string): string {
   let forms = formsCache.get(title);
   if (forms !== undefined) return forms;
-  const segments = title
+  const segments = (SHIFT_WORK.test(title) ? title.replace(SHIFT, " ") : title)
     .split(/\s+[-–—/|:]\s+|[,;()[\]–—|:]/)
     .map((s) => slashVariants(wordsOf(s)).map(titleWords).filter(Boolean))
     .filter((v) => v.length);
@@ -164,8 +178,11 @@ export function titleForms(title: string): string {
     let h = words.length - 1;
     while (h > 0 && LEVEL.test(words[h]!)) h--;
     if (!TITLE_HEADS.has(words[h]!)) continue;
+    // "Team Lead, Android Core Product" leads a team, not a product: no "android core product lead".
+    const role = ROLE_QUALIFIERS.has(words[h - 1] ?? "");
     for (const next of segments[i + 1]!) {
-      out.push([...words.slice(0, h), next, ...words.slice(h)].join(" "), `${words.join(" ")} of ${next}`);
+      if (!role) out.push([...words.slice(0, h), next, ...words.slice(h)].join(" "));
+      out.push(`${words.join(" ")} of ${next}`);
     }
   }
   forms = [...new Set(out)].join(" | ");

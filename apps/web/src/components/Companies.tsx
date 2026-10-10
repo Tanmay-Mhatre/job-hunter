@@ -179,7 +179,7 @@ export function MyCompanies({
 
       {rows.length === 0 ? (
         <p className="px-4 py-6 type-small text-muted">
-          None yet, and that's fine: your Radar already finds jobs across the directory. Add companies you'd love to work at and their jobs will always come first.
+          None yet, and that's fine: your Radar already finds jobs across the directory. Add companies you'd love to work at and their newest jobs will show on top.
         </p>
       ) : (
         <>

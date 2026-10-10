@@ -188,7 +188,7 @@ function fullJob(s: Spec, n: number): Job {
     description: s.desc,
     postedAt: iso(postedAt),
   };
-  const { score, why } = scoreJob(base, PROFILE, NOW, new Date(firstSeen));
+  const { score, why } = scoreJob(base, PROFILE, { tracked: true });
   return {
     id: `${c.ats}:${c.slug}:${atsId}`,
     ats: c.ats,

@@ -17,7 +17,8 @@
     "./catalog/places": "./src/catalog/places.ts",
     "./catalog/industries": "./src/catalog/industries.ts",
     "./catalog/seniority": "./src/catalog/seniority.ts",
-    "./dashboard": "./src/dashboard.ts"
+    "./dashboard": "./src/dashboard.ts",
+    "./score": "./src/score.ts"
   },
   "dependencies": {
     "yaml": "^2.8.0",

@@ -1,4 +1,4 @@
-The feed is the Radar: one job per row, my companies first, then best score first.
+The feed is the Radar: one job per row, in one list, in the order picked (best match by default). My companies are starred, never pinned; in best match their three newest roles also show in a strip above the list.
 
 ## Use
 - `<section class="rj-panel rj-feed">` (an L1 surface: `bg-raised`, `border-default` frame) with an `rj-feed__head` summary line, then per group an `<h3 class="rj-feed__section">` and a `<ul class="rj-feed__list">` of `<li class="rj-row">`.
@@ -7,6 +7,7 @@ The feed is the Radar: one job per row, my companies first, then best score firs
 
 ## Rules
 - Rows are square, separated by `feed-divider` hairlines. The panel keeps its frame; never put rows straight on the canvas.
+- One company shows at most two roles in a row of the list (except in Newest); the rest fold into one "+N more at Company" row that opens them in place. One role posted per city is one row.
 - Scan path: score, then title, then meta, left to right. Put the most decisive facts first in the meta line and never repeat words between rows.
 - The star (`star`) appears only on my companies; the dot only on jobs first seen this scan. Both use `accent-mark`, which stays above 3:1 on hover and selected rows.
 - Row actions (Save, Not interested) appear on hover and focus, are always visible on touch screens and phones, and have shortcuts `S` and `X`.

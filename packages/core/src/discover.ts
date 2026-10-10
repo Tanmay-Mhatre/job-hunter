@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { toDashboardJob } from "./dashboard";
 import { companyKey, connectors } from "./connectors";
 import type { CompanyRef, DashboardJob, Profile, ScoreBreakdown, Workplace } from "./schema";
-import { gateOf, scoreJob } from "./score";
+import { companyIndustries } from "./catalog/industries";
+import { gateOf, rankScore, scoreJob } from "./score";
 import { rowPostedAt, type IndexedCompany } from "./suggest";
 
 /**
@@ -34,7 +35,7 @@ export type Candidate = {
   postedAt?: string;
   /** Postings merged into this row (same title and location). */
   count: number;
-  /** Score without a description: title, location and freshness only. */
+  /** Score without a description: title, location, industry and topics in the title only. */
   estimate: number;
   why: ScoreBreakdown;
 };
@@ -77,14 +78,14 @@ export function findCandidates(profile: Profile, index: IndexFile, now = new Dat
       const workplace = wp as Workplace;
       if (gateOf({ title, location, workplace }, profile)) continue;
       const postedAt = rowPostedAt(age, fetchedAt)?.toISOString();
-      const { score, why } = scoreJob({ title, location, workplace, description: "", postedAt }, profile, now);
+      const { score, why } = scoreJob({ title, location, workplace, description: "" }, profile, { industries: companyIndustries(company) });
       out.push({ company, title, location, workplace, postedAt, count, estimate: score, why });
     }
   }
-  return out.sort(byCandidate);
+  // The Radar's order: fit, then freshness (the estimate has no age in it).
+  const rank = new Map(out.map((c) => [c, rankScore(c.estimate, c.postedAt, now.getTime())]));
+  return out.sort((a, b) => rank.get(b)! - rank.get(a)! || (b.postedAt ?? "").localeCompare(a.postedAt ?? ""));
 }
-
-const byCandidate = (a: Candidate, b: Candidate) => b.estimate - a.estimate || (b.postedAt ?? "").localeCompare(a.postedAt ?? "");
 
 /** Companies whose jobs come from a live check, not the index: checked in the last KEEP_CHECKED_DAYS. */
 export function keptChecked(ledger: DiscoveryLedger, now = new Date()): CompanyRef[] {
