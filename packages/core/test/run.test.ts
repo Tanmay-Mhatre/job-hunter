@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseConfig } from "../src/config";
-import { runRadar } from "../src/run";
+import { earliestPosted, runRadar } from "../src/run";
 import { fakeHttp, fixture, json } from "./helpers";
 
 const config = parseConfig(`
@@ -72,5 +72,21 @@ profile:
     const result = await runRadar(empty, { http, now });
     expect(result).toMatchObject({ jobs: [], health: [], partial: false });
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe("earliestPosted", () => {
+  const prev = { postedAt: "2026-08-01T00:00:00.000Z", firstSeen: "2026-08-02T00:00:00.000Z" };
+  it("keeps the earliest date, so relative dates age and edits don't freshen a job", () => {
+    // Workday's "Posted 30+ Days Ago", worked out again two months later.
+    expect(earliestPosted("2026-09-03T00:00:00.000Z", prev)).toBe(prev.postedAt);
+    expect(earliestPosted("2026-07-01T00:00:00.000Z", prev)).toBe("2026-07-01T00:00:00.000Z");
+  });
+  it("never puts the posting after we first saw it", () => {
+    expect(earliestPosted("2026-09-20T00:00:00.000Z", { firstSeen: "2026-09-01T00:00:00.000Z" })).toBe("2026-09-01T00:00:00.000Z");
+  });
+  it("leaves new jobs and undated ones alone", () => {
+    expect(earliestPosted("2026-09-20T00:00:00.000Z", undefined)).toBe("2026-09-20T00:00:00.000Z");
+    expect(earliestPosted(undefined, { firstSeen: "2026-09-01T00:00:00.000Z" })).toBeUndefined();
   });
 });

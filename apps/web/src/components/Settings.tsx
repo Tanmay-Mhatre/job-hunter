@@ -9,7 +9,7 @@ import type { Suggestions } from "../lib/suggest";
 import { ResumeStep } from "../setup/ResumeStep";
 import { offerWhat, ruleKey, ruleLabel, type HideRule } from "../lib/notForMe";
 import type { Prefs } from "../lib/prefs";
-import { setDensityChoice, useDensity, useTheme, type Density, type ThemeChoice } from "../lib/theme";
+import { MAX_AGE_CHOICES, setDensityChoice, setMaxAgeChoice, useDensity, useMaxAge, useTheme, type Density, type MaxAge, type ThemeChoice } from "../lib/theme";
 import { exportState, readStateFile, type UserState } from "../lib/userState";
 import { IndustriesStep, KeywordsStep, LocationsStep, RolesStep, ThresholdPicker } from "../setup/steps";
 import { Dialog } from "./Dialog";
@@ -328,6 +328,7 @@ function SettingsNav({ active }: { active: GroupId }) {
 function AppearanceSection() {
   const { theme, contrast, setTheme, setContrast } = useTheme();
   const density = useDensity();
+  const maxAge = useMaxAge();
   return (
     <>
     <Section id="theme" title="Theme" hint="Follows your system's light or dark setting unless you pick one.">
@@ -350,16 +351,33 @@ function AppearanceSection() {
         </div>
       </div>
     </Section>
-    <Section id="density" title="Job list" hint="How much room each job gets on the Radar.">
-      <Segmented<Density>
-        label="Job list density"
-        value={density}
-        onChange={setDensityChoice}
-        options={[
-          { value: "comfortable", label: "Comfortable" },
-          { value: "compact", label: "Compact" },
-        ]}
-      />
+    <Section id="density" title="Job list" hint="How the Radar shows your jobs.">
+      <div className="space-y-4">
+        <div>
+          <p className="mb-1.5 type-small font-medium text-ink">Density</p>
+          <Segmented<Density>
+            label="Job list density"
+            value={density}
+            onChange={setDensityChoice}
+            options={[
+              { value: "comfortable", label: "Comfortable" },
+              { value: "compact", label: "Compact" },
+            ]}
+          />
+        </div>
+        <div>
+          <p className="mb-1.5 type-small font-medium text-ink">Hide jobs older than</p>
+          <Segmented<MaxAge>
+            label="Hide jobs older than"
+            value={maxAge}
+            onChange={setMaxAgeChoice}
+            options={MAX_AGE_CHOICES.map((d) => ({ value: d, label: d === 0 ? "Never hide" : d === 30 ? "1 month" : `${d / 30} months` }))}
+          />
+          <p className="mt-1 type-small text-muted">
+            Most roles are filled within two months, so older postings are often still listed but no longer hiring. Jobs you saved or applied to always show.
+          </p>
+        </div>
+      </div>
     </Section>
     </>
   );

@@ -17,7 +17,7 @@ export type StatusView = "" | "new" | "saved" | "applied";
 export type Filters = {
   q: string;
   /** Posted (or first seen) within this many days; 0 = any time. */
-  posted: 0 | 1 | 3 | 7 | 30;
+  posted: 0 | 1 | 3 | 7 | 14 | 30 | 90;
   /** Country display names; "Remote" means remote jobs. */
   countries: string[];
   /** Cities, as "City, Country". */
@@ -38,14 +38,21 @@ export type Filters = {
   mine: boolean;
   /** Include directory jobs posted more than INDEX_MAX_AGE_DAYS ago (often filled already). */
   olderIndex: boolean;
-  /** Include postings older than OLD_POSTING_DAYS (hidden by default: usually filled long ago). */
+  /** Include postings older than your age limit (ctx.maxAgeDays; hidden by default: usually filled). */
   showOld: boolean;
 };
 
 /** Directory jobs older than this are hidden unless asked for: the index is a week old at most, and old postings are often filled. */
 export const INDEX_MAX_AGE_DAYS = 30;
-/** Postings older than this (about 6 months) are hidden unless asked for. */
-export const OLD_POSTING_DAYS = 180;
+/**
+ * Postings older than this are hidden unless asked for (Settings › Job list can change it). Most roles are
+ * filled in 45-60 days; senior ones can take three months, so three months keeps those and drops the stale tail.
+ */
+export const DEFAULT_MAX_AGE_DAYS = 90;
+/** Postings older than this are still shown, but marked as maybe filled. */
+export const OLDER_DAYS = 60;
+/** "older" past OLDER_DAYS: worth a word before you spend time on it. */
+export const isOlder = (j: Job, now = Date.now()) => ageDays(postedOrSeen(j), now) > OLDER_DAYS;
 
 export const DEFAULT_FILTERS: Filters = {
   q: "",
@@ -87,6 +94,8 @@ export type Ctx = {
   mine?: { countries: ReadonlySet<string>; locations: ReadonlySet<string>; industries: ReadonlySet<string> };
   /** Only one scan so far: everything is "new", so nothing is tagged New. */
   firstScan?: boolean;
+  /** Hide postings older than this many days (0: never). Default DEFAULT_MAX_AGE_DAYS. */
+  maxAgeDays?: number;
   /** When the previous scan finished (ms): jobs first found after it are "new to you". */
   newSince?: number;
   now?: number;
@@ -118,13 +127,16 @@ const countriesOf = (j: Job) => (isRemoteLike(j) ? [...j.countries, REMOTE] : j.
 function passes(j: Job, f: Filters, ctx: Ctx, terms: string[], skip?: FacetKey): boolean {
   const entry = ctx.user[j.id];
   if (!f.showFailed && j.why.gate) return false;
-  if (!f.showClosed && j.status === "closed") return false;
   if (!f.showHidden && (entry?.status === "dismissed" || ctx.hiddenCompanies.has(j.company))) return false;
   // A rule never hides a job you saved or applied to: you picked that one yourself.
   if (!f.showHidden && !entry?.status && hiddenByRules(j, ctx.hideRules)) return false;
   if (f.mine && !ctx.isYours?.(j)) return false;
-  if (!f.olderIndex && j.estimated && ageDays(postedOrSeen(j), ctx.now) > INDEX_MAX_AGE_DAYS) return false;
-  if (!f.showOld && ageDays(postedOrSeen(j), ctx.now) > OLD_POSTING_DAYS) return false;
+  // Age never hides a job you saved or applied to, and the Saved and Applied views keep closed ones too:
+  // you need to find those again however old they get.
+  const yours = entry?.status === "saved" || (!!entry?.status && APPLIED_STAGES.includes(entry.status));
+  if (!f.showClosed && j.status === "closed" && !(yours && (f.status === "saved" || f.status === "applied"))) return false;
+  if (!yours && !f.olderIndex && j.estimated && ageDays(postedOrSeen(j), ctx.now) > INDEX_MAX_AGE_DAYS) return false;
+  if (!yours && !f.showOld && tooOld(j, ctx)) return false;
   if (f.status === "new" && !isNewJob(j, ctx)) return false;
   if (f.status === "saved" && entry?.status !== "saved") return false;
   if (f.status === "applied" && !(entry?.status && APPLIED_STAGES.includes(entry.status))) return false;
@@ -146,6 +158,10 @@ function passes(j: Job, f: Filters, ctx: Ctx, terms: string[], skip?: FacetKey):
   return true;
 }
 
+const maxAge = (ctx: Pick<Ctx, "maxAgeDays">) => ctx.maxAgeDays ?? DEFAULT_MAX_AGE_DAYS;
+/** Past your age limit (Settings › Job list). */
+const tooOld = (j: Job, ctx: Pick<Ctx, "now" | "maxAgeDays">) => maxAge(ctx) > 0 && ageDays(postedOrSeen(j), ctx.now) > maxAge(ctx);
+
 const termsOf = (q: string) => q.toLowerCase().split(/\s+/).filter(Boolean);
 
 export function applyFilters(jobs: Job[], f: Filters, ctx: Ctx): Job[] {
@@ -165,7 +181,9 @@ const POSTED_OPTIONS: { value: Filters["posted"]; label: string }[] = [
   { value: 1, label: "Past 24 hours" },
   { value: 3, label: "Past 3 days" },
   { value: 7, label: "Past week" },
+  { value: 14, label: "Past 2 weeks" },
   { value: 30, label: "Past month" },
+  { value: 90, label: "Past 3 months" },
 ];
 const WORKPLACE_LABEL: Record<Workplace, string> = { remote: "Remote", hybrid: "Hybrid", onsite: "On-site", unknown: "Not stated" };
 const SENIORITY_LABEL = Object.fromEntries(SENIORITY_LEVELS.map((s) => [s.id, s.label])) as Record<Seniority, string>;
