@@ -1,6 +1,6 @@
 import { ArrowRight, Building2, Check, CircleAlert, EyeOff, LoaderCircle, RefreshCw, X } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import { addCompanies, countCompanies, jobCompanyKey, keyOf, type CompanyRef } from "../lib/companies";
+import { addCompanies, countCompanies, jobCompanyKey, keyOf, wantsAttention, type CompanyRef } from "../lib/companies";
 import { useCompanySuggestions, type SuggestState } from "../lib/companySuggest";
 import type { DataMeta, Job } from "../lib/data";
 import { canRunLocally, useDirectorySize } from "../lib/data";
@@ -125,6 +125,7 @@ export function CompaniesTab({ configured, meta, jobs, draft, saved, update, onS
   const ids = useTabIds("companies");
   const linkPanelId = useId();
   const [tab, setTabState] = useState<Tab>(() => {
+    if (wantsAttention()) return "mine";
     const last = load<string | null>(TAB_KEY, null);
     return TABS.includes(last as Tab) ? (last as Tab) : draft.companies.length ? "mine" : "suggestions";
   });
@@ -132,6 +133,20 @@ export function CompaniesTab({ configured, meta, jobs, draft, saved, update, onS
     setTabState(t);
     save(TAB_KEY, t);
   };
+  /** Bumped each time a "failing" link is followed: My companies switches to Needs attention. */
+  const [attention, setAttention] = useState(() => (wantsAttention() ? 1 : 0));
+  useEffect(() => {
+    const follow = () => {
+      if (!wantsAttention()) return;
+      setTab("mine");
+      setAttention((n) => n + 1);
+      // Back to "#companies", so following the same link again is a change the page hears.
+      history.replaceState(null, "", "#companies");
+    };
+    follow();
+    window.addEventListener("hashchange", follow);
+    return () => window.removeEventListener("hashchange", follow);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   /** The page's one search: its results show in Browse all. */
   const [q, setQ] = useState("");
   const [linkOpen, setLinkOpen] = useState(false);
@@ -284,6 +299,7 @@ export function CompaniesTab({ configured, meta, jobs, draft, saved, update, onS
             onRemoveMany={removeWithUndo}
             onScan={onScan}
             scanning={scanning}
+            attention={attention}
           />
           {draft.companies.length === 0 && (
             <div className="flex flex-wrap gap-2">

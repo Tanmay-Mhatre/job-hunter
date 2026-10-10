@@ -1,4 +1,5 @@
 import { CircleAlert, CircleCheck, Clock, LoaderCircle, RefreshCw } from "lucide-react";
+import { FAILING_HASH } from "../lib/companies";
 import { atsLabel } from "../lib/filters";
 import { progressRows, scanLine, type ScanState } from "../lib/scan";
 import { SourceTag } from "./primitives";
@@ -7,8 +8,8 @@ import { Button, cx } from "./ui";
 /** Rows listed under the progress bars: your companies, then directory ones that matched or failed. */
 const MAX_ROWS = 60;
 
-const toCompanies = () => {
-  location.hash = "companies";
+const toFailing = () => {
+  location.hash = FAILING_HASH;
 };
 
 /** "Already up to date." from the directory update, in plain words. */
@@ -60,7 +61,7 @@ export function ScanProgress({ scan, onRetry }: { scan: ScanState; onRetry?: () 
                 {s.failed} compan{s.failed === 1 ? "y" : "ies"} couldn't be scanned
               </span>
               , usually because the careers page moved.{" "}
-              <button type="button" className="font-medium text-ink underline underline-offset-2 hover:text-muted" onClick={toCompanies}>
+              <button type="button" className="font-medium text-ink underline underline-offset-2 hover:text-muted" onClick={toFailing}>
                 Review failing companies
               </button>
             </>

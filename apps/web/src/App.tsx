@@ -15,7 +15,7 @@ import { ScanButton, ScanChooser } from "./components/ScanButton";
 import { Settings } from "./components/Settings";
 import { toast, Toaster } from "./components/Toast";
 import { Button, Card, cx, IconButton, Kbd } from "./components/ui";
-import { jobCompanyKey, keyOf, refOfJob, toRow } from "./lib/companies";
+import { FAILING_HASH, jobCompanyKey, keyOf, refOfJob, toRow } from "./lib/companies";
 import { telegramStatus, type TelegramStatus } from "./lib/automation";
 import { canRunLocally, useData, useOtherJobs, type Job } from "./lib/data";
 import { usePrefs } from "./lib/prefs";
@@ -232,6 +232,12 @@ export function App() {
     window.scrollTo({ top: 0 });
   }, []);
   const goStep = useCallback((n: number) => go(n > 0 ? { setup: n } : { setup: 0 }), [go]);
+  /** "1 failing" and the failing banner: My companies, sorted by Needs attention. */
+  const goFailing = useCallback(() => {
+    location.hash = FAILING_HASH;
+    setRoute({ tab: "companies" });
+    window.scrollTo({ top: 0 });
+  }, []);
 
   // Only the very first visit opens the Welcome; after Start or Skip, setup is reached through CTAs.
   useEffect(() => {
@@ -361,7 +367,7 @@ export function App() {
                 {state.kind === "ready" && failing > 0 && (
                   <button
                     type="button"
-                    onClick={() => go({ tab: "companies" })}
+                    onClick={goFailing}
                     title="Review failing companies: usually the careers page moved"
                     className="hidden h-7 items-center gap-1.5 rounded-md border border-warning/40 bg-warning-subtle/40 px-2 type-label text-warning-text hover:bg-warning-subtle/60 lg:inline-flex"
                   >
@@ -474,7 +480,7 @@ export function App() {
                 )}
                 {setupState === "configured" && personal && state.kind === "empty" && <FirstScanCard scan={scan} onScan={requestScan} />}
                 {/* Laptops show this as a chip next to "Last scan" in the header, so the jobs start higher. */}
-                {state.kind === "ready" && failing > 0 && <FailingBanner className="lg:hidden" count={failing} onOpen={() => go({ tab: "companies" })} />}
+                {state.kind === "ready" && failing > 0 && <FailingBanner className="lg:hidden" count={failing} onOpen={goFailing} />}
                 {state.kind === "ready" && lastRun && matched === 0 && <NoMatches jobs={otherJobs ? [...jobs, ...otherJobs] : jobs} onStep={goStep} onCompanies={goCompanies} />}
                 {state.kind === "ready" && (matched > 0 || !lastRun) && (
                   <RadarPage
