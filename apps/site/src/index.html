@@ -1,0 +1,1106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RawJobs: jobs, straight from the source</title>
+<meta name="description" content="RawJobs reads openings straight from 21,000+ companies' hiring systems and scores each one with rules you can read. Free, open source, runs on your machine.">
+<link rel="canonical" href="__SITE_URL__/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="RawJobs">
+<meta property="og:title" content="RawJobs: jobs, straight from the source">
+<meta property="og:description" content="Free, open-source job radar. Reads 21,000+ companies' careers pages directly and scores every opening with rules you can read.">
+<meta property="og:url" content="__SITE_URL__/">
+<meta property="og:image" content="__SITE_URL__/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#f5f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151412" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/Geist-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/Geist-600.woff2" as="font" type="font/woff2" crossorigin>
+<script>
+/* Theme: keep a host-set data-theme, otherwise follow the OS. Add -hc for increased contrast. */
+(function () {
+  var r = document.documentElement, t = r.getAttribute('data-theme');
+  var dark = t ? t.indexOf('dark') === 0 : matchMedia('(prefers-color-scheme: dark)').matches;
+  var more = matchMedia('(prefers-contrast: more)').matches;
+  r.setAttribute('data-theme', (dark ? 'dark' : 'light') + (more ? '-hc' : ''));
+  r.classList.add('js');
+})();
+</script>
+<style>
+/*__TOKENS__*/
+/*__BUNDLE__*/
+
+/* ===== Site layer =====
+   Layout: a source log on paper. Asymmetric split hero (copy left, live radar right),
+   then sections with a sticky label column on the left and content on the right.
+   Colors and type come only from the RawJobs tokens above; these add marketing scale. */
+:root {
+  --page-max: 1200px;
+  --gutter: clamp(16px, 4vw, 32px);
+  --display: 600 clamp(42px, 7.4vw, 88px)/0.98 var(--font-sans);
+  --section-title: 600 clamp(28px, 3.8vw, 44px)/1.08 var(--font-sans);
+  --eyebrow: 500 12px/16px var(--font-mono);
+  --grain-opacity: 0.035;
+  --rule: var(--border-subtle);
+  --ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
+  --ease-in-out-cubic: cubic-bezier(0.645, 0.045, 0.355, 1);
+  --site-slow: 520ms;
+}
+:root[data-theme^="dark"] { --grain-opacity: 0.05; color-scheme: dark; }
+
+html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+body {
+  margin: 0; background: var(--bg-canvas); color: var(--text-primary);
+  font: var(--text-body); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+body::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.page { position: relative; z-index: 1; }
+.page.rj-root { font: var(--text-body); background: transparent; }
+.wrap { max-width: var(--page-max); margin: 0 auto; padding-inline: var(--gutter); }
+a { color: inherit; }
+p { margin: 0; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+.mono { font-family: var(--font-mono); }
+.num { font-variant-numeric: tabular-nums; }
+.eyebrow { font: var(--eyebrow); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); }
+.skip { position: absolute; left: var(--space-4); top: -100px; z-index: 50; }
+.skip:focus-visible { top: var(--space-4); }
+
+/* ---------- nav ---------- */
+.nav {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: var(--z-sticky);
+  background: var(--bg-canvas); border-bottom: 1px solid transparent;
+  transition: border-color var(--duration-base) var(--ease-standard);
+}
+.nav[data-stuck="true"] { border-bottom-color: var(--border-subtle); }
+.nav__in { display: flex; align-items: center; gap: var(--space-6); height: 64px; }
+.brand { display: inline-flex; align-items: center; color: var(--text-primary); text-decoration: none; min-height: 44px; }
+.brand svg { height: 22px; width: auto; display: block; }
+.nav__links { display: flex; gap: var(--space-1); margin-left: auto; }
+.nav__links a {
+  font: var(--text-label); color: var(--text-secondary); text-decoration: none;
+  padding: var(--space-2) var(--space-3); border-radius: var(--radius-md);
+  transition: color var(--duration-instant) var(--ease-standard), background-color var(--duration-instant) var(--ease-standard);
+}
+.nav__links a:hover { color: var(--text-primary); background: var(--bg-hover); }
+.nav__cta { display: flex; gap: var(--space-2); }
+@media (max-width: 860px) { .nav__links { display: none; } .nav__cta { margin-left: auto; } }
+@media (max-width: 480px) { .nav__cta .rj-btn:not(.rj-btn--primary) { display: none; } }
+
+/* ---------- buttons, site sizes ---------- */
+.btn-lg { height: var(--control-lg); padding: 0 var(--space-6); font: var(--text-body-strong); }
+.rj-btn .rj-icon { transition: transform var(--duration-base) var(--ease-out-quart); }
+@media (hover: hover) and (pointer: fine) { .rj-btn:hover .rj-icon--nudge { transform: translateX(3px); } }
+.rj-btn:active { transform: scale(0.97); }
+@media (pointer: coarse) { .rj-btn, .rj-chip { min-height: var(--control-lg); } }
+
+/* ---------- hero ---------- */
+.hero { padding-block: clamp(40px, 7vw, 96px) clamp(48px, 7vw, 96px); }
+.hero__grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: clamp(32px, 5vw, 72px); align-items: center; }
+.hero__copy { display: grid; gap: var(--space-6); min-width: 0; }
+.hero h1 { font: var(--display); letter-spacing: -0.045em; }
+.cursor { display: inline-block; width: 0.28em; height: 0.72em; margin-left: 0.06em; background: var(--accent-solid); vertical-align: -0.02em; }
+.hero__sub { font: 500 clamp(18px, 2vw, 22px)/1.35 var(--font-sans); letter-spacing: -0.01em; }
+.hero__lede { font: var(--text-lede); color: var(--text-secondary); max-width: 34ch; text-wrap: pretty; }
+.hero__ctas { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+.hero__note { font: var(--text-small); color: var(--text-secondary); display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); }
+.hero__note span { display: inline-flex; align-items: center; gap: var(--space-2); }
+@media (max-width: 920px) { .hero__grid { grid-template-columns: minmax(0, 1fr); } .hero__lede { max-width: 46ch; } }
+
+/* hero load sequence: one orchestrated moment, transform + opacity only */
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+@keyframes rise-panel { from { opacity: 0; transform: translateY(20px) scale(0.985); } }
+.js .hero [data-step]:not(h1):not(.eyebrow) { animation: rise var(--site-slow) var(--ease-out-quart) both; animation-delay: calc(var(--i, 0) * 70ms); }
+.js .hero .radar { animation: rise-panel 640ms var(--ease-out-quart) 180ms both; }
+
+/* ---------- radar panel (hero) ---------- */
+.radar { box-shadow: var(--shadow-l2); min-width: 0; }
+.radar__bar { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); border-bottom: 1px solid var(--feed-divider); }
+.radar__cmd { font: var(--text-code); font-size: 13px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
+.radar__cmd b { color: var(--text-primary); font-weight: 500; }
+.radar__status { display: flex; align-items: center; gap: var(--space-2); justify-content: space-between; }
+.scanning { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; overflow: hidden; white-space: nowrap; }
+.scanning__host { font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis; }
+.pulse { width: 8px; height: 8px; border-radius: var(--radius-dot); background: var(--live-dot); flex: none; position: relative; }
+.pulse::after { content: ""; position: absolute; inset: -4px; border-radius: inherit; border: 2px solid var(--live-dot); opacity: 0; }
+.radar[data-running="true"] .pulse::after { animation: ping 1600ms var(--ease-out-quart) infinite; }
+@keyframes ping { 0% { opacity: .55; transform: scale(.6); } 100% { opacity: 0; transform: scale(1.6); } }
+.radar[data-running="false"] .pulse { background: var(--text-disabled); }
+.radar__list { position: relative; }
+.radar .rj-row { grid-template-columns: 56px minmax(0, 1fr) auto; }
+.radar .rj-row__title > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.radar .rj-row > * { position: relative; z-index: 1; }
+.radar .rj-row[data-current] { background: var(--feed-row-selected); box-shadow: inset 2px 0 0 var(--feed-row-selected-bar); }
+.radar .rj-row[data-enter] { animation: row-in 360ms var(--ease-out-quart) both; }
+.radar .rj-row[data-enter]::before { content: ""; position: absolute; inset: 0; z-index: 0; background: var(--accent-subtle); animation: tint 1400ms var(--ease-standard) forwards; pointer-events: none; }
+@keyframes tint { from { opacity: 1; } to { opacity: 0; } }
+.radar .rj-row[data-leave] { animation: row-out 160ms var(--ease-standard) forwards; }
+@keyframes row-in { from { opacity: 0; transform: translateY(-8px); } }
+@keyframes row-out { to { opacity: 0; transform: translateY(6px); } }
+.radar__why { padding: var(--space-4); border-top: 1px solid var(--feed-divider); background: var(--feed-section-bg); display: grid; gap: var(--space-3); }
+.radar__why-head { display: flex; justify-content: space-between; gap: var(--space-3); align-items: baseline; }
+.radar__why-title { font: var(--text-label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.bd-fill { transform-origin: left; transition: transform 260ms var(--ease-out-quart); }
+@media (max-width: 560px) {
+  .radar .rj-row { grid-template-columns: 56px minmax(0, 1fr); }
+  .radar .rj-row__side { grid-column: 2; justify-content: flex-start; flex-direction: row; }
+  .radar__why-head .eyebrow, .hide-sm { display: none; }
+  .radar .rj-row:nth-child(n+4) { display: none; }
+}
+
+/* ---------- proof strip ---------- */
+.proof { border-block: 1px solid var(--rule); }
+.proof__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.stat { padding: var(--space-6) var(--space-6) var(--space-6) 0; display: grid; gap: var(--space-1); }
+.stat + .stat { padding-left: var(--space-6); border-left: 1px solid var(--rule); }
+.stat__n { font: 600 clamp(28px, 3.6vw, 40px)/1.1 var(--font-sans); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.stat__l { font: var(--text-small); color: var(--text-secondary); }
+.proof__foot { font: var(--text-meta); color: var(--text-secondary); padding-bottom: var(--space-4); }
+@media (max-width: 760px) {
+  .proof__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat:nth-child(3) { padding-left: 0; border-left: 0; }
+  .stat:nth-child(n+3) { border-top: 1px solid var(--rule); }
+}
+
+/* ---------- sections ---------- */
+.section { padding-block: clamp(64px, 9vw, 120px); }
+.section + .section { border-top: 1px solid var(--rule); }
+.split { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: clamp(24px, 5vw, 64px); }
+.split__head { display: grid; gap: var(--space-4); align-content: start; }
+@media (min-width: 921px) { .split__head { position: sticky; top: 96px; } }
+.split__body { min-width: 0; display: grid; gap: var(--space-8); align-content: start; }
+.section h2 { font: var(--section-title); letter-spacing: -0.03em; }
+.section__lede { font: var(--text-lede); color: var(--text-secondary); max-width: 44ch; text-wrap: pretty; }
+.prose { color: var(--text-secondary); max-width: 62ch; text-wrap: pretty; }
+.prose strong { color: var(--text-primary); font-weight: 500; }
+@media (max-width: 920px) { .split { grid-template-columns: minmax(0, 1fr); } }
+
+/* scroll reveal: only elements below the fold at load are hidden, then revealed once */
+.rv-wait { opacity: 0; transform: translateY(16px); }
+.rv-in { animation: rise var(--site-slow) var(--ease-out-quart) both; animation-delay: calc(var(--i, 0) * 80ms); }
+
+/* ---------- problem ---------- */
+.timeline { display: grid; gap: 0; border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-raised); overflow: hidden; }
+.tl-row { display: grid; grid-template-columns: 120px minmax(0, 1fr) auto; gap: var(--space-4); align-items: center; padding: var(--space-4); border-bottom: 1px solid var(--feed-divider); }
+.tl-row:last-child { border-bottom: 0; }
+.tl-when { font: var(--text-source); letter-spacing: .04em; text-transform: uppercase; color: var(--text-secondary); }
+.tl-what { min-width: 0; }
+.tl-what b { font-weight: 500; }
+.tl-what span { display: block; font: var(--text-small); color: var(--text-secondary); }
+.tl-tag { font: var(--text-meta); color: var(--text-secondary); white-space: nowrap; }
+.tl-row--you { background: var(--accent-subtle); }
+.tl-row--you .tl-tag { color: var(--accent-text); font-weight: 600; }
+@media (max-width: 560px) { .tl-row { grid-template-columns: minmax(0, 1fr); gap: var(--space-1); } }
+
+/* ---------- routes: where your resume goes ---------- */
+.routes { border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-raised); box-shadow: var(--shadow-l1); overflow: hidden; }
+.routes__bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); border-bottom: 1px solid var(--border-subtle); background: var(--bg-canvas); }
+.lane { position: relative; padding: var(--space-6) var(--space-4); display: grid; gap: var(--space-4); }
+.lane + .lane { border-top: 1px solid var(--border-subtle); }
+.lane--good { background: var(--bg-canvas); }
+.lane__label { font: var(--text-label); display: flex; align-items: center; gap: var(--space-2); }
+.lane__label small { font: var(--text-meta); color: var(--text-secondary); }
+.track { display: flex; align-items: center; min-width: 0; }
+.node { position: relative; z-index: 1; flex: none; display: grid; gap: 2px; padding: var(--space-2) var(--space-3); min-width: 112px; max-width: 168px; background: var(--bg-raised); border: 1px solid var(--border-default); border-radius: var(--radius-sm); font: var(--text-label); transition: border-color var(--duration-base) var(--ease-standard), background-color var(--duration-base) var(--ease-standard); }
+.node small { font: var(--text-meta); color: var(--text-secondary); }
+.node--you { border-style: dashed; }
+.node[data-reached] { border-color: var(--text-primary); }
+.node--end { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--space-2); align-items: center; }
+.node--end small { grid-column: 2; }
+.node--bad { color: var(--danger-text); border-color: var(--danger-text); }
+.node--good { color: var(--success-text); border-color: var(--success-text); background: var(--success-subtle); }
+.node--bad b, .node--good b { font-weight: 500; }
+.link { position: relative; flex: 1 1 24px; min-width: 16px; height: 2px; background: var(--border-default); }
+.link > i { position: absolute; inset: 0; background: var(--text-primary); transform-origin: left center; }
+.link--broken { background: repeating-linear-gradient(90deg, var(--border-control) 0 6px, transparent 6px 11px); }
+.link--broken > i { transform: scaleX(0.45); background: repeating-linear-gradient(90deg, var(--text-primary) 0 6px, transparent 6px 11px); }
+.link--good > i { background: var(--success-solid); }
+.token { position: absolute; left: 0; top: 0; z-index: 2; width: 28px; height: 28px; display: grid; place-items: center; background: var(--accent-solid); color: var(--on-accent); border-radius: var(--radius-sm); box-shadow: var(--shadow-l2); opacity: 0; pointer-events: none; will-change: transform, opacity; }
+.token .rj-icon { width: 16px; height: 16px; }
+.routes__note { padding: var(--space-3) var(--space-4); border-top: 1px solid var(--border-subtle); font: var(--text-meta); color: var(--text-secondary); }
+/* ready state: set by script only when the block starts below the fold */
+.routes[data-play="ready"] .link > i { transform: scaleX(0); }
+.routes[data-play="ready"] .node--end { opacity: 0; transform: translateY(6px); }
+.routes .node--end { transition: opacity 320ms var(--ease-out-quart), transform 320ms var(--ease-out-quart), border-color var(--duration-base) var(--ease-standard); }
+@media (max-width: 640px) {
+  .track { flex-direction: column; align-items: stretch; }
+  .node { max-width: none; min-width: 0; }
+  .link { flex: none; width: 2px; min-width: 0; height: 20px; margin-left: 24px; }
+  .link > i { transform-origin: center top; }
+  .link--broken { background: repeating-linear-gradient(180deg, var(--border-control) 0 5px, transparent 5px 9px); }
+  .link--broken > i { transform: scaleY(0.45); background: repeating-linear-gradient(180deg, var(--text-primary) 0 5px, transparent 5px 9px); }
+  .routes[data-play="ready"] .link > i { transform: scaleY(0); }
+}
+
+/* ---------- download ---------- */
+.dl { border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-raised); overflow: hidden; }
+.dl__files { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.dl__file { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-2) var(--space-4); align-items: center; padding: var(--space-6); }
+.dl__file + .dl__file { border-left: 1px solid var(--border-subtle); }
+.dl__icon { width: 44px; height: 52px; position: relative; border: 1px solid var(--border-control); border-radius: var(--radius-sm); background: var(--bg-canvas); display: grid; place-items: end center; padding-bottom: 6px; font: var(--text-source); font-size: 10px; color: var(--text-secondary); }
+.dl__icon::before { content: ""; position: absolute; top: -1px; right: -1px; width: 12px; height: 12px; background: linear-gradient(225deg, var(--bg-raised) 50%, var(--border-control) 50%); }
+.dl__name { font: var(--text-subheading); }
+.dl__name small { display: block; font: var(--text-small); color: var(--text-secondary); }
+.dl__file .rj-btn { grid-column: 1 / -1; justify-self: start; }
+.soon { display: flex; width: fit-content; margin-block: var(--space-1); align-items: center; gap: var(--space-2); font: var(--text-meta); font-weight: 500; color: var(--text-secondary); border: 1px solid var(--border-default); border-radius: var(--radius-sm); padding: 2px var(--space-2); }
+.dl__steps { list-style: none; margin: 0; padding: var(--space-6); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-6); border-top: 1px solid var(--border-subtle); background: var(--bg-canvas); counter-reset: d; }
+.dl__steps li { display: grid; align-content: start; gap: var(--space-1); counter-increment: d; font: var(--text-small); color: var(--text-secondary); }
+.dl__steps li::before { content: counter(d); font: var(--text-source); color: var(--text-primary); width: 24px; height: 24px; display: grid; place-items: center; border: 1px solid var(--border-control); border-radius: var(--radius-sm); margin-bottom: var(--space-2); }
+.dl__steps b { color: var(--text-primary); font-weight: 500; }
+.dl__foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-4); padding: var(--space-4) var(--space-6); border-top: 1px solid var(--border-subtle); }
+@media (max-width: 760px) { .dl__files, .dl__steps { grid-template-columns: minmax(0, 1fr); } .dl__file + .dl__file { border-left: 0; border-top: 1px solid var(--border-subtle); } }
+
+/* ---------- how it works ---------- */
+.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); counter-reset: s; position: relative; }
+.step { position: relative; display: grid; gap: var(--space-4); align-content: start; padding: var(--space-6); background: var(--bg-raised); border: 1px solid var(--border-default); border-radius: var(--radius-md); }
+.step__n { font: var(--text-source); letter-spacing: .04em; color: var(--text-secondary); display: flex; align-items: center; gap: var(--space-3); }
+.step__n::after { content: ""; flex: 1; height: 1px; background: var(--border-default); transform-origin: left; }
+.js .step.rv-in .step__n::after { animation: draw 700ms var(--ease-out-quart) both; animation-delay: calc(var(--i, 0) * 80ms + 200ms); }
+@keyframes draw { from { transform: scaleX(0); } }
+.step h3 { font: var(--text-heading); letter-spacing: -0.01em; }
+.step p { color: var(--text-secondary); font: var(--text-small); }
+.step__demo { margin-top: auto; padding: var(--space-3); background: var(--bg-inset); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); min-height: 104px; display: grid; gap: var(--space-2); align-content: start; }
+.mini-chips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.mini-chip { font: var(--text-meta); font-weight: 500; padding: 2px var(--space-2); border-radius: var(--radius-sm); background: var(--chip-on-bg); color: var(--chip-on-fg); }
+.mini-chip--off { background: transparent; color: var(--text-secondary); box-shadow: inset 0 0 0 1px var(--chip-border); }
+.log { font: 400 12px/18px var(--font-mono); color: var(--text-secondary); display: grid; gap: 2px; min-width: 0; }
+.log div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log .ok { color: var(--success-text); }
+.log .warn { color: var(--warning-text); }
+@media (max-width: 920px) { .steps { grid-template-columns: minmax(0, 1fr); } .step__demo { min-height: 0; } }
+
+/* ---------- scoring demo ---------- */
+.lab { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-raised); overflow: hidden; box-shadow: var(--shadow-l1); }
+.lab__controls { padding: var(--space-6); display: grid; gap: var(--space-6); align-content: start; border-right: 1px solid var(--border-subtle); }
+.lab fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: var(--space-2); min-width: 0; }
+.lab legend { font: var(--text-label); padding: 0; margin-bottom: var(--space-2); }
+.lab legend small { display: block; font: var(--text-meta); color: var(--text-secondary); margin-top: 2px; }
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.chips .rj-chip { transition: background-color var(--duration-instant) var(--ease-standard), color var(--duration-instant) var(--ease-standard), border-color var(--duration-instant) var(--ease-standard), transform var(--duration-instant) var(--ease-standard); }
+.chips .rj-chip:active { transform: scale(0.96); }
+label.rj-chip:has(input:checked) { background: var(--chip-on-bg); border-color: var(--chip-on-bg); color: var(--chip-on-fg); }
+label.rj-chip:has(input:focus-visible) { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.rj-chip .tick { width: 14px; height: 14px; margin-left: -4px; display: none; }
+.rj-chip[aria-pressed="true"] .tick, label.rj-chip:has(input:checked) .tick { display: block; }
+.lab__result { padding: var(--space-6); display: grid; gap: var(--space-6); align-content: start; background: var(--bg-canvas); }
+.jobcard { display: grid; gap: var(--space-2); padding-bottom: var(--space-6); border-bottom: 1px solid var(--border-subtle); }
+.jobcard__title { font: var(--text-heading); }
+.jobcard__meta { font: var(--text-small); color: var(--text-secondary); }
+.jobcard__text { font: var(--text-small); color: var(--text-secondary); max-width: 58ch; }
+.jobcard__text mark { background: var(--accent-subtle); color: var(--accent-text); padding: 0 3px; border-radius: var(--radius-sm); transition: background-color var(--duration-instant) var(--ease-standard), color var(--duration-instant) var(--ease-standard); }
+.jobcard__text mark[data-off] { background: transparent; color: inherit; }
+.verdict { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+.verdict__label { font: var(--text-label); }
+.verdict__label span { display: block; font: var(--text-small); color: var(--text-secondary); font-weight: 400; }
+.lab .rj-score--lg { transition: background-color var(--duration-base) var(--ease-standard), border-color var(--duration-base) var(--ease-standard), color var(--duration-base) var(--ease-standard); }
+.lab .rj-score[data-bump] { animation: bump 160ms var(--ease-out-quart); }
+@keyframes bump { from { transform: scale(0.97); } }
+.why-line { font: var(--text-code); color: var(--text-primary); background: var(--bg-inset); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: var(--space-3); overflow-wrap: anywhere; }
+.lab .rj-breakdown__legend { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); }
+.step .log div { white-space: normal; }
+.lab__fine { font: var(--text-meta); color: var(--text-secondary); }
+@media (max-width: 920px) { .lab { grid-template-columns: minmax(0, 1fr); } .lab__controls { border-right: 0; border-bottom: 1px solid var(--border-subtle); } }
+
+/* ---------- sources grid ---------- */
+.ats-grid { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.ats { display: inline-flex; align-items: center; height: 40px; padding: 0 var(--space-4); border: 1px solid var(--border-default); background: var(--bg-raised); border-radius: var(--radius-sm); font: var(--text-label); color: var(--text-primary); white-space: nowrap; transition: border-color var(--duration-instant) var(--ease-standard); }
+@media (hover: hover) and (pointer: fine) { .ats:hover { border-color: var(--border-control); } }
+.sources__foot { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+.boards { font: var(--text-small); color: var(--text-secondary); max-width: 64ch; }
+.boards b { color: var(--text-primary); font-weight: 500; }
+
+/* ---------- privacy ---------- */
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-8); }
+.fact { display: grid; gap: var(--space-3); align-content: start; padding-top: var(--space-4); border-top: 2px solid var(--text-primary); }
+.fact .rj-icon { width: 20px; height: 20px; }
+.fact h3 { font: var(--text-subheading); }
+.fact p { font: var(--text-small); color: var(--text-secondary); }
+@media (max-width: 760px) { .facts { grid-template-columns: minmax(0, 1fr); gap: var(--space-6); } }
+
+/* ---------- terminal ---------- */
+.term { border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-raised); box-shadow: var(--shadow-l2); overflow: hidden; min-width: 0; }
+.term__bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); border-bottom: 1px solid var(--border-subtle); background: var(--bg-canvas); }
+.term__cwd { font: var(--text-code); font-size: 12px; color: var(--text-secondary); }
+.term__body { margin: 0; padding: var(--space-6) var(--space-4); overflow-x: auto; font: var(--text-code); font-size: 13px; line-height: 22px; color: var(--text-primary); white-space: pre; }
+.term__body .p { color: var(--accent-text); }
+.term__body .d { color: var(--text-secondary); }
+.term__body .s { color: var(--success-text); font-weight: 500; }
+.term__body .f { color: var(--warning-text); font-weight: 500; }
+.term__body .st { color: var(--accent-mark); }
+.term__body [data-line] { display: block; }
+.js .term[data-play="ready"] [data-line] { opacity: 0; }
+.term[data-play="run"] [data-line] { animation: line-in 220ms var(--ease-out-quart) both; animation-delay: calc(var(--i) * 90ms + 700ms); }
+.term[data-play="run"] [data-line="0"] { animation: none; opacity: 1; }
+@keyframes line-in { from { opacity: 0; transform: translateY(4px); } }
+.typed { display: inline-block; vertical-align: bottom; white-space: pre; }
+.term[data-play="run"] .typed { animation: type 640ms steps(18, end) 60ms both; }
+@keyframes type { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+.cmds { display: grid; gap: var(--space-2); }
+.cmd { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-4); align-items: baseline; padding: var(--space-3) 0; border-bottom: 1px solid var(--border-subtle); }
+.cmd code { font: var(--text-code); font-size: 13px; }
+.cmd span { font: var(--text-small); color: var(--text-secondary); text-align: right; }
+@media (max-width: 560px) { .cmd { grid-template-columns: minmax(0, 1fr); gap: 2px; } .cmd span { text-align: left; } }
+
+/* ---------- open source ---------- */
+.cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+.card { position: relative; display: grid; gap: var(--space-3); align-content: start; padding: var(--space-6); background: var(--bg-raised); border: 1px solid var(--border-default); border-radius: var(--radius-md); text-decoration: none; color: inherit; transition: transform var(--duration-base) var(--ease-out-quart), box-shadow var(--duration-base) var(--ease-out-quart), border-color var(--duration-instant) var(--ease-standard); }
+.card h3 { font: var(--text-heading); display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.card p { font: var(--text-small); color: var(--text-secondary); }
+.card code { font: var(--text-code); font-size: 12px; color: var(--text-primary); }
+.card .rj-icon { transition: transform var(--duration-base) var(--ease-out-quart); }
+@media (hover: hover) and (pointer: fine) {
+  .card:hover { border-color: var(--border-control); }
+  .card:hover .rj-icon { transform: translate(2px, -2px); }
+}
+.card:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+@media (max-width: 760px) { .cards { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- faq ---------- */
+.faq { border-top: 1px solid var(--border-default); }
+.faq details { border-bottom: 1px solid var(--border-default); }
+.faq summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); padding: var(--space-4) 0; font: var(--text-subheading); min-height: var(--control-lg); }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.faq summary .rj-icon { width: 20px; height: 20px; color: var(--text-secondary); transition: transform var(--duration-base) var(--ease-out-quart); }
+.faq details[open] summary .rj-icon { transform: rotate(45deg); }
+.faq .ans { padding: 0 var(--space-8) var(--space-6) 0; color: var(--text-secondary); max-width: 66ch; text-wrap: pretty; }
+.faq details[open] .ans { animation: ans-in var(--duration-base) var(--ease-enter); }
+@keyframes ans-in { from { opacity: 0; transform: translateY(-4px); } }
+.faq code { font: var(--text-code); color: var(--text-primary); }
+
+/* ---------- final cta + footer ---------- */
+.final { text-align: left; }
+.final__in { display: grid; gap: var(--space-6); justify-items: start; padding: clamp(32px, 6vw, 72px); background: var(--bg-raised); border: 1px solid var(--border-default); border-radius: var(--radius-md); }
+.final h2 { font: var(--display); font-size: clamp(34px, 5vw, 60px); letter-spacing: -0.04em; max-width: 18ch; }
+.foot { padding-block: var(--space-12); border-top: 1px solid var(--rule); }
+.foot__grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-8); align-items: start; }
+.foot__links { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); }
+.foot__links a { font: var(--text-small); color: var(--text-secondary); text-decoration: none; padding: var(--space-3) 0; }
+.foot__links a:hover { color: var(--text-primary); text-decoration: underline; text-underline-offset: 3px; }
+.foot__small { font: var(--text-meta); color: var(--text-secondary); max-width: 72ch; margin-top: var(--space-4); }
+@media (max-width: 760px) { .foot__grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- motion off ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .js .hero [data-step], .js .hero .radar, .rv-in, .radar .rj-row[data-enter], .radar .rj-row[data-leave], .faq details[open] .ans, .lab .rj-score[data-bump], .js .step.rv-in .step__n::after { animation: none; }
+  .rv-wait { opacity: 1; transform: none; }
+  .radar[data-running="true"] .pulse::after { animation: none; }
+  .routes .node--end, .node, .bd-fill, .card, .card .rj-icon, .rj-btn .rj-icon, .faq summary .rj-icon { transition: none; }
+  .js .term[data-play="ready"] [data-line] { opacity: 1; }
+  .term[data-play="run"] [data-line], .term[data-play="run"] .typed { animation: none; }
+  .card:hover { transform: none; }
+}
+</style>
+<!--__ANALYTICS__-->
+</head>
+<body>
+<div class="page rj-root">
+<a class="rj-btn rj-btn--primary skip" href="#main">Skip to content</a>
+
+<header class="nav" id="nav">
+  <div class="wrap nav__in">
+    <a class="brand" href="#top" aria-label="RawJobs home">__WORDMARK__</a>
+    <nav class="nav__links" aria-label="Sections">
+      <a href="#how">How it works</a>
+      <a href="#scoring">Scoring</a>
+      <a href="#sources">Sources</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <div class="nav__cta">
+      <a class="rj-btn" href="https://github.com/Tanmay-Mhatre/rawjobs" target="_blank" rel="noopener">
+        <svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+        Star on GitHub
+      </a>
+      <a class="rj-btn rj-btn--primary" href="https://github.com/Tanmay-Mhatre/rawjobs#getting-started" target="_blank" rel="noopener">Set up RawJobs</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+<!-- ================= HERO ================= -->
+<section class="hero" id="top" aria-labelledby="hero-title">
+  <div class="wrap hero__grid">
+    <div class="hero__copy">
+      <p class="eyebrow" data-step style="--i:0">Free and open source · MIT</p>
+      <h1 id="hero-title" data-step style="--i:1">Jobs, straight from the source.<span class="cursor" aria-hidden="true"></span></h1>
+      <p class="hero__sub" data-step style="--i:2">See it before LinkedIn does.</p>
+      <p class="hero__lede" data-step style="--i:3">RawJobs reads openings directly from 21,000+ companies' hiring systems and scores each one with rules you can read. It runs on your machine. Your profile never leaves it.</p>
+      <div class="hero__ctas" data-step style="--i:4">
+        <a class="rj-btn rj-btn--primary btn-lg" href="https://github.com/Tanmay-Mhatre/rawjobs#getting-started" target="_blank" rel="noopener">
+          Set up RawJobs
+          <svg class="rj-icon rj-icon--nudge" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+        <a class="rj-btn btn-lg" href="https://github.com/Tanmay-Mhatre/rawjobs" target="_blank" rel="noopener">
+          <svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+          Star on GitHub
+        </a>
+      </div>
+      <p class="hero__note" data-step style="--i:5">
+        <span><i class="rj-glyph rj-glyph--full" style="color:var(--success-text)" aria-hidden="true"></i>No account</span>
+        <span><i class="rj-glyph rj-glyph--full" style="color:var(--success-text)" aria-hidden="true"></i>No AI scoring</span>
+        <span><a href="#download" style="color:var(--text-primary);text-underline-offset:3px">Not a developer? A one-file app is coming</a></span>
+      </p>
+    </div>
+
+    <section class="rj-panel rj-feed radar" id="radar" data-running="false" aria-label="Example radar with made-up jobs">
+      <div class="radar__bar">
+        <span class="radar__cmd"><span class="p" aria-hidden="true">$ </span><b>pnpm rawjobs scan</b> --scope mine</span>
+        <button class="rj-btn rj-btn--quiet rj-btn--icon rj-btn--sm" type="button" id="radar-toggle" aria-label="Pause the example feed" title="Pause">
+          <svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true" id="radar-icon"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></svg>
+        </button>
+      </div>
+      <div class="rj-feed__head radar__status">
+        <span class="scanning"><span class="pulse" aria-hidden="true"></span><span>Scanning</span><span class="scanning__host" id="scan-host">jobs.lever.co/acme-exchange</span></span>
+        <span class="num" style="white-space:nowrap"><span class="hide-sm"><span id="scan-count">214</span> companies · </span><span id="scan-new">9</span> new</span>
+      </div>
+      <div class="radar__list">
+        <ul class="rj-feed__list" id="radar-list" aria-label="Jobs for you, best match first">
+          <li class="rj-row" data-current><span class="rj-score rj-score--strong" role="img" aria-label="Strong match, score 84"><i class="rj-glyph rj-glyph--full"></i>84</span><span class="rj-row__main"><span class="rj-row__title"><span>Head of Product, Exchange</span></span><span class="rj-row__meta">Acme Exchange<span class="rj-sep" aria-hidden="true">·</span>Dubai<span class="rj-sep" aria-hidden="true">·</span>Hybrid</span></span><span class="rj-row__side"><span class="rj-source"><span class="rj-dot" role="img" aria-label="New this scan"></span>Lever<span class="rj-source__age">2h</span></span></span></li>
+          <li class="rj-row"><span class="rj-score rj-score--strong" role="img" aria-label="Strong match, score 72"><i class="rj-glyph rj-glyph--full"></i>72</span><span class="rj-row__main"><span class="rj-row__title"><span>Senior Product Manager, Custody</span></span><span class="rj-row__meta">Halcyon Labs<span class="rj-sep" aria-hidden="true">·</span>Abu Dhabi<span class="rj-sep" aria-hidden="true">·</span>On-site</span></span><span class="rj-row__side"><span class="rj-source">Ashby<span class="rj-source__age">1d</span></span></span></li>
+          <li class="rj-row"><span class="rj-score rj-score--fair" role="img" aria-label="Fair match, score 61"><i class="rj-glyph rj-glyph--half"></i>61</span><span class="rj-row__main"><span class="rj-row__title"><span>Product Manager, Payments</span></span><span class="rj-row__meta">Northwind Pay<span class="rj-sep" aria-hidden="true">·</span>Remote (EMEA)<span class="rj-sep" aria-hidden="true">·</span>Remote</span></span><span class="rj-row__side"><span class="rj-source">Greenhouse<span class="rj-source__age">3d</span></span></span></li>
+          <li class="rj-row"><span class="rj-score rj-score--fair rj-score--estimated" role="img" aria-label="Fair match, score 56, estimated"><i class="rj-glyph rj-glyph--half"></i>~56</span><span class="rj-row__main"><span class="rj-row__title"><span>Product Lead, Tokenization</span></span><span class="rj-row__meta">Meridian Bank<span class="rj-sep" aria-hidden="true">·</span>Dubai<span class="rj-sep" aria-hidden="true">·</span>Hybrid</span></span><span class="rj-row__side"><span class="rj-source">Workday<span class="rj-source__age">5d</span></span></span></li>
+          <li class="rj-row"><span class="rj-score rj-score--weak" role="img" aria-label="Weak match, score 31"><i class="rj-glyph rj-glyph--empty"></i>31</span><span class="rj-row__main"><span class="rj-row__title"><span>Product Manager, Growth</span></span><span class="rj-row__meta">Parcel Freight<span class="rj-sep" aria-hidden="true">·</span>Riyadh<span class="rj-sep" aria-hidden="true">·</span>On-site</span></span><span class="rj-row__side"><span class="rj-source">SmartRecruiters<span class="rj-source__age">9d</span></span></span></li>
+        </ul>
+      </div>
+      <div class="radar__why">
+        <div class="radar__why-head"><span class="radar__why-title" id="why-title">Why “Head of Product, Exchange” scored 84</span><span class="eyebrow">Score breakdown</span></div>
+        <div class="rj-breakdown">
+          <div class="rj-breakdown__bar" aria-hidden="true">
+            <span class="rj-breakdown__seg"><i class="bd-fill" data-k="t" style="transform:scaleX(1)"></i></span>
+            <span class="rj-breakdown__seg"><i class="bd-fill" data-k="p" style="transform:scaleX(1)"></i></span>
+            <span class="rj-breakdown__seg"><i class="bd-fill" data-k="k" style="transform:scaleX(.6)"></i></span>
+            <span class="rj-breakdown__seg"><i class="bd-fill" data-k="f" style="transform:scaleX(1)"></i></span>
+          </div>
+          <div class="rj-breakdown__legend num" id="why-legend"><span>title <b>30</b></span><span>place <b>20</b></span><span>keywords <b>24</b></span><span>fresh <b>10</b></span></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</section>
+
+<!-- ================= PROOF ================= -->
+<section class="proof" aria-label="RawJobs in numbers">
+  <div class="wrap">
+    <div class="proof__grid">
+      <div class="stat"><span class="stat__n" data-count="21485">21,485</span><span class="stat__l">companies in the directory</span></div>
+      <div class="stat"><span class="stat__n" data-count="13962">13,962</span><span class="stat__l">with open jobs indexed</span></div>
+      <div class="stat"><span class="stat__n" data-count="23">23</span><span class="stat__l">hiring systems, plus 4 job boards</span></div>
+      <div class="stat"><span class="stat__n">0</span><span class="stat__l">accounts to create</span></div>
+    </div>
+    <p class="proof__foot">Directory build of 6 October 2026. Rebuilt weekly from public, permissively licensed lists.</p>
+  </div>
+</section>
+
+<!-- ================= PROBLEM ================= -->
+<section class="section" id="problem" aria-labelledby="problem-title">
+  <div class="wrap split">
+    <div class="split__head">
+      <p class="eyebrow">The problem</p>
+      <h2 id="problem-title">Apply where the job lives.</h2>
+      <p class="prose">You send 50 applications and hear back from two. Often it isn't you. It's where you applied.</p>
+    </div>
+    <div class="split__body">
+      <p class="section__lede">Many job sites don't post jobs. They copy them.</p>
+      <p class="prose">Aggregators and staffing agencies repost openings from company careers pages so their boards look full. Some copies are weeks out of date. Some only collect resumes for a talent pool. Apply there and your resume can stop with the middleman instead of reaching the team that's hiring. <strong>RawJobs only reads the company's own careers page</strong>, so every apply link goes straight to the people who posted the job.</p>
+      <div class="routes" id="routes" data-play="static">
+        <div class="routes__bar">
+          <span class="eyebrow">Where your resume goes</span>
+          <button class="rj-btn rj-btn--quiet rj-btn--sm" type="button" id="routes-replay">
+            <svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            <span>Replay</span>
+          </button>
+        </div>
+        <div class="lane lane--bad">
+          <p class="lane__label">Through a middleman <small>3 hops</small></p>
+          <p class="rj-sr">Through a middleman: your resume goes to a job aggregator, then a staffing agency, and often never reaches the company. No reply.</p>
+          <div class="track" aria-hidden="true">
+            <div class="node node--you">Your resume<small>applied on a job site</small></div>
+            <span class="link"><i></i></span>
+            <div class="node">Job aggregator<small>copied listing</small></div>
+            <span class="link"><i></i></span>
+            <div class="node">Staffing agency<small>talent pool</small></div>
+            <span class="link link--broken"><i></i></span>
+            <div class="node node--end node--bad"><i class="rj-glyph rj-glyph--slash"></i><b>No reply</b><small>The company may never see it</small></div>
+          </div>
+          <span class="token" aria-hidden="true"><svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 13H8"/><path d="M16 17H8"/></svg></span>
+        </div>
+        <div class="lane lane--good">
+          <p class="lane__label">At the source, with RawJobs <small>1 hop</small></p>
+          <p class="rj-sr">At the source: your resume goes to the company's own careers page and is read by the hiring team that posted the job.</p>
+          <div class="track" aria-hidden="true">
+            <div class="node node--you">Your resume<small>applied on the careers page</small></div>
+            <span class="link link--good"><i></i></span>
+            <div class="node">Company careers page<small>Lever, Greenhouse, Workday…</small></div>
+            <span class="link link--good"><i></i></span>
+            <div class="node node--end node--good"><i class="rj-glyph rj-glyph--full"></i><b>Hiring team</b><small>Read by the people who posted it</small></div>
+          </div>
+          <span class="token" aria-hidden="true"><svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 13H8"/><path d="M16 17H8"/></svg></span>
+        </div>
+        <p class="routes__note">Not every repost is a dead end, and applying direct doesn't guarantee a reply. It does remove the hops where resumes get lost.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= HOW ================= -->
+<section class="section" id="how" aria-labelledby="how-title">
+  <div class="wrap split">
+    <div class="split__head">
+      <p class="eyebrow">How it works</p>
+      <h2 id="how-title">Set it up once. It checks for you.</h2>
+      <p class="prose">Setup takes about three minutes. After that, a scan is one button, or a schedule.</p>
+    </div>
+    <div class="split__body">
+      <ol class="steps">
+        <li class="step" style="--i:0">
+          <span class="step__n">STEP 1</span>
+          <h3>Tell it what you want.</h3>
+          <p>Roles, places and topics. Paste your resume and it suggests them for you.</p>
+          <div class="step__demo" aria-hidden="true">
+            <div class="mini-chips"><span class="mini-chip">Head of product</span><span class="mini-chip">Product manager</span></div>
+            <div class="mini-chips"><span class="mini-chip">Dubai</span><span class="mini-chip">Remote (EMEA)</span><span class="mini-chip mini-chip--off">London</span></div>
+            <div class="mini-chips"><span class="mini-chip">crypto</span><span class="mini-chip">payments</span><span class="mini-chip mini-chip--off">AI</span></div>
+          </div>
+        </li>
+        <li class="step" style="--i:1">
+          <span class="step__n">STEP 2</span>
+          <h3>It reads the source.</h3>
+          <p>Straight from each company's own board on Greenhouse, Lever, Ashby, Workday and 19 more.</p>
+          <div class="step__demo log" aria-hidden="true">
+            <div>lever    acme    <span class="ok">14 jobs</span></div>
+            <div>ashby    halcyon <span class="ok">6 jobs</span></div>
+            <div>workday  meridian <span class="ok">212</span></div>
+            <div>teamtailor quietco <span class="warn">dormant</span></div>
+          </div>
+        </li>
+        <li class="step" style="--i:2">
+          <span class="step__n">STEP 3</span>
+          <h3>You see the score and why.</h3>
+          <p>Every job gets 0 to 100 with the reason written out. Your favorite companies stay on top.</p>
+          <div class="step__demo" aria-hidden="true">
+            <div style="display:flex;gap:8px;align-items:center"><span class="rj-score rj-score--strong"><i class="rj-glyph rj-glyph--full"></i>84</span><span style="font:var(--text-label)">Head of Product, Exchange</span></div>
+            <div class="log"><div>title 30 · place 20 · keywords 24 · fresh 10</div></div>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SCORING ================= -->
+<section class="section" id="scoring" aria-labelledby="scoring-title">
+  <div class="wrap split">
+    <div class="split__head">
+      <p class="eyebrow">Scoring</p>
+      <h2 id="scoring-title">A score you can argue with.</h2>
+      <p class="prose">No AI and no black box. <strong>Title</strong> up to 30, <strong>place</strong> up to 20, <strong>keywords</strong> up to 40, <strong>fresh</strong> up to 10. Change what you're looking for and watch the score move.</p>
+    </div>
+    <div class="split__body">
+      <div class="lab" id="lab">
+        <form class="lab__controls" id="lab-form" aria-label="What you're looking for">
+          <fieldset>
+            <legend>Titles you want<small>The job title must contain one of these.</small></legend>
+            <div class="chips">
+              <button type="button" class="rj-chip" id="t-head" data-group="titles" data-v="head of product" aria-pressed="true"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Head of product</button>
+              <button type="button" class="rj-chip" id="t-pm" data-group="titles" data-v="product manager" aria-pressed="true"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Product manager</button>
+              <button type="button" class="rj-chip" id="t-em" data-group="titles" data-v="engineering manager" aria-pressed="false"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Engineering manager</button>
+              <button type="button" class="rj-chip" id="t-boost" data-group="boost" data-v="head" aria-pressed="true"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Boost senior titles</button>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Places<small>The job must be in one of these, or remote where you accept it.</small></legend>
+            <div class="chips">
+              <button type="button" class="rj-chip" id="p-dxb" data-group="places" data-v="dubai" aria-pressed="true"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Dubai</button>
+              <button type="button" class="rj-chip" id="p-ldn" data-group="places" data-v="london" aria-pressed="false"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>London</button>
+              <button type="button" class="rj-chip" id="p-rem" data-group="places" data-v="remote" aria-pressed="true"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Remote</button>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Keywords<small>Points are the share of your keywords the posting mentions. Three matches fill the bar. A keyword in the title is worth at least 20.</small></legend>
+            <div class="chips">
+              <button type="button" class="rj-chip" id="k-crypto" data-group="kw" data-v="crypto" aria-pressed="true"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>crypto</button>
+              <button type="button" class="rj-chip" id="k-exch" data-group="kw" data-v="exchange" aria-pressed="true"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>exchange</button>
+              <button type="button" class="rj-chip" id="k-token" data-group="kw" data-v="tokenization" aria-pressed="false"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>tokenization</button>
+              <button type="button" class="rj-chip" id="k-pay" data-group="kw" data-v="payments" aria-pressed="true"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>payments</button>
+              <button type="button" class="rj-chip" id="k-ai" data-group="kw" data-v="ai" aria-pressed="true"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>AI</button>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Posted</legend>
+            <div class="chips">
+              <label class="rj-chip" for="f-0"><input class="rj-sr" type="radio" name="fresh" id="f-0" value="0"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Today</label>
+              <label class="rj-chip" for="f-5"><input class="rj-sr" type="radio" name="fresh" id="f-5" value="5" checked><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>5 days ago</label>
+              <label class="rj-chip" for="f-14"><input class="rj-sr" type="radio" name="fresh" id="f-14" value="14"><svg class="rj-icon tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>2 weeks ago</label>
+            </div>
+          </fieldset>
+        </form>
+        <div class="lab__result">
+          <div class="jobcard">
+            <span class="rj-source">Lever<span class="rj-source__age" id="lab-age">5d</span></span>
+            <h3 class="jobcard__title">Head of Product, Exchange</h3>
+            <p class="jobcard__meta">Acme Exchange · Dubai, Abu Dhabi · Hybrid</p>
+            <p class="jobcard__text" id="lab-text">Own the roadmap for our regulated <mark data-kw="crypto">crypto</mark> <mark data-kw="exchange">exchange</mark>: spot trading, custody and <mark data-kw="tokenization">tokenization</mark> of real-world assets. You'll work with compliance on KYC and launch new markets.</p>
+          </div>
+          <div class="verdict">
+            <span class="rj-score rj-score--lg rj-score--strong" id="lab-score" role="img" aria-label="Strong match, score 83"><i class="rj-glyph rj-glyph--full" id="lab-glyph"></i><span id="lab-num">83</span></span>
+            <span class="verdict__label" id="lab-verdict">Strong match<span>Shown near the top of your Radar</span></span>
+          </div>
+          <div class="rj-breakdown" aria-hidden="true">
+            <div class="rj-breakdown__bar">
+              <span class="rj-breakdown__seg"><i class="bd-fill" id="lab-bt" style="transform:scaleX(1)"></i></span>
+              <span class="rj-breakdown__seg"><i class="bd-fill" id="lab-bp" style="transform:scaleX(1)"></i></span>
+              <span class="rj-breakdown__seg"><i class="bd-fill" id="lab-bk" style="transform:scaleX(.675)"></i></span>
+              <span class="rj-breakdown__seg"><i class="bd-fill" id="lab-bf" style="transform:scaleX(.6)"></i></span>
+            </div>
+            <div class="rj-breakdown__legend num" id="lab-legend"><span>title <b>30</b></span><span>place <b>20</b></span><span>keywords <b>27</b></span><span>fresh <b>6</b></span></div>
+          </div>
+          <p class="why-line num" id="lab-why" aria-live="polite">83: title 30, place 20, keywords 27 (crypto, exchange), fresh 6</p>
+          <p class="lab__fine">An example job. In RawJobs you set what counts as a strong match; this demo uses 70 and up.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SOURCES ================= -->
+<section class="section" id="sources" aria-labelledby="sources-title">
+  <div class="wrap split">
+    <div class="split__head">
+      <p class="eyebrow">Sources</p>
+      <h2 id="sources-title">Reads 23 hiring systems.</h2>
+      <p class="prose">Each connector reads the public feed a company publishes for its own careers page. One request per company per scan, spaced out and identified.</p>
+    </div>
+    <div class="split__body">
+      <ul class="ats-grid" aria-label="Supported hiring systems">__ATS__</ul>
+      <div class="sources__foot">
+        <p class="boards">Plus <b>4 public job boards</b>: Hacker News “Who is hiring”, Remotive, Arbeitnow and Remote OK, each credited and linked back.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PRIVACY ================= -->
+<section class="section" id="privacy" aria-labelledby="privacy-title">
+  <div class="wrap split">
+    <div class="split__head">
+      <p class="eyebrow">Privacy</p>
+      <h2 id="privacy-title">Runs on your machine.</h2>
+    </div>
+    <div class="split__body">
+      <p class="section__lede">Your resume, roles and companies never leave your computer. RawJobs only reads job postings that companies publish themselves.</p>
+      <div class="facts">
+        <div class="fact">
+          <svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0 1.28 2.55a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45L4 16"/></svg>
+          <h3>Your profile stays local</h3>
+          <p>Resume, config, run history and alert settings are files on your computer, gitignored by default.</p>
+        </div>
+        <div class="fact">
+          <svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m17 8 5 5"/><path d="m22 8-5 5"/></svg>
+          <h3>No account, no telemetry</h3>
+          <p>Nothing to sign up for. The app only talks to job boards, GitHub for the shared directory and, if you turn on alerts, Telegram.</p>
+        </div>
+        <div class="fact">
+          <svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+          <h3>Public postings only</h3>
+          <p>It never touches apply forms or candidate data, and every job links back to the original posting.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= DOWNLOAD ================= -->
+<section class="section" id="download" aria-labelledby="download-title">
+  <div class="wrap split">
+    <div class="split__head">
+      <p class="eyebrow">No terminal needed</p>
+      <h2 id="download-title">Not a developer? Download one file.</h2>
+      <p class="prose">A desktop app for Mac and Windows is on the way. Download it, open it, pick your roles. It runs on your computer, exactly like the developer version.</p>
+    </div>
+    <div class="split__body">
+      <div class="dl">
+        <div class="dl__files">
+          <div class="dl__file">
+            <span class="dl__icon" aria-hidden="true">.dmg</span>
+            <span class="dl__name">RawJobs for Mac<span class="soon"><i class="rj-glyph rj-glyph--empty" aria-hidden="true"></i>Coming soon</span><small>One file. Open it and go.</small></span>
+            <button class="rj-btn" type="button" aria-disabled="true">Download for Mac</button>
+          </div>
+          <div class="dl__file">
+            <span class="dl__icon" aria-hidden="true">.exe</span>
+            <span class="dl__name">RawJobs for Windows<span class="soon"><i class="rj-glyph rj-glyph--empty" aria-hidden="true"></i>Coming soon</span><small>One file. Open it and go.</small></span>
+            <button class="rj-btn" type="button" aria-disabled="true">Download for Windows</button>
+          </div>
+        </div>
+        <ol class="dl__steps">
+          <li><b>Download the file</b>No install steps, no account.</li>
+          <li><b>Open it</b>Setup asks for your roles, places and topics. About three minutes.</li>
+          <li><b>Scan</b>Scored jobs appear on your computer. Nothing to host.</li>
+        </ol>
+        <div class="dl__foot">
+          <a class="rj-btn" href="https://github.com/Tanmay-Mhatre/rawjobs/releases" target="_blank" rel="noopener">Watch releases on GitHub<svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></a>
+          <span class="lab__fine">Comfortable with a terminal? The developer setup works today.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CLI ================= -->
+<section class="section" id="cli" aria-labelledby="cli-title">
+  <div class="wrap split">
+    <div class="split__head">
+      <p class="eyebrow">For developers</p>
+      <h2 id="cli-title">Prefer the terminal?</h2>
+      <p class="prose">Everything the dashboard does, the CLI does too. Schedule it, pipe it, or send new matches to Telegram.</p>
+    </div>
+    <div class="split__body">
+      <div class="term" id="term" data-play="static">
+        <div class="term__bar">
+          <span class="term__cwd">~/rawjobs</span>
+          <button class="rj-btn rj-btn--quiet rj-btn--sm" type="button" id="copy-cmd" data-copy="pnpm rawjobs scan">
+            <svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            <span>Copy command</span>
+          </button>
+        </div>
+<pre class="term__body" aria-label="Example output of pnpm rawjobs scan"><span data-line="0"><span class="p">$ </span><span class="typed">pnpm rawjobs scan</span></span><span data-line style="--i:1"><span class="d">Scanned 214 companies. 9 new for you.</span></span><span data-line style="--i:2"> </span><span data-line style="--i:3"><span class="st">★</span>  <span class="s">84</span>  Head of Product, Exchange</span><span data-line style="--i:4"><span class="d">        Acme Exchange · Dubai · hybrid · posted 2026-10-08</span></span><span data-line style="--i:5"><span class="d">        title 30 · loc 20 · kw 24 (crypto, exchange) · fresh 10</span></span><span data-line style="--i:6"><span class="d">        https://jobs.lever.co/acme-exchange/…</span></span><span data-line style="--i:7"> </span><span data-line style="--i:8">   <span class="s">72</span>  Senior Product Manager, Custody</span><span data-line style="--i:9"><span class="d">        Halcyon Labs · Abu Dhabi · on-site · posted 2026-10-09</span></span><span data-line style="--i:10"><span class="d">        title 30 · loc 20 · kw 16 (custody) · fresh 6</span></span></pre>
+      </div>
+      <div class="cmds">
+        <div class="cmd"><code>pnpm rawjobs scan --notify</code><span>Send new matches to Telegram</span></div>
+        <div class="cmd"><code>pnpm rawjobs schedule install --time 08:00</code><span>Scan every morning on your computer</span></div>
+        <div class="cmd"><code>pnpm rawjobs detect &lt;careers-url&gt;</code><span>Find a company's hiring system from its link</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= OPEN SOURCE ================= -->
+<section class="section" id="open" aria-labelledby="open-title">
+  <div class="wrap split">
+    <div class="split__head">
+      <p class="eyebrow">Open source</p>
+      <h2 id="open-title">Built in the open.</h2>
+      <p class="prose">MIT licensed. The directory, the connectors and the scoring rules are all in the repo for anyone to read and improve.</p>
+    </div>
+    <div class="split__body">
+      <div class="cards">
+        <a class="card" href="https://github.com/Tanmay-Mhatre/rawjobs/issues/new/choose" target="_blank" rel="noopener">
+          <h3>Add a company <svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></h3>
+          <p>Missing a company? Paste its careers link in the app, or suggest it for the shared directory so everyone gets it.</p>
+        </a>
+        <a class="card" href="https://github.com/Tanmay-Mhatre/rawjobs/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">
+          <h3>Write a connector <svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></h3>
+          <p>Each hiring system is one small file in <code>packages/core</code>, tested against saved responses so tests never hit live sites.</p>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FAQ ================= -->
+<section class="section" id="faq" aria-labelledby="faq-title">
+  <div class="wrap split">
+    <div class="split__head">
+      <p class="eyebrow">FAQ</p>
+      <h2 id="faq-title">Common questions</h2>
+    </div>
+    <div class="split__body">
+      <div class="faq">
+        <details><summary>Is it free?<svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></summary><p class="ans">Yes. RawJobs is MIT licensed, with no paid tier and no account.</p></details>
+        <details><summary>Does it use AI?<svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></summary><p class="ans">No. Scores come from keyword rules you can read and change. An optional AI re-rank, with your own key, is on the roadmap.</p></details>
+        <details><summary>Where do the jobs come from?<svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></summary><p class="ans">From each company's own careers page on its hiring system, like Greenhouse, Lever or Workday, plus four public job boards. A shared directory of about 21,000 companies, rebuilt weekly, tells RawJobs where to look.</p></details>
+        <details><summary>Is my data sent anywhere?<svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></summary><p class="ans">No. Your resume, roles, companies and alert settings stay on your computer, and the app has no telemetry. It talks only to the job boards it scans, GitHub for the shared directory, and Telegram if you turn on alerts.</p></details>
+        <details><summary>How fresh are the jobs?<svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></summary><p class="ans">As fresh as your last scan. Scan whenever you like, or schedule one or two scans a day and get new strong matches on Telegram.</p></details>
+        <details><summary>How do I run it?<svg class="rj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></summary><p class="ans">You need Node 22+ and pnpm. Clone the repo, run <code>pnpm install</code>, then <code>pnpm dev</code>. The dashboard opens and walks you through setup. A hosted version is planned.</p></details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FINAL CTA ================= -->
+<section class="section final" aria-labelledby="final-title">
+  <div class="wrap">
+    <div class="final__in">
+      <p class="eyebrow">Get started</p>
+      <h2 id="final-title">Your next role may already be on a careers page.</h2>
+      <p class="prose">Set it up once. Let it check the source every morning.</p>
+      <div class="hero__ctas">
+        <a class="rj-btn rj-btn--primary btn-lg" href="https://github.com/Tanmay-Mhatre/rawjobs#getting-started" target="_blank" rel="noopener">Set up RawJobs<svg class="rj-icon rj-icon--nudge" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a>
+        <a class="rj-btn btn-lg" href="https://github.com/Tanmay-Mhatre/rawjobs" target="_blank" rel="noopener">Star on GitHub</a>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot__grid">
+      <div>
+        <a class="brand" href="#top" aria-label="RawJobs, back to top">__WORDMARK__</a>
+        <p class="foot__small">Built by Tanmay Mhatre. MIT licensed. RawJobs is an independent project and isn't affiliated with or endorsed by Greenhouse, Lever, Ashby, Workday or any other hiring system or job board named here; their names only say which careers pages it can read. Jobs shown on this page are made-up examples.</p>
+      </div>
+      <nav class="foot__links" aria-label="Project links">
+        <a href="https://github.com/Tanmay-Mhatre/rawjobs" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/Tanmay-Mhatre/rawjobs/blob/main/PRIVACY.md" target="_blank" rel="noopener">Privacy</a>
+        <a href="https://github.com/Tanmay-Mhatre/rawjobs/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">Contributing</a>
+        <a href="https://github.com/Tanmay-Mhatre/rawjobs/blob/main/SECURITY.md" target="_blank" rel="noopener">Security</a>
+        <a href="https://github.com/Tanmay-Mhatre/rawjobs/blob/main/LICENSE" target="_blank" rel="noopener">License</a>
+      </nav>
+    </div>
+  </div>
+</footer>
+</div>
+
+<script>
+(function () {
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+
+  /* ---------- nav border once scrolled ---------- */
+  var nav = $('#nav');
+  var onScroll = function () { nav.setAttribute('data-stuck', window.scrollY > 8 ? 'true' : 'false'); };
+  addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+  /* ---------- scroll reveals: only below-the-fold blocks, revealed once ---------- */
+  var revealSel = '.step, .lab, .term, .dl';
+  var io = 'IntersectionObserver' in window ? new IntersectionObserver(function (es) {
+    es.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      var el = e.target; io.unobserve(el);
+      el.classList.remove('rv-wait'); el.classList.add('rv-in');
+      if (el.id === 'term') playTerm();
+    });
+  }, { rootMargin: '0px 0px -8% 0px', threshold: 0.12 }) : null;
+  if (io && !reduce) {
+    var vh = innerHeight;
+    $$(revealSel).forEach(function (el) {
+      if (el.getBoundingClientRect().top > vh * 0.92) {
+        el.classList.add('rv-wait'); io.observe(el);
+      }
+    });
+    var t = $('#term'); if (t.classList.contains('rv-wait')) t.setAttribute('data-play', 'ready');
+  }
+
+  /* ---------- terminal ---------- */
+  function playTerm() { var t = $('#term'); if (t.getAttribute('data-play') === 'ready') t.setAttribute('data-play', 'run'); }
+
+  /* ---------- copy ---------- */
+  $('#copy-cmd').addEventListener('click', function () {
+    var b = this, label = b.querySelector('span'), text = b.getAttribute('data-copy');
+    var done = function (ok) { label.textContent = ok ? 'Copied' : 'Select and copy'; setTimeout(function () { label.textContent = 'Copy command'; }, 1600); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+    else done(false);
+  });
+
+  /* ---------- scoring (same rules as packages/core) ---------- */
+  var JOB = { title: 'head of product, exchange', places: ['dubai', 'abu dhabi'], remote: false, text: 'crypto exchange spot trading custody tokenization real-world assets compliance kyc launch markets' };
+  var hasWord = function (hay, term) { return new RegExp('(^|[^a-z0-9])' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '($|[^a-z0-9])', 'i').test(hay); };
+  function score(s) {
+    var titleHit = s.titles.some(function (t) { return hasWord(JOB.title, t); });
+    var placeHit = s.places.some(function (p) { return JOB.places.indexOf(p) > -1; });
+    var remoteHit = JOB.remote && s.places.indexOf('remote') > -1;
+    if (!titleHit) return { gated: 'title' };
+    if (!placeHit && !remoteHit) return { gated: 'place' };
+    var t = 20 + (s.boost && hasWord(JOB.title, 'head') ? 10 : 0);
+    var p = placeHit ? 20 : 15;
+    var f = s.age <= 3 ? 10 : s.age <= 7 ? 6 : 2;
+    var matched = s.kw.filter(function (k) { return hasWord(JOB.title + ' ' + JOB.text, k); });
+    if (!s.kw.length) return { total: Math.round((t + p + f) / 60 * 100), t: t, p: p, k: 0, f: f, matched: [], noKw: true };
+    var w = 4, k = Math.round(40 * Math.min(1, (matched.length * w) / Math.min(s.kw.length * w, 12)));
+    /* same as packages/core: a keyword in the title is worth at least 20 */
+    if (matched.some(function (m) { return hasWord(JOB.title, m); })) k = Math.max(k, 20);
+    return { total: t + p + k + f, t: t, p: p, k: k, f: f, matched: matched };
+  }
+
+  var form = $('#lab-form'), last = 83;
+  function state() {
+    var on = function (g) { return $$('[data-group="' + g + '"][aria-pressed="true"]').map(function (b) { return b.getAttribute('data-v'); }); };
+    var age = +(form.querySelector('input[name="fresh"]:checked') || { value: 5 }).value;
+    return { titles: on('titles'), boost: on('boost').length > 0, places: on('places'), kw: on('kw'), age: age };
+  }
+  function animateNum(el, from, to) {
+    if (reduce || from === to) { el.textContent = to; return; }
+    var t0 = performance.now(), dur = 260;
+    (function tick(t) { var p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3); el.textContent = Math.round(from + (to - from) * e); if (p < 1) requestAnimationFrame(tick); })(t0);
+  }
+  function render() {
+    var s = state(), r = score(s);
+    var badge = $('#lab-score'), glyph = $('#lab-glyph'), num = $('#lab-num'), verdict = $('#lab-verdict'), why = $('#lab-why');
+    $('#lab-age').textContent = s.age === 0 ? '2h' : s.age + 'd';
+    $$('#lab-text mark').forEach(function (m) { if (s.kw.indexOf(m.getAttribute('data-kw')) > -1) m.removeAttribute('data-off'); else m.setAttribute('data-off', ''); });
+    var total = r.gated ? 0 : r.total;
+    var cls = r.gated ? 'weak' : total >= 70 ? 'strong' : total >= 50 ? 'fair' : 'weak';
+    badge.className = 'rj-score rj-score--lg rj-score--' + cls;
+    glyph.className = 'rj-glyph rj-glyph--' + (r.gated ? 'slash' : cls === 'strong' ? 'full' : cls === 'fair' ? 'half' : 'empty');
+    animateNum(num, last, total); last = total;
+    if (!reduce) { badge.removeAttribute('data-bump'); void badge.offsetWidth; badge.setAttribute('data-bump', ''); }
+    var name = { strong: 'Strong match', fair: 'Fair match', weak: 'Weak match' }[cls];
+    badge.setAttribute('aria-label', r.gated ? 'Hidden, score 0' : name + ', score ' + total);
+    if (r.gated === 'title') { verdict.innerHTML = 'Hidden<span>The title doesn’t contain any of your titles.</span>'; why.textContent = '0: hidden, title gate. Add “Head of product” to see it.'; }
+    else if (r.gated === 'place') { verdict.innerHTML = 'Hidden<span>Dubai and Abu Dhabi aren’t in your places, and it isn’t remote.</span>'; why.textContent = '0: hidden, place gate. Add Dubai to see it.'; }
+    else {
+      verdict.innerHTML = name + '<span>' + (cls === 'strong' ? 'Shown near the top of your Radar' : cls === 'fair' ? 'In your Radar, below strong matches' : 'Shown, low in your Radar') + '</span>';
+      why.textContent = total + ': title ' + r.t + ', place ' + r.p + ', keywords ' + r.k + (r.matched.length ? ' (' + r.matched.join(', ') + ')' : '') + ', fresh ' + r.f + (r.noKw ? ', scaled from 60 with no keywords' : '');
+    }
+    var vals = r.gated ? [0, 0, 0, 0] : [r.t / 30, r.p / 20, r.k / 40, r.f / 10];
+    ['#lab-bt', '#lab-bp', '#lab-bk', '#lab-bf'].forEach(function (id, i) { $(id).style.transform = 'scaleX(' + vals[i] + ')'; });
+    $('#lab-legend').innerHTML = '<span>title <b>' + (r.gated ? 0 : r.t) + '</b></span><span>place <b>' + (r.gated ? 0 : r.p) + '</b></span><span>keywords <b>' + (r.gated ? 0 : r.k) + '</b></span><span>fresh <b>' + (r.gated ? 0 : r.f) + '</b></span>';
+  }
+  form.addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-group]'); if (!b) return;
+    b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true'); render();
+  });
+  form.addEventListener('change', render);
+  form.addEventListener('submit', function (e) { e.preventDefault(); });
+  render();
+
+  /* ---------- hero radar: made-up jobs arriving from the source ---------- */
+  var POOL = [
+    { s: 88, t: 'Director of Product, Digital Assets', c: 'Saltmarsh Capital', p: 'Dubai', w: 'Hybrid', src: 'Greenhouse', host: 'job-boards.greenhouse.io/saltmarsh', b: [30, 20, 28, 10] },
+    { s: 76, t: 'Senior Product Manager, Trading', c: 'Kestrel Markets', p: 'Abu Dhabi', w: 'On-site', src: 'Ashby', host: 'jobs.ashbyhq.com/kestrel', b: [30, 20, 16, 10] },
+    { s: 81, t: 'Head of Product, Payments', c: 'Lumen Pay', p: 'Remote (EMEA)', w: 'Remote', src: 'Lever', host: 'jobs.lever.co/lumen-pay', b: [30, 15, 26, 10] },
+    { s: 66, t: 'Senior Product Manager, Search', c: 'Fernway Travel', p: 'Dubai', w: 'Hybrid', src: 'Greenhouse', host: 'job-boards.greenhouse.io/fernway', b: [30, 20, 6, 10] },
+    { s: 79, t: 'Lead Product Manager, Custody', c: 'Orbit Vault', p: 'Dubai', w: 'On-site', src: 'Workable', host: 'apply.workable.com/orbit-vault', b: [30, 20, 19, 10] },
+    { s: 74, t: 'Group Product Manager, Patient Apps', c: 'Medline Clinics', p: 'Abu Dhabi', w: 'Hybrid', src: 'Workday', host: 'medline.wd3.myworkdayjobs.com/careers', b: [30, 20, 14, 10] },
+    { s: 86, t: 'Head of Product, Tokenization', c: 'Granite RWA', p: 'Abu Dhabi', w: 'Hybrid', src: 'Ashby', host: 'jobs.ashbyhq.com/granite', b: [30, 20, 26, 10] },
+    { s: 47, t: 'Product Owner, Mobile App', c: 'Brightline Retail', p: 'Dubai', w: 'On-site', src: 'SmartRecruiters', host: 'careers.smartrecruiters.com/brightline', b: [20, 20, 0, 6] },
+    { s: 73, t: 'Senior Product Manager, Exchange', c: 'Cobalt Exchange', p: 'Dubai', w: 'Hybrid', src: 'Teamtailor', host: 'cobalt.teamtailor.com/jobs', b: [30, 20, 13, 10] }
+  ];
+  var radar = $('#radar'), list = $('#radar-list'), btn = $('#radar-toggle'), icon = $('#radar-icon');
+  var hostEl = $('#scan-host'), countEl = $('#scan-count'), newEl = $('#scan-new');
+  var idx = 0, timer = null, userPaused = reduce, hover = false, visible = true, companies = 214, fresh = 9;
+  var cls = function (s) { return s >= 70 ? 'strong' : s >= 50 ? 'fair' : 'weak'; };
+  var glyph = { strong: 'full', fair: 'half', weak: 'empty' }, word = { strong: 'Strong', fair: 'Fair', weak: 'Weak' };
+  function rowHTML(j) {
+    var k = cls(j.s);
+    return '<span class="rj-score rj-score--' + k + '" role="img" aria-label="' + word[k] + ' match, score ' + j.s + '"><i class="rj-glyph rj-glyph--' + glyph[k] + '"></i>' + j.s + '</span>' +
+      '<span class="rj-row__main"><span class="rj-row__title"><span>' + j.t + '</span></span><span class="rj-row__meta">' + j.c + '<span class="rj-sep" aria-hidden="true">·</span>' + j.p + '<span class="rj-sep" aria-hidden="true">·</span>' + j.w + '</span></span>' +
+      '<span class="rj-row__side"><span class="rj-source"><span class="rj-dot" role="img" aria-label="New this scan"></span>' + j.src + '<span class="rj-source__age">now</span></span></span>';
+  }
+  function setWhy(j) {
+    $('#why-title').textContent = 'Why “' + j.t + '” scored ' + j.s;
+    var max = [30, 20, 40, 10];
+    $$('.radar .bd-fill').forEach(function (el, i) { el.style.transform = 'scaleX(' + (j.b[i] / max[i]) + ')'; });
+    $('#why-legend').innerHTML = '<span>title <b>' + j.b[0] + '</b></span><span>place <b>' + j.b[1] + '</b></span><span>keywords <b>' + j.b[2] + '</b></span><span>fresh <b>' + j.b[3] + '</b></span>';
+  }
+  function tick() {
+    var j = POOL[idx++ % POOL.length];
+    hostEl.textContent = j.host;
+    var rows = $$('.rj-row', list), lastRow = rows[rows.length - 1];
+    lastRow.setAttribute('data-leave', '');
+    setTimeout(function () {
+      var before = new Map(); $$('.rj-row', list).forEach(function (r) { before.set(r, r.getBoundingClientRect().top); });
+      lastRow.remove();
+      $$('.rj-row', list).forEach(function (r) { r.removeAttribute('data-current'); var d = r.querySelector('.rj-dot'); if (d && Math.random() < 0.5) d.remove(); var a = r.querySelector('.rj-source__age'); if (a && a.textContent === 'now') a.textContent = '1m'; });
+      var li = document.createElement('li'); li.className = 'rj-row'; li.setAttribute('data-current', ''); li.innerHTML = rowHTML(j);
+      list.insertBefore(li, list.firstChild); li.setAttribute('data-enter', '');
+      $$('.rj-row', list).forEach(function (r) {
+        if (!before.has(r)) return;
+        var dy = before.get(r) - r.getBoundingClientRect().top; if (!dy) return;
+        r.animate([{ transform: 'translateY(' + dy + 'px)' }, { transform: 'translateY(0)' }], { duration: 320, easing: 'cubic-bezier(0.645, 0.045, 0.355, 1)' });
+      });
+      setWhy(j);
+      companies += 3 + Math.floor(Math.random() * 6); countEl.textContent = companies;
+      if (j.s >= 50) { fresh += 1; newEl.textContent = fresh; }
+    }, 170);
+  }
+  function sync() {
+    var run = !userPaused && !hover && visible && !document.hidden;
+    radar.setAttribute('data-running', run ? 'true' : 'false');
+    if (run && !timer) { timer = setInterval(tick, 3200); }
+    if (!run && timer) { clearInterval(timer); timer = null; }
+  }
+  function setBtn() {
+    btn.setAttribute('aria-label', userPaused ? 'Play the example feed' : 'Pause the example feed');
+    btn.title = userPaused ? 'Play' : 'Pause';
+    icon.innerHTML = userPaused ? '<path d="M6 3 20 12 6 21 6 3z"/>' : '<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>';
+  }
+  btn.addEventListener('click', function () { userPaused = !userPaused; setBtn(); sync(); });
+  radar.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse') { hover = true; sync(); } });
+  radar.addEventListener('pointerleave', function () { hover = false; sync(); });
+  radar.addEventListener('focusin', function (e) { if (e.target !== btn) { hover = true; sync(); } });
+  radar.addEventListener('focusout', function () { hover = false; sync(); });
+  document.addEventListener('visibilitychange', sync);
+  if ('IntersectionObserver' in window) new IntersectionObserver(function (es) { visible = es[0].isIntersecting; sync(); }).observe(radar);
+  setBtn();
+  setTimeout(sync, reduce ? 0 : 1400);
+
+  /* ---------- routes: your resume travels two ways ---------- */
+  var routes = $('#routes'), replay = $('#routes-replay'), routesBusy = false;
+  var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+  var vertical = function () { return matchMedia('(max-width: 640px)').matches; };
+  function center(el, box) { var r = el.getBoundingClientRect(), b = box.getBoundingClientRect(); return { x: r.left - b.left + Math.min(r.width / 2, 40) - 14, y: r.top - b.top + r.height / 2 - 14 }; }
+  function resetRoutes() {
+    routes.setAttribute('data-play', 'ready');
+    $$('.node', routes).forEach(function (n) { n.removeAttribute('data-reached'); });
+    $$('.link > i', routes).forEach(function (i) { i.style.transform = ''; });
+    $$('.token', routes).forEach(function (t) { t.getAnimations().forEach(function (a) { a.cancel(); }); t.style.opacity = '0'; });
+  }
+  async function lane(laneEl, bad) {
+    var nodes = $$('.node', laneEl), links = $$('.link > i', laneEl), token = $('.token', laneEl), v = vertical();
+    var axis = v ? 'scaleY' : 'scaleX';
+    var p = nodes.map(function (n) { return center(n, laneEl); });
+    var at = function (q) { return 'translate(' + q.x + 'px,' + q.y + 'px)'; };
+    token.style.opacity = '1';
+    await token.animate([{ transform: at(p[0]) + ' scale(0.9)', opacity: 0 }, { transform: at(p[0]), opacity: 1 }], { duration: 240, easing: 'cubic-bezier(0.165, 0.84, 0.44, 1)', fill: 'forwards' }).finished;
+    nodes[0].setAttribute('data-reached', '');
+    for (var i = 0; i < nodes.length - 1; i++) {
+      var last = i === nodes.length - 2, hop = bad ? 760 : 520;
+      if (bad && last) {
+        /* the broken hop: the line stops halfway and the resume drops out */
+        var mid = { x: (p[i].x + p[i + 1].x) / 2, y: (p[i].y + p[i + 1].y) / 2 };
+        links[i].animate([{ transform: axis + '(0)' }, { transform: axis + '(0.45)' }], { duration: 520, easing: 'cubic-bezier(0.165, 0.84, 0.44, 1)', fill: 'forwards' });
+        await token.animate([{ transform: at(p[i]) }, { transform: at(mid) }], { duration: 620, easing: 'cubic-bezier(0.645, 0.045, 0.355, 1)', fill: 'forwards' }).finished;
+        await sleep(380);
+        var drop = v ? { x: mid.x + 18, y: mid.y } : { x: mid.x, y: mid.y + 18 };
+        await token.animate([{ transform: at(mid), opacity: 1 }, { transform: at(drop) + ' rotate(-8deg)', opacity: 0 }], { duration: 420, easing: 'cubic-bezier(0.645, 0.045, 0.355, 1)', fill: 'forwards' }).finished;
+        await sleep(160);
+        nodes[i + 1].style.cssText = ''; routes.querySelector('.lane--bad .node--end').style.opacity = '1';
+        nodes[i + 1].style.transform = 'none';
+        return;
+      }
+      links[i].animate([{ transform: axis + '(0)' }, { transform: axis + '(1)' }], { duration: hop, easing: 'cubic-bezier(0.165, 0.84, 0.44, 1)', fill: 'forwards' });
+      await token.animate([{ transform: at(p[i]) }, { transform: at(p[i + 1]) }], { duration: hop, easing: 'cubic-bezier(0.645, 0.045, 0.355, 1)', fill: 'forwards' }).finished;
+      if (last) {
+        token.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: 'forwards' });
+        nodes[i + 1].style.opacity = '1'; nodes[i + 1].style.transform = 'none';
+        nodes[i + 1].animate([{ transform: 'scale(0.97)' }, { transform: 'scale(1)' }], { duration: 200, easing: 'cubic-bezier(0.165, 0.84, 0.44, 1)' });
+      } else {
+        nodes[i + 1].setAttribute('data-reached', '');
+        await sleep(bad ? 520 : 120); /* the middleman sits on it */
+      }
+    }
+  }
+  async function playRoutes() {
+    if (routesBusy) return; routesBusy = true;
+    resetRoutes();
+    $$('.node--end', routes).forEach(function (n) { n.style.opacity = ''; n.style.transform = ''; });
+    await sleep(60);
+    await Promise.all([lane($('.lane--bad', routes), true), sleep(500).then(function () { return lane($('.lane--good', routes), false); })]);
+    routesBusy = false;
+  }
+  if (reduce || !routes.animate) { replay.hidden = true; }
+  else {
+    replay.addEventListener('click', playRoutes);
+    var startedBelow = routes.getBoundingClientRect().top > innerHeight * 0.6;
+    if (startedBelow && 'IntersectionObserver' in window) {
+      resetRoutes();
+      var rio = new IntersectionObserver(function (es) { if (es[0].isIntersecting) { rio.disconnect(); playRoutes(); } }, { threshold: 0.45 });
+      rio.observe(routes);
+    }
+  }
+})();
+</script>
+</body>
+</html>
