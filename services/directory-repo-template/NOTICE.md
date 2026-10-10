@@ -41,7 +41,7 @@ the job feed or any release.
 
 If you run a company and don't want it listed, or you see something here that shouldn't be:
 
-1. Open a [takedown request](https://github.com/Tanmay-Mhatre/job-hunter/issues/new?template=takedown.yml)
+1. Open a [takedown request](https://github.com/Tanmay-Mhatre/rawjobs/issues/new?template=takedown.yml)
    (or an issue in this repo). Give the company name and its careers page or domain. Don't include
    personal data.
 2. We reply within **7 days**. Once confirmed, the company goes into `denylist.json`.

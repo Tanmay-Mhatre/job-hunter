@@ -14,9 +14,9 @@ Three environment variables, read by the CLI and the dev server (`packages/core/
 
 | Variable | Default | What it is |
 |---|---|---|
-| `RAWJOBS_DIRECTORY_URL` | `https://github.com/Tanmay-Mhatre/job-hunter-directory/releases/latest/download` | Where `manifest.json`, `directory.json.gz` and `index.json.gz` are downloaded from. |
-| `RAWJOBS_CONTRIBUTE_URL` | `https://job-hunter-contribute.tanmay-jobhunter.workers.dev` | The contribution inbox that shared boards are sent to. Set it to an empty string to send nothing. |
-| `RAWJOBS_JOBS_URL` | `https://github.com/Tanmay-Mhatre/job-hunter-directory/releases/download/jobs` | The shared daily job feed that scans use to skip companies with nothing for you (`packages/core/src/job-feed.ts`). |
+| `RAWJOBS_DIRECTORY_URL` | `https://github.com/Tanmay-Mhatre/rawjobs-directory/releases/latest/download` | Where `manifest.json`, `directory.json.gz` and `index.json.gz` are downloaded from. |
+| `RAWJOBS_CONTRIBUTE_URL` | `https://rawjobs-contribute.tanmay-jobhunter.workers.dev` | The contribution inbox that shared boards are sent to. Set it to an empty string to send nothing. |
+| `RAWJOBS_JOBS_URL` | `https://github.com/Tanmay-Mhatre/rawjobs-directory/releases/download/jobs` | The shared daily job feed that scans use to skip companies with nothing for you (`packages/core/src/job-feed.ts`). |
 
 For example:
 
@@ -55,7 +55,7 @@ To make it permanent for everyone using your fork, change `DEFAULT_DIRECTORY_URL
 ## Maintainers and tokens
 
 The project has one maintainer today. A second maintainer should have:
-- admin on `job-hunter` and `job-hunter-directory`;
+- admin on `rawjobs` and `rawjobs-directory`;
 - access to the Cloudflare account that runs the inbox;
 - a line in `.github/CODEOWNERS`.
 
@@ -63,9 +63,9 @@ The project has one maintainer today. A second maintainer should have:
 
 | Secret | Where it lives | What it can do |
 |---|---|---|
-| `DATA_REPO_TOKEN` | GitHub secret in `job-hunter` | Push to `job-hunter-directory` and publish its releases. |
-| `INBOX_TOKEN` | Cloudflare Worker secret **and** GitHub secret in `job-hunter` (same value) | Read and acknowledge waiting contributions. |
-| `INBOX_URL` | GitHub secret in `job-hunter` | Not secret, kept with the token for convenience. |
+| `DATA_REPO_TOKEN` | GitHub secret in `rawjobs` | Push to `rawjobs-directory` and publish its releases. |
+| `INBOX_TOKEN` | Cloudflare Worker secret **and** GitHub secret in `rawjobs` (same value) | Read and acknowledge waiting contributions. |
+| `INBOX_URL` | GitHub secret in `rawjobs` | Not secret, kept with the token for convenience. |
 
 Rotate both every 90 days, when a maintainer leaves, and right away if one may have leaked.
 
@@ -74,11 +74,11 @@ Rotate both every 90 days, when a maintainer leaves, and right away if one may h
 Use a **fine-grained** personal access token, never a classic one.
 
 1. GitHub → Settings → Developer settings → Fine-grained tokens → Generate new token.
-   - Resource owner: the account that owns `job-hunter-directory`.
+   - Resource owner: the account that owns `rawjobs-directory`.
    - Expiration: 90 days.
-   - Repository access: **only** `job-hunter-directory`.
+   - Repository access: **only** `rawjobs-directory`.
    - Permissions: *Contents: Read and write* (pushes and releases). Nothing else.
-2. In `job-hunter`: `gh secret set DATA_REPO_TOKEN` and paste the new token.
+2. In `rawjobs`: `gh secret set DATA_REPO_TOKEN` and paste the new token.
 3. Run **Directory · contributions** by hand (Actions → Run workflow) and check it passes. If the
    inbox is empty it stops early, so also check the next **Directory · weekly rebuild**, or run it by hand.
 4. Delete the old token on the same GitHub page.
@@ -93,7 +93,7 @@ This is a random string shared by the Worker and the workflow, not a GitHub toke
 2. Right after a contributions run (they start at 17 minutes past every third hour, UTC), set it
    in both places:
    - `cd services/contribute && npx wrangler secret put INBOX_TOKEN`
-   - `gh secret set INBOX_TOKEN` in `job-hunter`
+   - `gh secret set INBOX_TOKEN` in `rawjobs`
 3. Run **Directory · contributions** by hand and check the "Check the inbox" step passes.
 
 Until both are updated, the workflow fails with 401 and contributions wait in the inbox (up to 30
@@ -103,7 +103,7 @@ days), so nothing is lost.
 
 1. Revoke it first (delete the GitHub token, or put a new `INBOX_TOKEN` on the Worker), then
    rotate as above.
-2. `DATA_REPO_TOKEN`: check recent commits and releases in `job-hunter-directory` for anything
+2. `DATA_REPO_TOKEN`: check recent commits and releases in `rawjobs-directory` for anything
    you didn't publish, and revert it.
 3. `INBOX_TOKEN`: someone could have read or acknowledged waiting boards. Boards are not personal
    data, so the worst case is lost contributions; users' apps don't resend them.

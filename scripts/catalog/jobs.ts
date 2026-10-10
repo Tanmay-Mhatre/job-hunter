@@ -88,7 +88,7 @@ async function main() {
     retries: 2,
     backoffMs: 3_000,
     breakAfter: 8,
-    userAgent: "JobHunter-feed/0.1 (open-source job radar; one daily read per board; https://github.com/Tanmay-Mhatre/job-hunter)",
+    userAgent: "RawJobs-feed/0.1 (open-source job radar; one daily read per board; https://github.com/Tanmay-Mhatre/rawjobs)",
   });
   const previousManifest = existsSync(join(OUT, "jobs-manifest.json")) ? (JSON.parse(readFileSync(join(OUT, "jobs-manifest.json"), "utf8")) as JobFeedManifest) : undefined;
   const now = new Date();

@@ -15,7 +15,7 @@ user is ever uploaded.
                                                    appends good ones to contributions.json,
                                                    publishes an updated directory, acknowledges
                                                    ▼
- data/catalog ◄── download (weekly, checksum) ── Public directory repo: job-hunter-directory
+ data/catalog ◄── download (weekly, checksum) ── Public directory repo: rawjobs-directory
    directory.json, index.json, manifest.json       releases/latest: manifest.json,
                                                    directory.json.gz, index.json.gz
                                                    ▲ every Monday
@@ -36,7 +36,7 @@ user is ever uploaded.
 | Contributions workflow | `.github/workflows/directory-contributions.yml` | Every 3 hours: accept, publish incrementally, commit `contributions.json`, acknowledge. |
 | Weekly rebuild | `.github/workflows/directory-rebuild.yml` | Full rebuild and a dated release; saves its working state as the `state` release so the next run skips recently checked boards. |
 | Finding more companies | `scripts/catalog/` | See [Coverage](#coverage) below. |
-| Public directory repo | `Tanmay-Mhatre/job-hunter-directory` | Releases (the files apps download), `contributions.json`, `coverage.md`, attribution. |
+| Public directory repo | `Tanmay-Mhatre/rawjobs-directory` | Releases (the files apps download), `contributions.json`, `coverage.md`, attribution. |
 
 Overrides: `RAWJOBS_DIRECTORY_URL` (download base) and `RAWJOBS_CONTRIBUTE_URL` (inbox) point an install at your own copies (the older `JOBHUNTER_` names still work). See [self-hosting.md](self-hosting.md).
 
@@ -150,7 +150,7 @@ filtering is instant. The first format is still published next to it while insta
 ## One-time setup
 
 1. **GitHub permission for workflow files** (once): `gh auth refresh -s workflow`
-2. **Public directory repo**: `gh repo create Tanmay-Mhatre/job-hunter-directory --public`, then add the files from `services/directory-repo-template/`.
+2. **Public directory repo**: `gh repo create Tanmay-Mhatre/rawjobs-directory --public`, then add the files from `services/directory-repo-template/`.
 3. **Seed it** from an existing local build so the first weekly run is quick:
    `pnpm catalog:release --out dist`, then `gh release create directory-YYYY-MM-DD dist/* --latest -R <repo>`;
    and upload `catalog-state.tar.gz` (out/checks.jsonl, out/index-all.jsonl, out/resolved.json) to a prerelease tagged `state`.
