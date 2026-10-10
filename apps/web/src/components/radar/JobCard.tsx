@@ -62,6 +62,7 @@ export const JobCard = forwardRef<HTMLLIElement, Props>(function JobCard({ group
   if (WORKPLACE[job.workplace]) meta.push(WORKPLACE[job.workplace]);
   if (salary) meta.push(salary);
   if (status && status !== "dismissed") meta.push(<span className="text-ink">{STATUS_LABEL[status]}</span>);
+  if (job.repostedAt) meta.push(<span title="Taken down and posted again: dated from the first posting">Reposted</span>);
   if (job.status === "closed") meta.push(<span className="text-danger-text">Closed</span>);
   if (job.why.gate) meta.push(<span className="text-warning-text">Failed your {job.why.gate} filter</span>);
 

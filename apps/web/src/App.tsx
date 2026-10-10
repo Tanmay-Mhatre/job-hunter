@@ -18,6 +18,7 @@ import { Button, Card, cx, IconButton, Kbd } from "./components/ui";
 import { FAILING_HASH, jobCompanyKey, keyOf, refOfJob, toRow } from "./lib/companies";
 import { telegramStatus, type TelegramStatus } from "./lib/automation";
 import { canRunLocally, useData, useOtherJobs, type Job } from "./lib/data";
+import { newSinceLastVisit } from "./lib/newSince";
 import { usePrefs } from "./lib/prefs";
 import { scanPrefs, useScan } from "./lib/scan";
 import { useResume } from "./lib/resume";
@@ -615,9 +616,9 @@ export function App() {
         <JobDrawer
           job={openJob}
           isNew={(() => {
-            // Same rule as the feed: new since the previous full scan, never on the first.
+            // Same rule as the feed: new since your last visit, never on the first scan.
             const full = meta.runs.filter((r) => !r.partial);
-            return hasNewTag(openJob, { firstScan: full.length <= 1, newSince: full[1] ? Date.parse(full[1].finishedAt) : undefined });
+            return hasNewTag(openJob, { firstScan: full.length <= 1, newSince: newSinceLastVisit(full[0]?.finishedAt, full[1]?.finishedAt) });
           })()}
           entry={user.state[openJob.id]}
           profile={meta.profile}

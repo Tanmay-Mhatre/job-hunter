@@ -46,6 +46,8 @@ export const comeet: Connector<ComeetPosition> = {
       country,
       workplace: workplace ?? inferWorkplace(location),
       department: raw.department ?? undefined,
+      // Comeet gives no creation date, only when the position was last edited: the job is at least this
+      // old. A later edit can't make it look newer (run.ts keeps the earliest date).
       postedAt: isoDate(raw.time_updated),
       url: raw.url_active_page || raw.url_comeet_hosted_page || `https://www.comeet.com/jobs/${nameSlug(ref)}/${ref.slug}`,
       description: (raw.custom_fields?.details ?? []).map((d) => [d.name, htmlToText(d.value)].filter(Boolean).join("\n")).join("\n\n"),
