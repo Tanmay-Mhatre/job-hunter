@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Job } from "../src/lib/data";
 import {
+  evergreenReason,
   isOlder,
   activeChips,
   applyFilters,
@@ -242,6 +243,18 @@ describe("your companies and directory jobs", () => {
     expect(applyFilters([closed], f({ status: "applied" }), mine)).toHaveLength(1);
     // Closed jobs stay out of the main list.
     expect(applyFilters([closed], f(), mine)).toEqual([]);
+  });
+
+  it("spots talent pools and reposts, ranks them lower, and can hide them", () => {
+    expect(evergreenReason({ title: "Join our Talent Community!" })).toBe("pool");
+    expect(evergreenReason({ title: "Investment Advisor (For Future Openings)" })).toBe("pool");
+    expect(evergreenReason({ title: "Open Application" })).toBe("pool");
+    expect(evergreenReason({ title: "Product Manager", repostedAt: daysAgo(1) })).toBe("reposted");
+    expect(evergreenReason({ title: "Senior Product Manager, Payments" })).toBeUndefined();
+    const pool = job({ id: "pool", title: "Product Talent Pool", score: 80 });
+    const real = job({ id: "real", title: "Product Manager", score: 70 });
+    expect(sortJobs([pool, real], "best", undefined, NOW).map((j) => j.id)).toEqual(["real", "pool"]);
+    expect(applyFilters([pool, real], f({ hideEvergreen: true }), ctx).map((j) => j.id)).toEqual(["real"]);
   });
 
   it("marks postings over two months old", () => {

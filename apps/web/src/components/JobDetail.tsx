@@ -6,7 +6,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "
 import { copyText } from "../lib/clipboard";
 import { useDescription, type Job, type Profile } from "../lib/data";
 import { formatDate, formatSalary, placeSummary, postedOrSeen, timeAgo } from "../lib/format";
-import { atsLabel, INDEX_MAX_AGE_DAYS, isOlder } from "../lib/filters";
+import { atsLabel, evergreenReason, INDEX_MAX_AGE_DAYS, isOlder } from "../lib/filters";
 import { load, save } from "../lib/storage";
 import { PIPELINE, STATUS_LABEL, type Entry, type Status } from "../lib/userState";
 import { Dialog } from "./Dialog";
@@ -122,6 +122,7 @@ export function JobDetail(p: JobDetailProps) {
     : placeSummary(job.cities.length ? job.cities : job.location ? [job.location] : []);
   const age = timeAgo(postedOrSeen(job)).replace(/ ago$/, "");
   const workplace = WORKPLACE_LABEL[job.workplace];
+  const evergreen = evergreenReason(job);
   const meta: ReactNode[] = [
     job.company,
     places,
@@ -137,8 +138,10 @@ export function JobDetail(p: JobDetailProps) {
       `First seen ${formatDate(job.firstSeen)}`
     ),
     ...(salary ? [salary] : []),
-    ...(job.repostedAt ? [<span title={`Taken down and posted again on ${formatDate(job.repostedAt)}: dated from the first posting`}>Reposted</span>] : []),
-    ...(job.status === "closed" ? ["Closed"] : []),
+    ...(evergreen === "pool" ? [<span className="text-warning-text" title="A talent pool or open application: it collects applications rather than filling one role">Talent pool</span>] : []),
+    ...(evergreen === "reposted" ? [<span className="text-warning-text" title={`Taken down and posted again on ${formatDate(job.repostedAt)}: dated from the first posting`}>Reposted</span>] : []),
+    // We read it off the company's own board: say when, so "is this still open?" has an answer.
+    ...(job.status === "closed" ? ["Closed"] : job.estimated ? [] : [`Still listed · checked ${timeAgo(job.lastSeen)}`]),
   ];
   const saved = status === "saved";
 
