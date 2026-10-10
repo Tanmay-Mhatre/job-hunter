@@ -51,15 +51,33 @@ describe("digest", () => {
 });
 
 describe("finishedMessage", () => {
-  it("always says the scan is done, with totals, then the new jobs or 'no new jobs'", () => {
+  it("always says the scan is complete, with totals, 'no new jobs' and where to look", () => {
     const none = finishedMessage({ scopeLabel: "All companies", matches: 3, newJobs: [], minScore: 70, total: 16538 });
-    expect(none).toBe("✅ <b>All companies scan finished</b>: 16,538 companies checked.\n3 jobs match you, 0 new.\nNo new jobs this time.");
-    const some = finishedMessage({ scopeLabel: "All companies", matches: 5, newJobs: [job("PM", 80)], minScore: 70 });
-    expect(some).toContain("5 jobs match you, 1 new.\n\n<b>1 new job for you</b>");
+    expect(none).toBe(
+      "✅ <b>Scan complete</b> · All companies\n16,538 companies checked.\n3 jobs match you.\n\nNo new jobs this time.\n\n💻 Open RawJobs on your laptop to see every job: http://127.0.0.1:5173",
+    );
+  });
+
+  it("splits the new jobs into your companies, strong fits elsewhere and the rest, adding up", () => {
+    const newJobs = [
+      job("Yours strong", 90, { id: "Greenhouse:Acme:1" }),
+      job("Yours weak", 40, { id: "greenhouse:acme:2" }),
+      job("Strong", 80),
+      job("Other A", 50),
+      job("Other B", 60),
+    ];
+    const text = finishedMessage({ scopeLabel: "My companies + my industries", matches: 384, newJobs, minScore: 70, yours: new Set(["greenhouse:acme"]) });
+    expect(text).toContain(
+      "<b>5 new jobs</b>\n🏢 2 from your companies (1 strong fit)\n⭐ 1 strong fit (score 70+) from other companies\n• 2 other matches\n\n⭐ <b>90</b>",
+    );
+    expect(text.match(/<a /g)).toHaveLength(5);
+    expect(text.endsWith("\n\n💻 Open RawJobs on your laptop to see every job: http://127.0.0.1:5173")).toBe(true);
   });
 
   it("says where a stopped scan got to", () => {
-    expect(finishedMessage({ scopeLabel: "All companies", matches: 0, newJobs: [], minScore: 70, stopped: true, done: 900, total: 16538 })).toMatch(/^⏸ <b>All companies scan stopped<\/b> at 900 of 16,538 companies\. Start it again/);
+    expect(finishedMessage({ scopeLabel: "All companies", matches: 0, newJobs: [], minScore: 70, stopped: true, done: 900, total: 16538 })).toMatch(
+      /^⏸ <b>Scan stopped<\/b> · All companies\nGot to 900 of 16,538 companies\. Start it again/,
+    );
   });
 });
 
