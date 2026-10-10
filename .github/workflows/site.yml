@@ -1,0 +1,53 @@
+name: Site
+
+# Builds apps/site and deploys it to Cloudflare (Worker "rawjobs", static assets only).
+# Needs two repository secrets: CLOUDFLARE_API_TOKEN (a token with "Edit Cloudflare Workers"
+# permission) and CLOUDFLARE_ACCOUNT_ID. Optional repository variables: SITE_URL (once a custom
+# domain is connected) and CF_ANALYTICS_TOKEN (Cloudflare Web Analytics site token).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/site/**
+      - apps/web/src/design/**
+      - design/components/bundle.css
+      - .github/workflows/site.yml
+  pull_request:
+    paths:
+      - apps/site/**
+      - apps/web/src/design/**
+      - design/components/bundle.css
+      - .github/workflows/site.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-deploy
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Build
+        run: node apps/site/build.mjs
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+          CF_ANALYTICS_TOKEN: ${{ vars.CF_ANALYTICS_TOKEN }}
+      - name: Deploy to Cloudflare
+        if: github.event_name != 'pull_request'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/site
+          wranglerVersion: "4.141.0"
+          command: deploy

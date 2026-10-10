@@ -13,6 +13,8 @@
   "scripts": {
     "dev": "pnpm --filter @rawjobs/web dev",
     "build": "pnpm --filter @rawjobs/web build",
+    "site:build": "node apps/site/build.mjs",
+    "site:dev": "node apps/site/build.mjs && npx wrangler@4.141.0 dev --config apps/site/wrangler.toml",
     "rawjobs": "tsx packages/cli/src/index.ts",
     "jobhunter": "tsx packages/cli/src/index.ts",
     "hooks:install": "git config core.hooksPath scripts/hooks",
