@@ -46,7 +46,7 @@ To make it permanent for everyone using your fork, change `DEFAULT_DIRECTORY_URL
   workflow may read and acknowledge it. Acknowledging removes boards, so a second poller would
   quietly take other users' contributions away from the central directory. The central inbox
   token is never shared.
-- Keep the third-party job APIs (Remotive, The Muse, Jobicy, RemoteOK, Hacker News) out of any data
+- Keep the public job boards (Hacker News, Remotive, Arbeitnow, Remote OK) out of any data
   you publish. They are fetched on each user's own computer only.
 - Honour `denylist.json`: companies removed on request in the central directory should stay out of
   yours too.

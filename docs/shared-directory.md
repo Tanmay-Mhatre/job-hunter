@@ -10,7 +10,7 @@ user is ever uploaded.
  Add by link ── live check ── outbox ──POST──►  Contribution inbox (Cloudflare Worker)
                                                    │ keeps boards only (no user data), 30 days max
                                                    ▼ every 3 h
-                                                Contributions workflow (GitHub Actions, private repo)
+                                                Contributions workflow (GitHub Actions, code repo)
                                                    pulls the inbox, live-checks each board again,
                                                    appends good ones to contributions.json,
                                                    publishes an updated directory, acknowledges
@@ -69,7 +69,7 @@ Never shared: profile, resume, searches, statuses, which jobs you open. The inbo
 address only for rate limiting and stores none. Full details for users: [PRIVACY.md](../PRIVACY.md).
 
 The published data is CC BY 4.0 (`LICENSE-DATA` in the directory repo); sources and credits are
-in its `NOTICE.md`. Third-party job APIs (Remotive, The Muse, Jobicy, RemoteOK, Hacker News) are
+in its `NOTICE.md`. Public job boards (Hacker News, Remotive, Arbeitnow, Remote OK) are
 never published.
 
 ## Denylist
@@ -157,7 +157,7 @@ filtering is instant. The first format is still published next to it while insta
 4. **Inbox** (Cloudflare account needed): in `services/contribute`
    `npm install`, `npx wrangler login`, `npx wrangler kv namespace create INBOX` (put the id in `wrangler.toml`),
    `npx wrangler secret put INBOX_TOKEN` (a long random string), `npx wrangler deploy`.
-5. **Secrets in the private code repo** (`gh secret set NAME`):
+5. **Secrets in the code repo** (`gh secret set NAME`):
    - `INBOX_URL`: the Worker URL from step 4
    - `INBOX_TOKEN`: the same string as step 4
    - `DATA_REPO_TOKEN`: a fine-grained token with *Contents: read and write* on the directory repo only, expiring in 90 days
@@ -168,5 +168,4 @@ filtering is instant. The first format is still published next to it while insta
 
 Free tiers cover it: Cloudflare Workers + KV (well under the daily limits), GitHub Releases for the
 files (about 7 MB per directory release, roughly 10–20 MB for the job feed), and GitHub Actions, which
-is free and unmetered once the code repo is public. While it's private, the 2,000 free minutes a month
-cover the directory runs (about 20 hours) but not the daily job feed as well.
+is free and unmetered for public repos.

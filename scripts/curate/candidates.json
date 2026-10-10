@@ -1,8 +1,6 @@
 {
-  "_about": "Hand-picked candidates for the curated tier, beyond the crypto-jobs-fyi list. Segments follow the first user's profile (trading/brokerage, crypto exchanges, RWA, UAE fintech, payments, AI). 'urls' are known careers links if any; otherwise slugs are probed. Excluded: current employer.",
-  "exclude": [
-    "mtransform"
-  ],
+  "_about": "Hand-picked candidates for the curated tier, beyond the crypto-jobs-fyi list. Segments: trading/brokerage, crypto exchanges, RWA, fintech, payments, AI. 'urls' are known careers links if any; otherwise slugs are probed. 'exclude' lists companies to leave out.",
+  "exclude": [],
   "candidates": [
     {
       "name": "eToro",

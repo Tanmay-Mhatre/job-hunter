@@ -1,6 +1,7 @@
 # Contributing
 
-Thanks for helping. Small, focused pull requests are easiest to review.
+Thanks for helping. Small, focused pull requests are easiest to review. Everyone taking part agrees to the
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Set up
 
@@ -18,7 +19,8 @@ in that folder.
 
 ## Pull requests
 
-- Branch from `main` and open a pull request. CI must pass.
+- Branch from `main` and open a pull request. `main` is protected, so CI's `check` must pass
+  before it can merge.
 - Add or update tests. Connector tests use saved responses in `packages/core/test/fixtures`, so
   tests never hit live sites.
 - Write user-facing text in plain English: short sentences, no jargon, no marketing tone.
@@ -43,11 +45,12 @@ Use **Add by link** in the app (shared with the directory if sharing is on), or 
 
 ## Reporting
 
+- Questions and ideas: [Discussions](https://github.com/Tanmay-Mhatre/job-hunter/discussions).
 - Bugs: open an issue with the **Bug report** template.
+- Something RawJobs should do: the **Feature request** template.
 - A company that wants to be removed from the directory: the **Remove a company** template. We
   reply within 7 days.
-- Security problems: don't open a public issue. Use GitHub's "Report a vulnerability" on the
-  Security tab.
+- Security problems: don't open a public issue. See [SECURITY.md](SECURITY.md).
 
 ## License
 

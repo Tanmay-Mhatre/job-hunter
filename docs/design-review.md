@@ -1,4 +1,4 @@
-# Design Review: Job Hunter web app
+# Design Review: RawJobs web app
 
 **Date:** 2026-10-09 · **Method:** Anthropic `design` plugin (`design-critique` + `accessibility-review` + `ux-copy`)
 **How it was tested:**
