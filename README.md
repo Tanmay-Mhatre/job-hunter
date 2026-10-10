@@ -52,7 +52,7 @@ Prefer the terminal? Copy `rawjobs.config.example.yaml` to `rawjobs.config.local
   - **Your data**: export / import your tracking data, sharing, start setup over.
   - **Appearance**: light, dark or system theme, an increased-contrast option, and job list density.
 
-Statuses and notes live in your browser (export them for backup). **Scan now** in the header scans on your machine; you can ask for a Telegram message when it's done.
+Statuses and notes live in your browser (export them for backup). **Scan now** in the header scans on your machine and shows its progress there (hover it for details); with Telegram set up, you get a message when it's done.
 
 Keyboard: `j`/`k` move, `Enter` open, `s` save, `a` applied, `x` not interested, `c` copy description, `/` search, `1`–`4` sections, `?` help, `Esc` close.
 

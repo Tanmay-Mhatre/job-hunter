@@ -64,7 +64,8 @@ repo, as a hiring system, a board name and a company name. They aren't linked to
 
 ### Telegram alerts (only if you set them up)
 Alerts are sent through Telegram's API (`api.telegram.org`) with your own bot. They contain job
-titles, companies and links.
+titles, companies and links. Once it's set up, scheduled scans and every scan you start from the dashboard send one
+message when they finish.
 
 ### No telemetry
 The app has no analytics, no crash reporting and no usage tracking. The web dashboard loads no
