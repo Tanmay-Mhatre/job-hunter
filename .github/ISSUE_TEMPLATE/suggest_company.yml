@@ -1,0 +1,27 @@
+name: Suggest a company
+description: A company that's missing from the shared directory, so everyone can find its jobs.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks. Running RawJobs already? **Add by link** in the Companies tab adds it for you, and shares it with the directory if sharing is on. This form is for everyone else. It's public, so leave out anything personal.
+  - type: input
+    id: company
+    attributes:
+      label: Company
+      placeholder: Acme Exchange
+    validations:
+      required: true
+  - type: input
+    id: link
+    attributes:
+      label: Careers page link
+      description: The page that lists the company's open jobs, ideally on its hiring system (Greenhouse, Lever, Ashby, Workday…).
+      placeholder: https://jobs.lever.co/acme
+    validations:
+      required: true
+  - type: input
+    id: industry
+    attributes:
+      label: Industry (optional)
+      placeholder: Payments, crypto, health…

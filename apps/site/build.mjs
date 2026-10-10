@@ -3,6 +3,10 @@
 //   pnpm site:build                     # https://www.rawjobs.workers.dev
 //   SITE_URL=https://example.com pnpm site:build
 //
+// The page's numbers (companies, jobs, dates) come from the shared directory's latest release at
+// build time; the Site workflow rebuilds weekly, after the directory does. Offline, the last known
+// numbers are used and the build says so.
+//
 // The page uses the app's own design files, so the site and the dashboard never drift:
 // tokens and fonts from apps/web/src/design, components from design/components/bundle.css.
 // No dependencies: plain Node, so it runs in CI without installing the workspace.
@@ -18,6 +22,7 @@ const DIST = join(SITE, "dist");
 const SITE_URL = (process.env.SITE_URL || "https://www.rawjobs.workers.dev").replace(/\/$/, "");
 // Cloudflare Web Analytics site token (public, cookieless). Unset: no analytics script.
 const ANALYTICS_TOKEN = (process.env.CF_ANALYTICS_TOKEN || "").trim();
+const DATA_REPO = process.env.DATA_REPO || "Tanmay-Mhatre/rawjobs-directory";
 
 // The 23 hiring systems with a connector in packages/core (README, "Adding companies").
 const SYSTEMS = [
@@ -27,6 +32,43 @@ const SYSTEMS = [
 ];
 
 const read = (p) => readFileSync(p, "utf8");
+
+// ---------- numbers from the directory's releases ----------
+// Last known values, used only when GitHub can't be reached (and the build log says so).
+const FALLBACK = { companies: 21485, indexed: 13962, builtAt: "2026-10-06T10:05:24Z", feedJobs: 1338418, feedAt: "2026-10-10T10:42:06Z" };
+
+async function getJson(url) {
+  const res = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(15_000) });
+  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+  return res.json();
+}
+
+async function directoryNumbers() {
+  const base = `https://github.com/${DATA_REPO}/releases`;
+  try {
+    const [dir, feed] = await Promise.all([getJson(`${base}/latest/download/manifest.json`), getJson(`${base}/download/jobs/jobs-manifest.json`)]);
+    const feedJobs = Object.values(feed.shards ?? {}).reduce((sum, s) => sum + (s.jobs ?? 0), 0);
+    if (!(dir.companies > 0 && dir.indexed > 0 && feedJobs > 0)) throw new Error("manifest without counts");
+    return { companies: dir.companies, indexed: dir.indexed, builtAt: dir.generated_at, feedJobs, feedAt: feed.generated_at, live: true };
+  } catch (err) {
+    console.warn(`Directory numbers: ${err.message}. Using the last known ones.`);
+    return { ...FALLBACK, live: false };
+  }
+}
+
+const n = await directoryNumbers();
+const int = (x) => x.toLocaleString("en-US");
+const day = (iso) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+/** 21,485 -> "21,000+"; 1,338,418 -> "1.3M+": numbers in prose round down, so they stay true for a while. */
+const atLeast = (x) => (x >= 1e6 ? `${Math.floor(x / 1e5) / 10}M+` : `${int(Math.floor(x / 1000) * 1000)}+`);
+const NUMBERS = {
+  __COMPANIES__: int(n.companies),
+  __COMPANIES_ROUND__: atLeast(n.companies),
+  __INDEXED__: int(n.indexed),
+  __FEED_JOBS__: atLeast(n.feedJobs),
+  __DIR_DATE__: day(n.builtAt),
+  __FEED_DATE__: day(n.feedAt),
+};
 
 // Fonts are served as files next to the page instead of the app's relative ./fonts/ paths.
 let tokens = read(join(DS, "tokens.css")).replace(/url\('\.\/fonts\//g, "url('/fonts/");
@@ -42,6 +84,8 @@ const wordmark = read(join(DS, "logos/rawjobs-wordmark-ink.svg"))
   .replace('fill="#151412"', 'fill="currentColor"')
   .replace('role="img" aria-label="rawjobs"', 'aria-hidden="true" focusable="false"');
 const ats = SYSTEMS.map((s) => `<li class="ats">${s}</li>`).join("");
+// The scoring demo's rules, inlined as a plain script (packages/core/test/site-demo.test.ts checks them).
+const score = read(join(SITE, "src/score.js")).replace(/^export /gm, "");
 const analytics = ANALYTICS_TOKEN
   ? `<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='${JSON.stringify({ token: ANALYTICS_TOKEN })}'></script>`
   : "";
@@ -49,10 +93,12 @@ const analytics = ANALYTICS_TOKEN
 let html = read(join(SITE, "src/index.html"))
   .replace("/*__TOKENS__*/", () => tokens)
   .replace("/*__BUNDLE__*/", () => bundle)
+  .replace("/*__SCORE__*/", () => score)
   .replaceAll("__WORDMARK__", () => wordmark)
   .replace("__ATS__", () => ats)
   .replace("<!--__ANALYTICS__-->", () => analytics)
   .replaceAll("__SITE_URL__", () => SITE_URL);
+for (const [key, value] of Object.entries(NUMBERS)) html = html.replaceAll(key, () => value);
 const left = html.match(/__[A-Z_]+__/);
 if (left) throw new Error(`Unfilled placeholder ${left[0]} in src/index.html`);
 
@@ -68,4 +114,7 @@ writeFileSync(
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${SITE_URL}/</loc></url>\n</urlset>\n`,
 );
 
-console.log(`Built ${DIST} for ${SITE_URL}${ANALYTICS_TOKEN ? " (with Web Analytics)" : ""}: ${Math.round(Buffer.byteLength(html) / 1024)} KB page`);
+console.log(
+  `Built ${DIST} for ${SITE_URL}${ANALYTICS_TOKEN ? " (with Web Analytics)" : ""}: ${Math.round(Buffer.byteLength(html) / 1024)} KB page, ` +
+    `${NUMBERS.__COMPANIES__} companies (${n.live ? "live" : "last known"}).`,
+);

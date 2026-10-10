@@ -19,6 +19,9 @@ on:
       - apps/web/src/design/**
       - design/components/bundle.css
       - .github/workflows/site.yml
+  # Mondays, after the weekly directory rebuild (03:00), so the page's numbers stay current.
+  schedule:
+    - cron: "0 12 * * 1"
   workflow_dispatch:
 
 permissions:
@@ -43,6 +46,7 @@ jobs:
         run: node apps/site/build.mjs
         env:
           SITE_URL: ${{ vars.SITE_URL }}
+          DATA_REPO: ${{ vars.DATA_REPO }}
           CF_ANALYTICS_TOKEN: ${{ vars.CF_ANALYTICS_TOKEN || secrets.CF_ANALYTICS_TOKEN }}
       - name: Deploy to Cloudflare
         # Skipped (not failed) until the two Cloudflare secrets are added.

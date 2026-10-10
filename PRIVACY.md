@@ -71,6 +71,11 @@ message when they finish.
 The app has no analytics, no crash reporting and no usage tracking. The web dashboard loads no
 outside scripts or fonts.
 
+## This website
+
+The project website (<https://www.rawjobs.workers.dev>) uses Cloudflare Web Analytics: cookieless,
+no personal data, counts of visits only. The app itself has none (see "No telemetry" above).
+
 ## Turning sharing off
 
 Either:
