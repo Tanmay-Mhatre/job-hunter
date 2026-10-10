@@ -83,15 +83,23 @@ jobs:
         run: |
           pnpm catalog:sources
           pnpm exec tsx scripts/catalog/merge.ts
-          pnpm exec tsx scripts/catalog/check.ts
+          # Time-boxed: shared boards are checked first; any backlog (new sources, new hiring systems)
+          # is worked through a little each run, and fully by the weekly rebuild.
+          pnpm exec tsx scripts/catalog/check.ts --max-minutes 30
           pnpm exec tsx scripts/catalog/build.ts
           pnpm exec tsx scripts/catalog/index.ts --max-age-days 9999
           pnpm exec tsx scripts/catalog/publish.ts --data dist-data
           pnpm exec tsx scripts/catalog/release.ts --data dist-data --out dist
           tag=$(gh release view -R "$DATA_REPO" --json tagName -q .tagName)
           gh release upload "$tag" dist/* -R "$DATA_REPO" --clobber
-          # The same files every run saves, so this never wipes the weekly rebuild's progress.
-          bash scripts/catalog/state.sh save
+
+      - if: always() && steps.accept.outputs.accepted != '0' && steps.accept.outputs.accepted != '' && steps.state.outputs.restored == 'true'
+        name: Save the working state
+        # Also after a failure or timeout, so the checks done so far aren't lost. The same files every
+        # run saves, so this never wipes the weekly rebuild's progress.
+        env:
+          GH_TOKEN: ${{ secrets.DATA_REPO_TOKEN }}
+        run: bash scripts/catalog/state.sh save
 
       - if: steps.accept.outputs.accepted != '0' && steps.accept.outputs.accepted != ''
         name: Commit contributions.json

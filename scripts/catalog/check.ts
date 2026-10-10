@@ -1,8 +1,10 @@
 /**
  * Live-check every merged board with the cheapest call each ATS offers. No AI, no descriptions.
  * Resumable: results are appended to out/checks.jsonl; boards already checked are skipped.
+ * Boards users shared ("contrib") go first. `--max-minutes N` stops starting new checks after N
+ * minutes (the rest wait for the next run), so a big backlog can't stall a short run.
  *
- *   pnpm exec tsx scripts/catalog/check.ts
+ *   pnpm exec tsx scripts/catalog/check.ts [--max-minutes 30] [--recheck-days 30] [--ats greenhouse,lever]
  *
  * Result per board: live (has jobs) · dormant (exists, 0 jobs) · dead (404/410/422) · error (retry later)
  */
@@ -20,6 +22,9 @@ const OUT_DIR = join(here, "out");
 const recheckArg = process.argv.indexOf("--recheck-days");
 /** Results older than this are checked again (default: never, i.e. only unchecked boards). */
 const RECHECK_CUTOFF = recheckArg > 0 ? Date.now() - Number(process.argv[recheckArg + 1]) * 86_400_000 : 0;
+const maxArg = process.argv.indexOf("--max-minutes");
+/** Stop starting new checks after this long (default: no limit). */
+const MAX_MS = maxArg > 0 ? Number(process.argv[maxArg + 1]) * 60_000 : Infinity;
 const OUT = join(OUT_DIR, ONLY ? `checks-${[...ONLY].sort().join("-")}.jsonl` : "checks.jsonl");
 // Polite: each lane is sequential, with a small gap per host on top of request latency.
 const http = new HttpClient({ retries: 2, hostDelayMs: 200, timeoutMs: 20_000, backoffMs: 3_000, userAgent: "RawJobs-catalog/0.1 (open-source job radar; low-rate board validation)" });
@@ -30,7 +35,10 @@ const http = new HttpClient({ retries: 2, hostDelayMs: 200, timeoutMs: 20_000, b
  */
 const WORKERS: Record<string, number> = { workday: 4, greenhouse: 2, lever: 2 };
 
-type Board = { key: string; ats: string; slug: string; region?: string; shard?: string; site?: string; confidence: "high" | "single" };
+type Board = { key: string; ats: string; slug: string; region?: string; shard?: string; site?: string; confidence: "high" | "single"; sources?: string[] };
+/** Shared by users first, then boards more than one source agrees on. */
+export const checkOrder = (a: Board, c: Board) =>
+  Number(!!c.sources?.includes("contrib")) - Number(!!a.sources?.includes("contrib")) || (a.confidence === c.confidence ? 0 : a.confidence === "high" ? -1 : 1);
 type Result = { key: string; status: "live" | "dormant" | "dead" | "error"; jobs: number | null; name?: string; http?: number; error?: string; checked_at: string };
 
 async function main() {
@@ -49,7 +57,7 @@ async function main() {
   console.error(`${merged.boards.length} boards, ${done.size} already checked, ${todo.length} to go`);
 
   const lanes = new Map<string, Board[]>();
-  for (const b of todo.sort((a, c) => (a.confidence === c.confidence ? 0 : a.confidence === "high" ? -1 : 1))) {
+  for (const b of todo.sort(checkOrder)) {
     if (!lanes.has(b.ats)) lanes.set(b.ats, []);
     lanes.get(b.ats)!.push(b);
   }
@@ -60,7 +68,8 @@ async function main() {
   await Promise.all(
     [...lanes.entries()].flatMap(([ats, list]) =>
       Array.from({ length: WORKERS[ats] ?? 1 }, async () => {
-      for (let b = list.shift(); b; b = list.shift()) {
+      while (list.length && Date.now() - started < MAX_MS) {
+        const b = list.shift()!;
         const r = await checkBoard(http, b);
         const row: Result = { key: b.key, ...r, checked_at: new Date().toISOString() };
         appendFileSync(OUT, `${JSON.stringify(row)}\n`);
@@ -73,10 +82,13 @@ async function main() {
     }),
     ),
   );
-  console.error("Done.", tally);
+  const left = [...lanes.values()].reduce((sum, list) => sum + list.length, 0);
+  console.error(left ? `Stopped after ${MAX_MS / 60_000} min: ${left} left for the next run.` : "Done.", tally);
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
