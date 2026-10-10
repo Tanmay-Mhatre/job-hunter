@@ -1,0 +1,79 @@
+[
+  {
+    "id": "des-01",
+    "title": "Senior Product Designer",
+    "company": "Quorra Analytics",
+    "industries": ["saas", "data"],
+    "location": "Remote (Europe)",
+    "workplace": "remote",
+    "salary": { "min": 70000, "max": 85000, "currency": "EUR", "period": "year" },
+    "postedAt": "2026-10-07",
+    "description": "Quorra is the analytics workspace for B2B teams: dashboards, notebooks and alerts in one place, used by 4,000 companies.\n\nAbout the role\nWe're looking for a Senior Product Designer to join our Dashboards squad. You'll design how people build, read and share data-heavy dashboards, and you'll be a key contributor to our design system.\n\nWhat you'll do\n- Own design for the dashboard builder, from discovery to shipped pixels\n- Run user research with customers: interviews, usability tests and diary studies\n- Prototype interactions in Figma and test them early\n- Contribute components and patterns to our design systems work, with accessibility built in\n\nWhat we're looking for\n- 5+ years in product design, with B2B SaaS experience\n- A portfolio showing complex workflows and data visualisation\n- Strong Figma and prototyping skills\n- Experience running your own user research\n\nNice to have\n- Experience maintaining a design system\n- Basic HTML/CSS\n\nFully remote within Europe, with a team offsite twice a year. Equity for everyone.\n\nQuorra is an equal opportunity employer."
+  },
+  {
+    "id": "des-02",
+    "title": "Product Designer",
+    "company": "Quorra Analytics",
+    "industries": ["saas", "data"],
+    "location": "Remote (Europe)",
+    "workplace": "remote",
+    "salary": { "min": 45000, "max": 55000, "currency": "EUR", "period": "year" },
+    "postedAt": "2026-10-07",
+    "description": "Quorra is the analytics workspace for B2B teams: dashboards, notebooks and alerts in one place.\n\nWe're hiring a Product Designer for our Onboarding squad. You'll work with a Senior Product Designer and a PM to help new users get to their first useful dashboard.\n\nWhat you'll do\n- Design onboarding flows, empty states and in-product guidance\n- Run usability tests with new users\n- Build prototypes in Figma\n- Use components from our design system and suggest improvements\n\nWhat we're looking for\n- 2+ years in product design\n- A portfolio showing end-to-end product work\n- Good Figma skills\n- Curiosity about B2B software\n\nFully remote within Europe. Equity for everyone.\n\nQuorra is an equal opportunity employer."
+  },
+  {
+    "id": "des-03",
+    "title": "Lead Product Designer, Design System",
+    "company": "Tessellate",
+    "industries": ["payments", "saas"],
+    "location": "Lisbon, Portugal",
+    "workplace": "hybrid",
+    "salary": { "min": 75000, "max": 90000, "currency": "EUR", "period": "year" },
+    "postedAt": "2026-10-05",
+    "description": "Tessellate is a payment orchestration platform used by online businesses in 40 countries. Our Lisbon hub is home to 60 of our 180 people.\n\nThe role\nOur dashboard has grown fast and so have its inconsistencies. As Lead Product Designer for the Design System you'll own Mosaic, our design system, as an individual contributor: tokens, components, documentation and the way six product squads use it.\n\nIn this role you will\n- Own the Mosaic roadmap with our front-end platform engineers\n- Design accessible, data-dense components for a B2B payments dashboard\n- Run research with internal designers and engineers to find what slows them down\n- Set contribution and review practices across squads\n\nYou bring\n- 6+ years of product design, including at least 2 years building or running a design system\n- Expert Figma: variables, component properties and libraries at scale\n- Strong understanding of accessibility (WCAG 2.2)\n- Experience partnering closely with engineers\n\nNice to have\n- Experience with B2B dashboards or fintech\n- Ability to read React code\n\nHybrid in our Lisbon office (Cais do Sodré), two days a week.\n\nTessellate does not discriminate on the basis of race, religion, colour, national origin, gender, sexual orientation, age, marital status or disability."
+  },
+  {
+    "id": "des-04",
+    "title": "Senior UX Designer, Marketing Website",
+    "company": "Pixelmint",
+    "industries": ["saas"],
+    "location": "Remote (Europe)",
+    "workplace": "remote",
+    "salary": { "min": 65000, "max": 75000, "currency": "EUR", "period": "year" },
+    "postedAt": "2026-10-06",
+    "description": "Pixelmint is a collaborative whiteboard used by 2 million people.\n\nOur Growth Marketing team is looking for a Senior UX Designer to own pixelmint.com. You'll design the pages that turn visitors into sign-ups: landing pages, pricing, templates gallery and campaign pages.\n\nWhat you'll do\n- Design and prototype high-converting landing and campaign pages in Figma\n- Work with copywriters and the brand team on page storytelling\n- Run A/B tests with our growth engineers and read the results\n- Maintain the website component library, part of our wider design systems effort\n- Make sure the site meets accessibility standards\n\nWhat you'll need\n- 5+ years in UX, web or marketing design\n- A portfolio of marketing websites and conversion work\n- Strong visual and typographic skills\n- Experience with user research and prototyping\n\nNice to have\n- Webflow experience\n- Motion design\n\nRemote within Europe. Pixelmint is an equal opportunity employer."
+  },
+  {
+    "id": "des-05",
+    "title": "Senior Product Designer",
+    "company": "Atelier Nove",
+    "industries": ["marketing", "consulting"],
+    "location": "Lisbon, Portugal",
+    "workplace": "onsite",
+    "salary": { "min": 40000, "max": 48000, "currency": "EUR", "period": "year" },
+    "postedAt": "2026-10-01",
+    "description": "Atelier Nove is an award-winning digital agency in Lisbon. We design apps, websites and brands for clients in retail, hospitality and tourism.\n\nAs a Senior Product Designer you'll lead design on two or three client projects at a time, from pitch to launch.\n\nResponsibilities\n- Lead client workshops and present design work to stakeholders\n- Design mobile apps and responsive websites in Figma\n- Create prototypes for client sign-off\n- Mentor junior designers in the studio\n- Contribute to pitches and new business proposals\n\nRequirements\n- 5+ years in a digital agency or studio\n- Strong portfolio across apps and websites\n- Excellent client-facing communication in Portuguese and English\n- Comfort with tight deadlines and multiple projects\n\nWe work together in our studio in Príncipe Real, five days a week. Salary EUR 40,000 - 48,000.\n\nAtelier Nove is an equal opportunity employer."
+  },
+  {
+    "id": "des-06",
+    "title": "Senior UX Researcher",
+    "company": "Quorra Analytics",
+    "industries": ["saas", "data"],
+    "location": "Remote (Europe)",
+    "workplace": "remote",
+    "salary": { "min": 68000, "max": 82000, "currency": "EUR", "period": "year" },
+    "postedAt": "2026-10-04",
+    "description": "Quorra is the analytics workspace for B2B teams.\n\nWe're hiring our second UX Researcher. You'll plan and run research across our product squads and help designers and PMs run good research themselves.\n\nWhat you'll do\n- Plan and run generative and evaluative research: interviews, usability tests, surveys\n- Build our research repository and share insights across the company\n- Coach designers on running their own user research\n- Work with data analysts to combine qualitative and product data\n\nWhat we're looking for\n- 5+ years in user research, ideally in B2B SaaS\n- Mastery of qualitative methods and solid survey design\n- Great storytelling with research findings\n\nNice to have\n- A background in product design\n- Experience with Figma for research artefacts and prototypes\n\nFully remote within Europe. Quorra is an equal opportunity employer."
+  },
+  {
+    "id": "des-07",
+    "title": "Senior Interaction Designer, In-Car HMI",
+    "company": "Voltara Mobility",
+    "industries": ["automotive"],
+    "location": "Lisbon, Portugal",
+    "workplace": "onsite",
+    "salary": { "min": 55000, "max": 65000, "currency": "EUR", "period": "year" },
+    "postedAt": "2026-10-03",
+    "description": "Voltara designs the software inside electric buses and delivery vans for European manufacturers.\n\nThe role\nYou'll design the driver's in-car HMI: instrument cluster, central touchscreen and voice prompts, for vehicles on the road from 2028.\n\nYou will\n- Design interaction flows and states for driver displays under strict driver-distraction rules\n- Prototype in Figma and ProtoPie and test in our driving simulator\n- Work with embedded engineers and safety teams\n- Document designs to automotive standards (ISO 15005, UNECE)\n\nYou have\n- 5+ years in interaction or product design\n- Experience designing for hardware, embedded or automotive screens\n- Strong prototyping skills\n- Willingness to work on-site with our hardware rigs\n\nOn-site in our Lisbon studio (Parque das Nações). Voltara is an equal opportunity employer."
+  }
+]

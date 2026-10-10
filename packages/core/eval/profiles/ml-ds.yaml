@@ -1,0 +1,26 @@
+# Invented candidate. No real person.
+id: ml-ds
+summary: Data scientist / ML, NLP and experimentation, New York, needs H-1B, 4 years
+about: |
+  Data scientist with 4 years after an MS in statistics: 2 years on experimentation and causal
+  inference at a consumer subscription app, 2 years on NLP (text classification, retrieval,
+  fine-tuning small language models) at a healthtech startup. Python, PyTorch, SQL, Spark basics.
+  Ships models to production with an ML engineer's help; not a deep infra person.
+  Level: mid to senior IC. Not Staff/Principal; not a manager.
+  Location: New York. On STEM OPT, so needs an employer willing to sponsor an H-1B. Will take
+  hybrid/on-site in NYC or remote anywhere in the US.
+  Salary floor: USD 150k base.
+  Dealbreakers: no sponsorship, roles outside the US, pure BI/dashboard analyst roles.
+profile:
+  name: ML / data science
+  titles:
+    include: [data scientist, machine learning engineer, ml engineer, applied scientist]
+    exclude: [intern, analyst]
+  seniority_boost: [senior]
+  locations:
+    include: [new york, nyc]
+    remote_ok: [us, united states, remote]
+    remote_exclude: []
+  industries: [ai, healthtech, saas]
+  keywords: { machine learning: 5, nlp: 4, python: 4, experimentation: 3, pytorch: 3, llm: 3, sql: 2 }
+  min_score: 70

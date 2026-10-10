@@ -1,0 +1,76 @@
+[
+  {
+    "id": "ml-01",
+    "title": "Senior Data Scientist, NLP",
+    "company": "Clarion Health",
+    "industries": ["healthtech", "ai"],
+    "location": "New York, NY",
+    "workplace": "hybrid",
+    "salary": { "min": 165000, "max": 190000, "currency": "USD", "period": "year" },
+    "postedAt": "2026-10-07",
+    "description": "Clarion Health helps hospitals turn clinical notes into better care. Our models read millions of notes a month to flag patients who need follow-up.\n\nAbout the role\nAs a Senior Data Scientist on the NLP team you'll build and improve the models at the heart of our product: clinical entity extraction, note classification and retrieval over patient records. You'll work with ML engineers who own serving, and with clinicians who tell us what matters.\n\nWhat you'll do\n- Train and evaluate NLP models in Python and PyTorch, from fine-tuned transformers to LLM-based pipelines\n- Design evaluation sets with clinical annotators\n- Run experiments to measure model impact on clinician workflows\n- Write SQL against our data warehouse to build training data\n\nWhat we're looking for\n- 4+ years of experience in data science or machine learning, with at least 2 in NLP\n- Strong Python, PyTorch and SQL\n- Experience taking models to production with engineering partners\n- MS or PhD in a quantitative field, or equivalent experience\n\nNice to have\n- Healthcare data experience\n\nHybrid: three days a week in our Flatiron office. We sponsor H-1B visas and transfers.\n\nClarion Health is an equal opportunity employer. All qualified applicants will receive consideration without regard to race, color, religion, sex, national origin, disability, or veteran status."
+  },
+  {
+    "id": "ml-02",
+    "title": "Data Scientist, Experimentation",
+    "company": "Plumtree",
+    "industries": ["saas"],
+    "location": "New York, NY",
+    "workplace": "hybrid",
+    "salary": { "min": 140000, "max": 160000, "currency": "USD", "period": "year" },
+    "postedAt": "2026-10-05",
+    "description": "Plumtree is the meal-planning app with 3 million subscribers. We run hundreds of experiments a year on pricing, onboarding and recommendations.\n\nThe role\nYou'll join our Experimentation team, the group that owns how Plumtree runs and reads A/B tests. You'll partner with product teams to design experiments, analyse results, and improve our experimentation platform's statistics.\n\nYou will\n- Design and analyse A/B tests with product managers and engineers\n- Build variance reduction and sequential testing methods into our platform\n- Use causal inference when experiments aren't possible\n- Share findings in clear, honest write-ups\n\nYou have\n- 3+ years in data science, with a focus on experimentation or causal inference\n- Strong statistics; Python and SQL fluency\n- Comfort explaining uncertainty to non-technical partners\n\nNice to have\n- Experience with subscription businesses\n- Some machine learning\n\nHybrid, two days a week in SoHo. Medical, dental, vision and 401(k).\n\nPlumtree is proud to be an equal opportunity employer."
+  },
+  {
+    "id": "ml-03",
+    "title": "Machine Learning Engineer, LLM",
+    "company": "Glyphic AI",
+    "industries": ["ai", "saas"],
+    "location": "Remote (US)",
+    "workplace": "remote",
+    "salary": { "min": 180000, "max": 220000, "currency": "USD", "period": "year" },
+    "postedAt": "2026-10-08",
+    "description": "Glyphic AI builds document assistants for legal and finance teams. Our customers ask questions of millions of pages; we answer with citations.\n\nWhat you'll do\n- Build retrieval and generation pipelines using LLMs\n- Fine-tune and evaluate open models with PyTorch\n- Design evaluation harnesses that catch regressions before customers do\n- Work with product engineers to ship features end to end\n\nWhat you'll bring\n- 3+ years of machine learning engineering experience\n- Strong Python and PyTorch\n- Experience with NLP, embeddings and retrieval\n- Comfort with production systems and monitoring\n\nNice to have\n- Experience with legal or financial documents\n\nRemote anywhere in the US. Competitive salary and equity.\n\nPlease note: candidates must be authorised to work in the United States without current or future visa sponsorship. We are unable to sponsor visas for this role.\n\nGlyphic AI is an equal opportunity employer."
+  },
+  {
+    "id": "ml-04",
+    "title": "Senior ML Engineer, Ranking",
+    "company": "Fernway",
+    "industries": ["ecommerce"],
+    "location": "New York, NY",
+    "workplace": "hybrid",
+    "salary": { "min": 175000, "max": 205000, "currency": "USD", "period": "year" },
+    "postedAt": "2026-10-04",
+    "description": "Fernway is a home-goods marketplace with 20 million monthly shoppers. Search and recommendations drive most of our sales.\n\nAbout the team\nThe Ranking team builds the ML models that decide what shoppers see: search ranking, recommendations and personalised home feeds.\n\nResponsibilities\n- Build and improve deep learning ranking models\n- Use large language models to enrich product catalog data and understand queries\n- Design offline metrics and run online A/B tests\n- Work with platform engineers on feature pipelines and model serving\n\nQualifications\n- 4+ years building ML systems in production\n- Proficiency in Python and a deep learning framework\n- Experience with recommender systems, search or ranking\n- Solid understanding of A/B testing\n\nPreferred\n- Experience with Spark and large-scale data\n- Text and query understanding\n\nHybrid in our Brooklyn office. Visa sponsorship is available for this role.\n\nFernway is an equal opportunity employer."
+  },
+  {
+    "id": "ml-05",
+    "title": "Staff Applied Scientist",
+    "company": "Glyphic AI",
+    "industries": ["ai", "saas"],
+    "location": "New York, NY",
+    "workplace": "onsite",
+    "salary": { "min": 230000, "max": 280000, "currency": "USD", "period": "year" },
+    "postedAt": "2026-10-02",
+    "description": "Glyphic AI builds document assistants for legal and finance teams.\n\nAs a Staff Applied Scientist you'll set the research direction for how we use large language models. You'll lead a group of four scientists, decide which problems are worth a quarter of research, and publish when it helps the field.\n\nWhat you'll do\n- Lead research on long-document reasoning, retrieval and model evaluation\n- Set the scientific agenda with the CTO\n- Mentor scientists and review experimental design\n- Represent Glyphic at conferences\n\nRequirements\n- PhD in machine learning, NLP or a related field\n- 10+ years of industry research experience after your PhD or equivalent\n- A strong publication record at top venues\n- Experience leading research teams\n\nOn-site in our NYC office, five days a week. We sponsor visas for this role.\n\nGlyphic AI is an equal opportunity employer."
+  },
+  {
+    "id": "ml-06",
+    "title": "Machine Learning Scientist",
+    "company": "Meridian Labs",
+    "location": "New York, NY",
+    "workplace": "hybrid",
+    "postedAt": "2026-10-09"
+  },
+  {
+    "id": "ml-07",
+    "title": "Senior Data Scientist, Credit Risk",
+    "company": "Brindle Lending",
+    "industries": ["lending", "fintech"],
+    "location": "New York, NY",
+    "workplace": "hybrid",
+    "salary": { "min": 155000, "max": 175000, "currency": "USD", "period": "year" },
+    "postedAt": "2026-10-03",
+    "description": "Brindle Lending offers fair small-business loans, decided in minutes. Our credit models are the company.\n\nThe role\nYou'll build and maintain the machine learning models that decide who we lend to and at what price. You'll work closely with our Credit Policy team and Model Risk Management.\n\nResponsibilities\n- Develop credit risk models (probability of default, loss given default) with gradient boosting and logistic regression\n- Build features from bank transaction data\n- Document models for regulatory model validation and fair lending reviews\n- Monitor model performance and drift in production\n\nRequirements\n- 4+ years of data science experience, ideally in credit risk or lending\n- Strong Python and SQL\n- Experience with model governance in a regulated industry\n- Understanding of credit bureau data and fair lending rules\n\nHybrid in Midtown. We consider visa sponsorship for exceptional candidates.\n\nBrindle Lending is an equal opportunity lender and employer."
+  }
+]

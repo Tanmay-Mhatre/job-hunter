@@ -1,0 +1,87 @@
+[
+  {
+    "id": "fin-01",
+    "title": "Senior FP&A Analyst",
+    "company": "Cartwheel",
+    "industries": ["ecommerce"],
+    "location": "Singapore",
+    "workplace": "hybrid",
+    "salary": { "min": 7000, "max": 9000, "currency": "SGD", "period": "month" },
+    "postedAt": "2026-10-07",
+    "description": "Cartwheel is Southeast Asia's marketplace for pre-loved goods, with 6 million buyers across five countries.\n\nAbout the role\nOur FP&A team is the finance partner to every business unit. As Senior FP&A Analyst you'll own forecasting and budgeting for our marketplace business in Singapore and Malaysia and help shape how we plan.\n\nWhat you'll do\n- Own the monthly forecast and annual budget for two business units\n- Run variance analysis against budget and explain what drove it\n- Build unit economics models for new categories and markets\n- Prepare sections of the monthly board pack\n- Improve our models and automate reporting with SQL\n\nWhat we're looking for\n- 3-5 years in FP&A, corporate finance or investment banking\n- Advanced Excel and solid SQL\n- Clear communication with non-finance partners\n- Experience in e-commerce or marketplaces is a plus\n\nNice to have\n- Python or a BI tool such as Looker\n- CFA or accounting qualification in progress\n\nHybrid, three days a week in our one-north office. Cartwheel is an equal opportunity employer."
+  },
+  {
+    "id": "fin-02",
+    "title": "Financial Analyst",
+    "company": "Cartwheel",
+    "industries": ["ecommerce"],
+    "location": "Singapore",
+    "workplace": "hybrid",
+    "salary": { "min": 5000, "max": 6000, "currency": "SGD", "period": "month" },
+    "postedAt": "2026-10-07",
+    "description": "Cartwheel is Southeast Asia's marketplace for pre-loved goods.\n\nWe're hiring a Financial Analyst to support our FP&A team. You'll help prepare forecasts and monthly reporting and learn how a fast-growing marketplace plans.\n\nWhat you'll do\n- Prepare monthly management reports and budget vs actual\n- Support the forecasting and budgeting cycle\n- Maintain Excel models and data from our ERP\n- Answer ad hoc questions from business teams\n\nWhat we're looking for\n- 1-2 years in finance, audit or consulting\n- Strong Excel; SQL is a plus\n- Degree in finance, accounting or economics\n\nHybrid, three days a week in one-north. Cartwheel is an equal opportunity employer."
+  },
+  {
+    "id": "fin-03",
+    "title": "Strategic Finance Analyst",
+    "company": "Lumora",
+    "industries": ["saas"],
+    "location": "Remote (APAC)",
+    "workplace": "remote",
+    "postedAt": "2026-10-08",
+    "description": "Lumora makes scheduling software for clinics in 14 countries. We're a remote-first SaaS company of 220 people, profitable and growing 40% a year.\n\nThe role\nYou'll be the second hire in Strategic Finance, reporting to our Head of Finance. You'll own the financial planning and analysis for our go-to-market teams and build the models leadership uses to make big decisions.\n\nYou will\n- Build and own our revenue forecasts and annual operating budgets\n- Track SaaS metrics (ARR, NRR, CAC payback) and explain changes\n- Model pricing changes, new markets and hiring plans\n- Partner with sales and marketing leaders on their budgets\n- Query our warehouse to answer questions without waiting on data teams\n\nYou have\n- 2-5 years in financial planning and analysis, strategic finance or banking\n- Excellent spreadsheet modelling (Google Sheets or Excel)\n- Comfort writing queries in SQL\n- Clear, concise writing\n\nNice to have\n- SaaS experience\n\nRemote anywhere in APAC (UTC+5 to UTC+10). Lumora is an equal opportunity employer."
+  },
+  {
+    "id": "fin-04",
+    "title": "Senior Financial Analyst, Credit Risk",
+    "company": "Brindle Lending",
+    "industries": ["lending", "fintech"],
+    "location": "Singapore",
+    "workplace": "onsite",
+    "salary": { "min": 7000, "max": 8500, "currency": "SGD", "period": "month" },
+    "postedAt": "2026-10-03",
+    "description": "Brindle Lending offers fair small-business loans across Asia, decided in minutes.\n\nAs Senior Financial Analyst in Credit Risk you'll monitor our loan book, forecast credit losses and help set lending limits.\n\nResponsibilities\n- Forecast expected credit losses and provisions (IFRS 9)\n- Analyse portfolio performance by segment, vintage and channel\n- Support budgeting for credit losses with the FP&A team\n- Prepare credit risk reports for the Risk Committee\n- Work with data scientists on credit model monitoring\n\nRequirements\n- 3+ years in credit risk, lending or banking analytics\n- Knowledge of IFRS 9 and credit risk concepts\n- Strong Excel and SQL\n\nOn-site in our Tanjong Pagar office. Brindle Lending is an equal opportunity employer."
+  },
+  {
+    "id": "fin-05",
+    "title": "Finance Operations Analyst (AP/AR)",
+    "company": "Cartwheel",
+    "industries": ["ecommerce"],
+    "location": "Singapore",
+    "workplace": "onsite",
+    "salary": { "min": 3800, "max": 4500, "currency": "SGD", "period": "month" },
+    "postedAt": "2026-10-05",
+    "description": "Cartwheel is Southeast Asia's marketplace for pre-loved goods.\n\nOur Finance Operations team pays our suppliers and sellers and collects what we're owed. We're looking for an analyst to run accounts payable and receivable for Singapore.\n\nWhat you'll do\n- Process supplier invoices and payment runs\n- Reconcile seller payouts and customer receipts\n- Chase overdue receivables and keep the aging report clean\n- Support month-end close, budgeting for opex and cash forecasting\n- Improve processes in Excel and our ERP\n\nWhat we're looking for\n- 1-3 years in accounts payable, receivable or bookkeeping\n- Strong Excel and attention to detail\n- Diploma or degree in accounting\n\nOn-site in one-north, five days a week. Cartwheel is an equal opportunity employer."
+  },
+  {
+    "id": "fin-06",
+    "title": "Senior Business Analyst",
+    "company": "Halcyon Bank",
+    "industries": ["banking", "digital-bank"],
+    "location": "Singapore",
+    "workplace": "hybrid",
+    "salary": { "min": 8000, "max": 10000, "currency": "SGD", "period": "month" },
+    "postedAt": "2026-10-04",
+    "description": "Halcyon is expanding its digital bank to Singapore and is replacing its core banking system.\n\nAs Senior Business Analyst you'll sit between business teams and our technology vendor to make sure the new core banking platform does what the bank needs.\n\nResponsibilities\n- Gather and document business requirements and user stories in Jira\n- Map current and future processes for deposits, payments and cards\n- Write test scenarios and support user acceptance testing\n- Manage change requests with the vendor\n\nRequirements\n- 5+ years as a business analyst in banking technology projects\n- Experience with core banking migrations\n- Strong documentation skills (BPMN, Confluence, Jira)\n- Agile delivery experience\n\nHybrid in Marina Bay. Halcyon welcomes applications from everyone."
+  },
+  {
+    "id": "fin-07",
+    "title": "Senior Financial Analyst",
+    "company": "Lumora",
+    "industries": ["saas"],
+    "location": "Singapore",
+    "workplace": "hybrid",
+    "postedAt": "2026-10-09"
+  },
+  {
+    "id": "fin-08",
+    "title": "Finance Manager, FP&A",
+    "company": "Cartwheel",
+    "industries": ["ecommerce"],
+    "location": "Singapore",
+    "workplace": "hybrid",
+    "salary": { "min": 10000, "max": 13000, "currency": "SGD", "period": "month" },
+    "postedAt": "2026-10-02",
+    "description": "Cartwheel is Southeast Asia's marketplace for pre-loved goods.\n\nWe're looking for a Finance Manager to lead our FP&A team of three analysts. You'll own the group forecast and budget, run the planning calendar and partner with the CFO on board reporting.\n\nResponsibilities\n- Lead, coach and grow a team of three FP&A analysts\n- Own the group budget, forecasts and long-range plan\n- Present monthly performance and variance analysis to the leadership team\n- Lead fundraising and board materials with the CFO\n\nRequirements\n- 7+ years in FP&A or corporate finance, including 2+ years managing people\n- CA, CPA or CFA\n- Experience in a high-growth e-commerce or technology business\n- Excellent stakeholder management\n\nHybrid in one-north. Cartwheel is an equal opportunity employer."
+  }
+]
