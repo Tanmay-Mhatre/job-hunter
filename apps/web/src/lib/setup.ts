@@ -43,6 +43,16 @@ export async function saveConfig(config: Config): Promise<SaveResult> {
   return (await res.json()) as SaveResult;
 }
 
+/** Start setup over: the config is moved to a backup file; resume and Telegram alerts stay. */
+export async function resetSetup(): Promise<{ ok: true; backup: string | null } | { ok: false; errors: string }> {
+  try {
+    const res = await fetch("/api/setup/reset", { method: "POST" });
+    return (await res.json()) as { ok: true; backup: string | null } | { ok: false; errors: string };
+  } catch (err) {
+    return { ok: false, errors: (err as Error).message };
+  }
+}
+
 /** One checked careers link, with the same fields as a company directory entry (see core setup.ts). */
 export type CompanyCheck = {
   input: string;

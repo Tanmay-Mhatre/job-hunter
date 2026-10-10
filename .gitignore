@@ -8,6 +8,7 @@ coverage/
 
 # Your config is personal and stays on your computer (the repo ships rawjobs.config.example.yaml)
 rawjobs.config.local.yaml
+rawjobs.config.local.backup.yaml
 rawjobs.config.yaml
 # The same, under the names from before the rename to RawJobs
 jobhunter.config.local.yaml

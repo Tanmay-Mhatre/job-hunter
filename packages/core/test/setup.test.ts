@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -6,7 +6,7 @@ import { findConfigPath, isLegacyConfig, parseConfig } from "../src/config";
 import { detectCompany } from "../src/connectors";
 import { diagnoseNoMatches } from "../src/diagnose";
 import type { Job } from "../src/schema";
-import { checkCompanies, saveConfig, setupStatus } from "../src/setup";
+import { checkCompanies, resetConfig, saveConfig, setupStatus } from "../src/setup";
 import { configToYaml } from "../src/yaml-writer";
 import { profile, fakeHttp, fixture, json } from "./helpers";
 
@@ -165,6 +165,24 @@ describe("saveConfig / setupStatus", () => {
 
     writeFileSync(join(dir, "rawjobs.config.local.yaml"), configToYaml(example));
     expect(setupStatus(dir).configPath).toBe(join(dir, "rawjobs.config.local.yaml"));
+  });
+
+  it("resetConfig moves the config to a backup and leaves the resume alone", () => {
+    dir = mkdtempSync(join(tmpdir(), "rawjobs-setup-"));
+    expect(resetConfig(dir)).toEqual({ ok: true, backup: null });
+
+    saveConfig(example, dir);
+    mkdirSync(join(dir, "profile"));
+    writeFileSync(join(dir, "profile", "resume.md"), "# Me");
+    const backup = join(dir, "rawjobs.config.local.backup.yaml");
+    expect(resetConfig(dir)).toEqual({ ok: true, backup });
+    expect(setupStatus(dir)).toMatchObject({ isPersonal: false, hasResume: true });
+    expect(parseConfig(readFileSync(backup, "utf8"))).toEqual(example);
+
+    // A second reset replaces the older backup.
+    saveConfig({ ...example, companies: [] }, dir);
+    resetConfig(dir);
+    expect(parseConfig(readFileSync(backup, "utf8")).companies).toEqual([]);
   });
 
   it("finds a config under the new names first, then the pre-rename ones", () => {
