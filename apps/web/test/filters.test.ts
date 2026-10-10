@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Job } from "../src/lib/data";
 import {
+  roleCount,
   evergreenReason,
   isOlder,
   activeChips,
@@ -140,6 +141,30 @@ describe("sorting, grouping, chips, suggestions, URL", () => {
     expect(q).toContain("posted=7");
     expect(fromQuery(q)).toEqual({ filters, sort: "newest" });
     expect(fromQuery("")).toBeNull();
+  });
+
+  it("writes links against your profile, and fills in what a link leaves out from it", () => {
+    const profile = f({ countries: ["United Arab Emirates", "Remote"] });
+    // A hand-written search link keeps your places.
+    expect(fromQuery("q=kraken", profile)!.filters).toEqual({ ...profile, q: "kraken" });
+    // Your places aren't repeated in the link...
+    expect(toQuery({ ...profile, posted: 7 }, "best", profile)).toBe("posted=7");
+    // ...and "everywhere" is said out loud, so it survives the trip.
+    const everywhere = { ...profile, countries: [] };
+    const q = toQuery(everywhere, "best", profile);
+    expect(q).toBe("countries=");
+    expect(fromQuery(q, profile)!.filters).toEqual(everywhere);
+  });
+
+  it("counts roles, not postings: one role in three cities is one", () => {
+    const role = (city: string) => job({ title: "Head of Product", company: "Bybit", cities: [`${city}, United Arab Emirates`], countries: ["United Arab Emirates"] });
+    const postings = [role("Dubai"), role("Abu Dhabi"), role("Sharjah"), job({ title: "Product Manager", company: "Bybit", cities: ["Abu Dhabi, United Arab Emirates"] })];
+    expect(roleCount(postings)).toBe(2);
+    expect(groupJobs(postings)).toHaveLength(2);
+    const counts = facetCounts(postings, f(), ctx);
+    expect(counts.countries.find((o) => o.value === "United Arab Emirates")?.count).toBe(2);
+    expect(counts.locations.find((o) => o.value === "Dubai, United Arab Emirates")?.count).toBe(1);
+    expect(counts.match.find((o) => o.value === "strong")?.count).toBe(2);
   });
 });
 
