@@ -26,7 +26,8 @@ describe("title gate reads titles the way people write them", () => {
 
   it("counts short-form seniority", () => {
     expect(scoreJob(job({ title: "Sr. PM" }), profile()).why.title).toBe(30);
-    expect(scoreJob(job({ title: "PM" }), profile()).why.title).toBe(20);
+    // A plain title is one level below "senior": +5, not +10.
+    expect(scoreJob(job({ title: "PM" }), profile()).why.title).toBe(25);
   });
 
   it("designers and UX/UI titles", () => {
@@ -44,7 +45,7 @@ describe("topics from the title when there's no description", () => {
     // payments (3) of top weight 5: 20 * 3/5 = 12, more than 40 * 3/12 = 10.
     expect(scoreJob(job({ title: "Senior Product Manager, Payments" }), profile()).why).toMatchObject({ keywords: ["payments"], keywordPoints: 12 });
     // Your top topic fills the title's half: 20.
-    expect(scoreJob(job({ title: "Crypto PM" }), profile())).toMatchObject({ score: 20 + 20 + 20 + 10, why: { keywordPoints: 20 } });
+    expect(scoreJob(job({ title: "Crypto PM" }), profile())).toMatchObject({ score: 25 + 20 + 20 + 10, why: { keywordPoints: 20 } });
     expect(scoreJob(job({ title: "Product Manager" }), profile()).why.keywordPoints).toBe(0);
   });
 

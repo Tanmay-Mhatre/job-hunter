@@ -1,4 +1,5 @@
 import { INDUSTRY_BY_ID } from "./catalog/industries";
+import { seniorityCue, seniorityGap, seniorityOf, type Seniority } from "./catalog/seniority";
 import { allPlaceNames, countriesIn, expandPlaces, LOCATION_SEGMENTS, placeOwner, placeOwnerName, spellOutPlaces, SUBDIVISIONS } from "./catalog/places";
 import type { NormalizedJob, Profile, ScoreBreakdown } from "./schema";
 import { matchesAny, matchesTerm, matchesTitle, mayMatchTitle, termRegex, titleForms } from "./text";
@@ -6,6 +7,8 @@ import { matchesAny, matchesTerm, matchesTitle, mayMatchTitle, termRegex, titleF
 export const POINTS = {
   titleMatch: 20,
   seniority: 10,
+  /** The title's level is one step from the levels your seniority words name (Senior vs a plain title). */
+  seniorityNear: 5,
   locationCity: 20,
   locationRemote: 15,
   keywordCap: 40,
@@ -39,7 +42,8 @@ const NON_KEYWORD_MAX = POINTS.titleMatch + POINTS.seniority + POINTS.locationCi
 /**
  * Transparent keyword scoring, 0..100. No AI.
  *
- *   title      20, +10 with a seniority term
+ *   title      20, +10 at your level (a seniority word in the title, or the same level as one),
+ *              +5 one level away (a plain "Product Manager" for a senior), +0 two or more (Director, Junior)
  *   location   20 one of your places, 15 remote in your regions
  *   topics     up to 40: the share of your topic weight a job mentions, where min(total weight, 12)
  *              fills the bar (so three core topics are enough; a short list isn't penalised).
@@ -61,7 +65,7 @@ export function scoreJob(job: Scorable, profile: Profile, company: CompanyFit = 
   const forms = titleForms(title);
   const location = gateLocation(job);
   const titleOk = titlePasses(title, profile, forms);
-  const titlePts = titleOk ? POINTS.titleMatch + (matchesTitle(title, profile.seniority_boost, forms) ? POINTS.seniority : 0) : 0;
+  const titlePts = titleOk ? POINTS.titleMatch + seniorityPoints(title, profile, forms) : 0;
   const fit = workplaceFit(job, profile) ?? locationFit(location, profile);
   const locationPts = fit.points;
 
@@ -101,6 +105,30 @@ export function scoreJob(job: Scorable, profile: Profile, company: CompanyFit = 
   if (locationPts === 0) return { score: 0, why: { ...why, gate: "location", ...(fit.note ? { locationNote: fit.note } : {}) } };
   const raw = titlePts + locationPts + keywordPoints + industry;
   return { score: Math.min(100, Math.round(raw * (why.scale ?? 1))), why };
+}
+
+const levelsCache = new WeakMap<readonly string[], Seniority[]>();
+
+/** The levels your seniority words name ("senior", "lead" -> senior, principal). Words with no level ("group") add none. */
+function targetLevels(profile: Profile): Seniority[] {
+  let out = levelsCache.get(profile.seniority_boost);
+  if (!out) {
+    out = [...new Set(profile.seniority_boost.map(seniorityCue).filter((l): l is Seniority => !!l))];
+    levelsCache.set(profile.seniority_boost, out);
+  }
+  return out;
+}
+
+/**
+ * How close the title's level is to yours: 10 at your level, 5 one step away, 0 further.
+ * With no seniority words there is no level to compare, and nothing is added.
+ */
+function seniorityPoints(title: string, profile: Profile, forms: string): number {
+  if (matchesTitle(title, profile.seniority_boost, forms)) return POINTS.seniority;
+  const levels = targetLevels(profile);
+  if (!levels.length) return 0;
+  const gap = Math.min(...levels.map((l) => seniorityGap(l, seniorityOf(title))));
+  return gap === 0 ? POINTS.seniority : gap === 1 ? POINTS.seniorityNear : 0;
 }
 
 /** 10 your industry (or your company, or you picked none), 5 not known, 0 known and another one. */

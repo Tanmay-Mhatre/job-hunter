@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import type { Job } from "./schema";
+import { rankScore } from "./score";
 
 /**
  * Telegram alerts: one message per scan with the new matches. The bot is the user's own (made with
@@ -92,10 +93,12 @@ const MAX_LINES = 10;
  * One message for a scan: the jobs to tell the user about, best first, up to 10 with links and
  * "+n more". Undefined when there's nothing to say (no message beats an empty one).
  */
-export function digest(jobs: readonly Job[], opts: { minScore: number; scopeLabel?: string; dashboardHint?: boolean }): string | undefined {
+export function digest(jobs: readonly Job[], opts: { minScore: number; scopeLabel?: string; dashboardHint?: boolean; now?: number }): string | undefined {
   if (!jobs.length) return undefined;
-  // Best fit first; equal scores go to the newer posting (the score has no age in it).
-  const sorted = [...jobs].sort((a, b) => b.score - a.score || (b.postedAt ?? b.firstSeen).localeCompare(a.postedAt ?? a.firstSeen));
+  // The Radar's best-match order (fit plus freshness), so an alert lists jobs the way the Radar shows them.
+  const now = opts.now ?? Date.now();
+  const rank = new Map(jobs.map((j) => [j, rankScore(j.score, j.postedAt ?? j.firstSeen, now)]));
+  const sorted = [...jobs].sort((a, b) => rank.get(b)! - rank.get(a)! || (b.postedAt ?? b.firstSeen).localeCompare(a.postedAt ?? a.firstSeen));
   const strong = sorted.filter((j) => j.score >= opts.minScore).length;
   const head = `<b>${sorted.length} new job${sorted.length === 1 ? "" : "s"} for you</b>${strong ? ` · ${strong} strong` : ""}${opts.scopeLabel ? `\n<i>${esc(opts.scopeLabel)}</i>` : ""}`;
   const lines = sorted.slice(0, MAX_LINES).map((j) => {

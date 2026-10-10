@@ -47,7 +47,7 @@ describe("scoreJob", () => {
     const three = profile({ keywords: { crypto: 3, payments: 3, kyc: 3 } });
     expect(scoreJob(job({ description: "crypto payments kyc" }), three)).toMatchObject({ score: 100, why: { keywordPoints: 40 } });
     expect(scoreJob(job({ description: "crypto payments" }), three)).toMatchObject({ score: 87, why: { keywordPoints: 27 } });
-    expect(scoreJob(job({ title: "Product Manager", location: "Remote - EMEA", description: "crypto" }), three).score).toBe(20 + 15 + 13 + 10);
+    expect(scoreJob(job({ title: "Product Manager", location: "Remote - EMEA", description: "crypto" }), three).score).toBe(25 + 15 + 13 + 10);
   });
 
   it("with no topics, title + location + industry are scaled to 0..100", () => {
@@ -56,13 +56,33 @@ describe("scoreJob", () => {
     expect(best.why).toMatchObject({ keywordPoints: 0, scale: 100 / 60 });
     expect(best.score).toBe(100);
     // Right title and place: a strong match.
-    expect(scoreJob(job({ title: "Product Manager" }), none).score).toBe(Math.round((20 + 20 + 10) * (100 / 60)));
-    expect(scoreJob(job({ title: "Product Manager", location: "Remote - EMEA" }), none).score).toBe(75);
+    expect(scoreJob(job({ title: "Product Manager" }), none).score).toBe(Math.round((25 + 20 + 10) * (100 / 60)));
+    expect(scoreJob(job({ title: "Product Manager", location: "Remote - EMEA" }), none).score).toBe(83);
     expect(scoreJob(job({ location: "London" }), none).score).toBe(0);
   });
 
-  it("gives 20 for a title without a seniority term", () => {
-    expect(scoreJob(job({ title: "Product Manager" }), profile()).why.title).toBe(20);
+  describe("seniority is a distance from your level", () => {
+    // The helper profile's words: senior, head, group -> levels senior and leadership.
+    it("+10 at your level, +5 one step away", () => {
+      expect(scoreJob(job({ title: "Senior Product Manager" }), profile()).why.title).toBe(30);
+      expect(scoreJob(job({ title: "Director of Product Management, Product Manager" }), profile()).why.title).toBe(30);
+      // Principal sits between senior and leadership; a plain title is one below senior.
+      expect(scoreJob(job({ title: "Principal Product Manager" }), profile()).why.title).toBe(25);
+      expect(scoreJob(job({ title: "Product Manager" }), profile()).why.title).toBe(25);
+    });
+
+    it("nothing two or more steps away", () => {
+      const senior = profile({ seniority_boost: ["senior"] });
+      expect(scoreJob(job({ title: "Director, Product Manager" }), senior).why.title).toBe(20);
+      expect(scoreJob(job({ title: "Junior Product Manager" }), senior).why.title).toBe(20);
+      expect(scoreJob(job({ title: "Staff Product Manager" }), senior).why.title).toBe(25);
+    });
+
+    it("words with no level only count as words, and no words add nothing", () => {
+      expect(scoreJob(job({ title: "Product Manager" }), profile({ seniority_boost: ["group"] })).why.title).toBe(20);
+      expect(scoreJob(job({ title: "Group Product Manager" }), profile({ seniority_boost: ["group"] })).why.title).toBe(30);
+      expect(scoreJob(job({ title: "Product Manager" }), profile({ seniority_boost: [] })).why.title).toBe(20);
+    });
   });
 
   it("caps keyword points at 40", () => {

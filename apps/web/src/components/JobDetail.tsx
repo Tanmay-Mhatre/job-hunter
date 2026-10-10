@@ -1,5 +1,6 @@
 import { INDUSTRY_BY_ID } from "@rawjobs/core/catalog/industries";
 import { SENIORITY_LEVELS } from "@rawjobs/core/catalog/seniority";
+import { matchesTitle } from "@rawjobs/core/text";
 import { ArrowLeft, Bookmark, Check, ChevronDown, ChevronUp, CircleCheck, Copy, ExternalLink, Info, LoaderCircle, Maximize2, Plus, RefreshCw, Star, StickyNote, X } from "lucide-react";
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { copyText } from "../lib/clipboard";
@@ -418,17 +419,44 @@ function WhyItMatches({ job, profile, yours }: { job: Job; profile: Profile; you
   };
   const w = job.why;
   const band = BAND_WORD[scoreBandOf(job.score, profile.min_score)];
-  const titleTerm = useMemo(() => profile.titles.include.find((t) => new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(job.title)), [job.title, profile]);
+  // The include term the scorer matched, read the same way ("Sr. PM" is "product manager").
+  const titleTerm = useMemo(() => profile.titles.include.find((t) => matchesTitle(job.title, [t])), [job.title, profile]);
+  // Topics you listed vs the ones your industries added; and your own topics the posting doesn't mention.
+  const own = w.keywords.filter((k) => k in profile.keywords);
+  const added = w.keywords.filter((k) => !(k in profile.keywords));
+  const checked = !job.estimated && job.hasDescription;
+  const missing = checked
+    ? Object.entries(profile.keywords)
+        .filter(([k]) => !w.keywords.includes(k))
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .map(([k]) => k)
+    : [];
+  const level = w.title === 30 ? ", at your level" : w.title === 25 ? ", one level from yours" : profile.seniority_boost.length ? ", not near your level" : "";
   const items: { ok: boolean; text: ReactNode }[] = [
-    { ok: w.title > 0, text: w.title > 0 ? <>Title matches <b>{titleTerm ?? "your roles"}</b>{w.title === 30 ? ", with your seniority" : ""}</> : "Title isn't one of your roles" },
+    { ok: w.title > 0, text: w.title > 0 ? <>Title matches <b>{titleTerm ?? "your roles"}</b>{level}</> : "Title isn't one of your roles" },
     {
       ok: w.location > 0,
       text: w.location === 20 ? <>In one of your places{job.countries.length ? <> (<b>{job.countries.join(", ")}</b>)</> : null}</> : w.location === 15 ? "Remote, open to your regions" : (w.locationNote ?? "Not in one of your places"),
     },
-    ...(w.scale ? [] : [{ ok: w.keywords.length > 0, text: w.keywords.length ? <>Mentions your topics: <b>{w.keywords.join(", ")}</b></> : "Doesn't mention your topics" }]),
+    ...(w.scale
+      ? []
+      : [
+          {
+            ok: own.length > 0 || added.length > 0,
+            text: own.length ? (
+              <>Mentions your topics: <b>{own.join(", ")}</b>{added.length ? <>; also {added.join(", ")} from your industries</> : null}</>
+            ) : added.length ? (
+              <>Mentions topics from your industries: <b>{added.join(", ")}</b></>
+            ) : checked ? (
+              "Doesn't mention your topics"
+            ) : (
+              "Topics not checked yet: the full posting hasn't been fetched"
+            ),
+          },
+        ]),
     w.industry === undefined
       ? { ok: (w.freshness ?? 0) >= 6, text: w.freshness === 10 ? "Posted in the last 3 days" : w.freshness === 6 ? "Posted this week" : "Posted more than a week ago" }
-      : { ok: w.industry > 0, text: w.industry === 10 ? "In one of your industries" : w.industry === 5 ? "Company's industry not known" : "Not one of your industries" },
+      : { ok: w.industry > 0, text: industryText(w.industry, job, profile, yours) },
   ];
   return (
     <section className={cx("rj-drawer__section", open && "gap-4")}>
@@ -452,7 +480,7 @@ function WhyItMatches({ job, profile, yours }: { job: Job; profile: Profile; you
       {w.gate && <p className="type-small text-warning-text">Failed your {w.gate} filter, so the score is 0.</p>}
       {open && (
         <div id={`why-${job.id}`} className="grid gap-4">
-      <ScoreBreakdown score={job.score} parts={scoreParts(w)} />
+      <ScoreBreakdown score={job.score} parts={scoreParts(w)} missing={missing} />
       <ul className="space-y-1.5 type-small">
         {items.map((it, i) => (
           <li key={i} className="flex items-start gap-2">
@@ -469,6 +497,17 @@ function WhyItMatches({ job, profile, yours }: { job: Job; profile: Profile; you
       )}
     </section>
   );
+}
+
+/** Why the industry part is what it is, without claiming more than the score knows. */
+function industryText(points: number, job: Job, profile: Profile, yours: boolean): ReactNode {
+  if (points === 5) return "Company's industry not known";
+  if (points === 0) return "Not one of your industries";
+  const shared = (job.industries ?? []).filter((i) => profile.industries.includes(i)).map((i) => INDUSTRY_BY_ID.get(i)?.label ?? i);
+  if (shared.length) return <>In one of your industries: <b>{shared.join(", ")}</b></>;
+  if (yours) return "One of your companies, so its industry counts";
+  if (!profile.industries.length) return "No industries picked, so every company counts";
+  return "In one of your industries";
 }
 
 /**
