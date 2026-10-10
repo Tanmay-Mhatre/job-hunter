@@ -91,6 +91,11 @@ export type Job = {
   /** Successful runs of this company in a row that didn't list the job. */
   missedRuns?: number;
   closedAt?: string;
+  /**
+   * When this job came back under a new id: the same title and place at the same company, taken down
+   * and posted again. It keeps the old one's dates (see diff.ts), so a repost never looks new.
+   */
+  repostedAt?: string;
   score: number;
   why: ScoreBreakdown;
 };

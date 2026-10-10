@@ -137,6 +137,7 @@ export function JobDetail(p: JobDetailProps) {
       `First seen ${formatDate(job.firstSeen)}`
     ),
     ...(salary ? [salary] : []),
+    ...(job.repostedAt ? [<span title={`Taken down and posted again on ${formatDate(job.repostedAt)}: dated from the first posting`}>Reposted</span>] : []),
     ...(job.status === "closed" ? ["Closed"] : []),
   ];
   const saved = status === "saved";
