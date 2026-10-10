@@ -470,7 +470,7 @@ function SavedResume({
   const suggest = useMemo(() => buildSuggestions(text, draft.aiProfile), [text, draft.aiProfile]);
   const patch = useMemo(() => prefillDraft(draft, suggest), [draft, suggest]);
   const fills = Object.keys(patch).filter((k) => k !== "remoteExclude");
-  // Topics alone are shown on the Topics step; with no titles or places there is nothing to show here.
+  // Topics alone are shown in Settings; with no titles or places there is nothing to show here.
   const nothing = !suggest.titles.length && !suggest.places.length && !(suggest.remote && suggest.remoteRegions.length);
   const firstLine = text.split("\n").find((l) => l.trim())?.replace(/^#+\s*/, "") ?? "Resume";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { draftFromConfig, draftToConfig, emptyDraft, rebaseDraft, STEP, stepBlocker, type Draft } from "../src/lib/setup";
+import { draftFromConfig, draftToConfig, emptyDraft, rebaseDraft, setupProgress, STEP, stepBlocker, type Draft } from "../src/lib/setup";
 
 const base: Draft = { ...emptyDraft(), include: ["product manager"], places: ["dubai"] };
 const row = (slug: string) => ({ id: slug, input: `https://jobs.lever.co/${slug}`, state: "saved" as const, name: slug, ats: "lever" as const, slug });
@@ -41,5 +41,14 @@ describe("work style", () => {
     expect(stepBlocker(STEP.locations, { ...base, office: [] })).toBe("Pick at least one work style.");
     expect(stepBlocker(STEP.locations, { ...base, places: [] })).toBe("Add a place you can work from.");
     expect(stepBlocker(STEP.locations, { ...base, office: [], remote: true })).toBe("Pick where you can work remotely.");
+  });
+});
+
+describe("setupProgress", () => {
+  const ready: Draft = { ...base, office: ["onsite"], furthestStep: STEP.locations };
+
+  it("asks about industries, not topics, after roles and places", () => {
+    expect(setupProgress({ ...ready, keywords: { payments: 3 } }).nextStep).toBe(STEP.industries);
+    expect(setupProgress({ ...ready, industries: ["fintech"] }).nextStep).toBe(STEP.review);
   });
 });

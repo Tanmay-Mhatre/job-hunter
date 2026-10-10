@@ -7,7 +7,7 @@ import { canRunLocally } from "../lib/data";
 import { draftToConfig, officePlaces, saveBlockers, saveConfig, STEP, STEP_COUNT, stepBlocker, STEPS, type Draft, type SetupProgress } from "../lib/setup";
 import { buildSuggestions } from "../lib/suggest";
 import { ResumeStep } from "./ResumeStep";
-import { HeadingLevel, KeywordsStep, LocationsStep, placeLabel, RolesStep, THRESHOLDS, ThresholdPicker } from "./steps";
+import { HeadingLevel, IndustriesStep, industryLabel, LocationsStep, placeLabel, RolesStep, THRESHOLDS, ThresholdPicker } from "./steps";
 
 type Props = {
   step: number;
@@ -34,7 +34,7 @@ const COPY: Record<number, { title: string; intro: string }> = {
   [STEP.resume]: { title: "Start with your resume", intro: "Optional. It fills in the next steps for you." },
   [STEP.roles]: { title: "What roles are you looking for?", intro: "Pick a job family, then the titles you want." },
   [STEP.locations]: { title: "Where do you want to work?", intro: "Jobs in other places are hidden." },
-  [STEP.keywords]: { title: "What topics matter to you?", intro: "Optional. Jobs that mention them rank higher." },
+  [STEP.industries]: { title: "Which industries interest you?", intro: "Optional. Companies in these industries are scanned and suggested." },
   [STEP.review]: { title: "Review and save", intro: "Save to start finding your jobs." },
 };
 
@@ -65,7 +65,7 @@ export function Wizard(props: Props) {
   }
 
   const blocker = stepBlocker(step, draft);
-  const optionalEmpty = step === STEP.keywords && Object.keys(draft.keywords).length === 0;
+  const optionalEmpty = step === STEP.industries && draft.industries.length === 0;
   return (
     <div className="mx-auto max-w-2xl">
       <Progress step={step} goStep={goStep} draft={draft} />
@@ -89,7 +89,7 @@ export function Wizard(props: Props) {
             )}
             {step === STEP.roles && <RolesStep draft={draft} update={update} suggest={suggest} />}
             {step === STEP.locations && <LocationsStep draft={draft} update={update} suggest={suggest} />}
-            {step === STEP.keywords && <KeywordsStep draft={draft} update={update} suggest={suggest} resumeText={resumeText} />}
+            {step === STEP.industries && <IndustriesStep draft={draft} update={update} suggest={suggest} />}
             {step === STEP.review && (
               <Review
                 draft={draft}
@@ -232,7 +232,7 @@ const EDIT_LABEL: Record<number, string> = {
   [STEP.resume]: "resume",
   [STEP.roles]: "roles",
   [STEP.locations]: "places",
-  [STEP.keywords]: "topics",
+  [STEP.industries]: "industries",
 };
 
 const WORK_STYLE: Record<string, string> = { onsite: "on-site", hybrid: "hybrid" };
@@ -270,9 +270,6 @@ function Review({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const blockers = saveBlockers(draft);
-  const topKeywords = Object.entries(draft.keywords)
-    .sort((a, b) => b[1] - a[1])
-    .map(([k]) => k);
   const places = groupPlaces(officePlaces(draft)).map((g) => placeLabel(g.name));
   const remote = groupPlaces(draft.remoteOk).map((g) => (g.name === "remote" ? "anywhere" : placeLabel(g.name)));
 
@@ -349,8 +346,12 @@ function Review({
       </>,
     ],
     [
-      STEP.keywords,
-      topKeywords.length ? <>Rank higher when they mention {some(topKeywords, 6)}.</> : <span className="text-muted">No topics. Jobs won't be ranked by topic.</span>,
+      STEP.industries,
+      draft.industries.length ? (
+        <>Also scan companies in {some(draft.industries.map(industryLabel), 6)}.</>
+      ) : (
+        <span className="text-muted">No industries. Jobs are found by your roles and places.</span>
+      ),
     ],
   ];
 

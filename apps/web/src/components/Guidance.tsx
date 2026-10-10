@@ -28,7 +28,7 @@ export function checklistItems(config: Config | undefined, meta: DataMeta | unde
   const working = health.filter((h) => h.ok).length;
   const failing = health.filter((h) => !h.ok && !h.unsupported).length;
   const companies = config?.companies.length ?? 0;
-  const kw = Object.keys(p?.keywords ?? {}).length;
+  const ind = p?.industries.length ?? 0;
   return [
     { key: "resume", label: "Master resume", detail: hasResume ? "Saved" : "Recommended", done: hasResume, step: STEP.resume },
     { key: "roles", label: "Target roles", detail: p?.titles.include.length ? p.titles.include.slice(0, 3).join(", ") : "Not set", done: !!p?.titles.include.length, step: STEP.roles },
@@ -39,7 +39,7 @@ export function checklistItems(config: Config | undefined, meta: DataMeta | unde
       done: !!p && (p.locations.include.length > 0 || p.locations.remote_ok.length > 0),
       step: STEP.locations,
     },
-    { key: "keywords", label: "Topics to rank by", detail: kw ? `${kw} keywords` : "Recommended", done: kw > 0, step: STEP.keywords },
+    { key: "industries", label: "Industries", detail: ind ? `${ind} picked` : "Recommended", done: ind > 0, step: STEP.industries },
     {
       key: "companies",
       label: "Companies you'd like to work at",
