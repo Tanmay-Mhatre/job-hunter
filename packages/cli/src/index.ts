@@ -215,7 +215,7 @@ const HELP = `RawJobs: self-hosted job radar
 
 Usage:
   rawjobs scan [options]      Sync the directory, fetch your companies (and more, by scope) live, score them
-  rawjobs schedule <status|install|remove>   Scan on a schedule on this computer (--time 08:00 [--time 20:00] --scope mine|all)
+  rawjobs schedule <status|install|remove>   Scan on a schedule on this computer (--time 08:00 [--time 20:00] [--scope mine|all], default mine)
   rawjobs alerts telegram <status|token|connect|test|on|off|forget>   Telegram alerts
   rawjobs detect <url>...     Turn careers URLs into config lines
   rawjobs validate            Check your config file
@@ -629,7 +629,7 @@ async function cmdAlerts(args: string[]): Promise<number> {
   }
 }
 
-/** Scheduled scans on this computer (JSON out): status, install --time hh:mm [--time …] --scope mine|all, remove. */
+/** Scheduled scans on this computer (JSON out): status, install --time hh:mm [--time …] [--scope mine|all], remove. */
 async function cmdSchedule(args: string[]): Promise<number> {
   const { values, positionals } = parseArgs({
     args,
@@ -646,7 +646,8 @@ async function cmdSchedule(args: string[]): Promise<number> {
   try {
     const action = positionals[0] ?? "status";
     if (action === "install") {
-      const input = values.stdin ? (JSON.parse((await readStdin()) || "{}") as { times?: string[]; scope?: string }) : { times: values.time, scope: values.scope };
+      // From the terminal the scope defaults to mine, as for scan; the dashboard (--stdin) always sends one.
+      const input = values.stdin ? (JSON.parse((await readStdin()) || "{}") as { times?: string[]; scope?: string }) : { times: values.time, scope: parseScope(values.scope) };
       installSchedule(ctx, { times: input.times, scope: input.scope as ScanScope });
     } else if (action === "remove") removeSchedule(ctx);
     else if (action === "run") runScheduleNow(ctx);
