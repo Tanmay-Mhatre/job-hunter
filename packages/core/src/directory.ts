@@ -12,7 +12,7 @@ import { envSetting } from "./env";
  */
 export const DEFAULT_DIRECTORY_URL = "https://github.com/Tanmay-Mhatre/rawjobs-directory/releases/latest/download";
 /** The contribution inbox (services/contribute); empty turns sharing off. */
-export const DEFAULT_CONTRIBUTE_URL = "https://rawjobs-contribute.tanmay-jobhunter.workers.dev";
+export const DEFAULT_CONTRIBUTE_URL = "https://rawjobs-contribute.rawjobs.workers.dev";
 
 export const directoryUrl = () => (envSetting("DIRECTORY_URL") ?? DEFAULT_DIRECTORY_URL).replace(/\/$/, "");
 export const contributeUrl = () => (envSetting("CONTRIBUTE_URL") ?? DEFAULT_CONTRIBUTE_URL).replace(/\/$/, "");
