@@ -4,6 +4,7 @@ import { dirname, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import {
   checkCompanies,
+  directoryIndustryCounts,
   companyKey,
   ConfigError,
   connectors,
@@ -696,7 +697,7 @@ async function cmdDirectory(args: string[]): Promise<number> {
       const s = directoryStatus(dataDir);
       const age = directoryAgeDays(dataDir);
       out(
-        { ...s, age_days: Number.isFinite(age) ? Math.round(age * 10) / 10 : null },
+        { ...s, age_days: Number.isFinite(age) ? Math.round(age * 10) / 10 : null, industries: directoryIndustryCounts(dataDir) },
         s.local
           ? `Shared directory ${s.local.version}: ${s.local.companies.toLocaleString()} companies, downloaded ${Math.round(age)} day(s) ago.`
           : s.present

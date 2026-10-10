@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { companyIndustries } from "./catalog/industries";
 import { companyKey, companyOfJobId, jobCompanyKey } from "./connectors";
 import { toDashboardJob } from "./dashboard";
 import type { MergeResult } from "./diff";
@@ -41,14 +42,14 @@ export function summarize(run: RunResult, merged: MergeResult): RunSummary {
   };
 }
 
-type DirectoryRow = { key: string; ats: string; slug: string; site?: string; tags?: string[] };
+type DirectoryRow = { key: string; ats: string; slug: string; site?: string; tags?: string[]; title_tags?: string[] };
 
 /** The published directory's companies (data/catalog/directory.json), if built. */
 const directoryCompanies = (dir: string): DirectoryRow[] => readJson<{ companies: DirectoryRow[] }>(join(dir, "catalog", "directory.json"))?.companies ?? [];
 
 /** Industry ids per company directory key. */
 function directoryIndustries(companies: readonly DirectoryRow[]): Map<string, string[]> {
-  return new Map(companies.filter((c) => c.tags?.length).map((c) => [c.key, c.tags!]));
+  return new Map(companies.map((c) => [c.key, companyIndustries(c)] as const).filter(([, ids]) => ids.length));
 }
 
 /**

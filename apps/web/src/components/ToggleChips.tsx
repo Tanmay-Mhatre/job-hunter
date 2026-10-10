@@ -14,6 +14,8 @@ type Props = {
   addPlaceholder?: string;
   /** Display text for an option (defaults to the value). */
   format?: (v: string) => string;
+  /** A short muted note after an option's text (e.g. "few companies"). */
+  note?: (v: string) => string | undefined;
   size?: "sm" | "md";
 };
 
@@ -23,7 +25,7 @@ const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
  * The one select/deselect control: every option is always visible; selected ones are filled
  * with a check, and clicking any chip toggles it. Nothing disappears or locks once picked.
  */
-export function ToggleChips({ options, selected, onChange, label, tone = "accent", addPlaceholder, format = (v) => v, size = "md" }: Props) {
+export function ToggleChips({ options, selected, onChange, label, tone = "accent", addPlaceholder, format = (v) => v, note, size = "md" }: Props) {
   const [text, setText] = useState("");
   const all = [...options, ...selected.filter((s) => !options.includes(s))];
   const toggle = (v: string) => onChange(selected.includes(v) ? selected.filter((s) => s !== v) : [...selected, v]);
@@ -56,6 +58,7 @@ export function ToggleChips({ options, selected, onChange, label, tone = "accent
           >
             {active ? <Check className="size-3.5" /> : <Plus className="size-3.5" />}
             {format(v)}
+            {note?.(v) && <span className="font-normal opacity-70">· {note(v)}</span>}
           </button>
         );
       })}

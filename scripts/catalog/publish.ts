@@ -20,8 +20,10 @@ import {
   companyKey,
   connectors,
   detectCompany,
+  FEW_COMPANIES,
   INDUSTRIES,
   industriesForLabel,
+  industryCounts,
   industriesFromTitles,
   isPlaceholderBoard,
   type IndexedCompany,
@@ -203,9 +205,12 @@ const slim = [
   ...unverified,
 ];
 
+/** Live companies we can scan per industry (list or title tags): the pickers flag industries with few. */
+const industries = industryCounts(slim.filter((c) => c.status === "live" && supported.has(c.ats)));
+
 mkdirSync(OUT, { recursive: true });
 const generated_at = new Date().toISOString();
-writeFileSync(join(OUT, "directory.json"), JSON.stringify({ generated_at, count: slim.length, companies: slim }));
+writeFileSync(join(OUT, "directory.json"), JSON.stringify({ generated_at, count: slim.length, industries, companies: slim }));
 writeFileSync(join(OUT, "index.json"), JSON.stringify({ generated_at, count: indexed.length, companies: indexed }));
 writeFileSync(
   join(here, "out", "tags.json"),
@@ -224,3 +229,5 @@ console.log(
 console.log(
   `Tagged ${slim.filter((c) => c.tags?.length).length} companies by industry (+${slim.filter((c) => !c.tags?.length && c.title_tags?.length).length} from job titles only):\n  ${perIndustry.join("\n  ")}`,
 );
+const sparse = INDUSTRIES.filter((i) => (industries[i.id] ?? 0) < FEW_COMPANIES).map((i) => `${i.id} (${industries[i.id] ?? 0})`);
+if (sparse.length) console.log(`Few live companies to scan (under ${FEW_COMPANIES}): ${sparse.join(", ")}`);

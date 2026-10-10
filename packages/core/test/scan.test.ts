@@ -55,6 +55,11 @@ describe("scopeCompanies", () => {
     expect(scopeCompanies(cfg, DIRECTORY, "mine").map((c) => `${c.ats}:${c.slug}`)).toEqual(["lever:leverco"]);
   });
 
+  it("mine: also companies only their job titles put in your industries", () => {
+    const dir = [entry("ashby:byTitles", { name: "By Titles", title_tags: ["crypto"] }), entry("ashby:other", { name: "Other", title_tags: ["healthtech"] })];
+    expect(scopeCompanies(cfg, dir, "mine").map((c) => `${c.ats}:${c.slug}`)).toEqual(["ashby:byTitles"]);
+  });
+
   it("all: every live company we can read", () => {
     expect(scopeCompanies(cfg, DIRECTORY, "all").map((c) => `${c.ats}:${c.slug}`).sort()).toEqual(["ashby:quiet", "lever:leverco"]);
   });

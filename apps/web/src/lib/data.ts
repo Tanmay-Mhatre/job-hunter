@@ -132,6 +132,26 @@ export function useDescription(job: Job | undefined): string | null | undefined 
 export const canRunLocally = import.meta.env.DEV;
 
 /**
+ * Live companies to scan per industry id, as the directory build counted them. Null on the hosted
+ * build, before the directory is downloaded, or for a directory built before it counted.
+ */
+export function useIndustryCounts(): Record<string, number> | null {
+  const [counts, setCounts] = useState<Record<string, number> | null>(null);
+  useEffect(() => {
+    if (!canRunLocally) return;
+    let live = true;
+    fetch("/api/directory", { cache: "no-store" })
+      .then((r) => (r.ok ? (r.json() as Promise<{ industries?: Record<string, number> | null }>) : null))
+      .then((s) => live && s?.industries && setCounts(s.industries))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
+  return counts;
+}
+
+/**
  * How many companies the shared directory lists (its manifest count), from the local API. The one directory
  * size shown anywhere in the app (Companies, Settings), always via roughCount. `rev` refetches after an update.
  */
