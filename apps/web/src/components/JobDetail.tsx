@@ -54,7 +54,8 @@ function MetaLine({ parts, className }: { parts: ReactNode[]; className?: string
               ·
             </span>
           )}
-          {part}
+          {/* Each part wraps as a whole ("Copperkettle Pay" never splits across lines) unless it's wider than the line. */}
+          <span className="inline-block max-w-full">{part}</span>
         </Fragment>
       ))}
     </p>

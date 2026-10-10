@@ -229,6 +229,20 @@ export function RadarPage(p: Props) {
     },
     [wide, p],
   );
+  /**
+   * J/K move focus between rows (design/components/Feed): after the selection changes and the row is
+   * rendered with aria-current, focus its title, so focus and the current row never disagree. Not while
+   * the phone drawer is open: the list behind it is inert.
+   */
+  const focusPending = useRef<string | null>(null);
+  useEffect(() => {
+    const key = focusPending.current;
+    if (!key || !selectedGroup || selectedGroup.key !== key) return;
+    focusPending.current = null;
+    const row = rowRefs.current.get(key);
+    if (!(!wide && p.overlayOpen)) row?.querySelector<HTMLElement>("[data-job-link]")?.focus({ preventScroll: true });
+    row?.scrollIntoView({ block: "nearest" });
+  });
   const move = useCallback(
     (d: number) => {
       if (!groups.length) return;
@@ -236,15 +250,9 @@ export function RadarPage(p: Props) {
       const g = groups[next]!;
       if (next >= limit) setLimit(next + PAGE);
       setSelectedId(g.lead.id);
-      const overlay = !wide && p.overlayOpen;
-      if (overlay) p.onOpenOverlay(g.lead);
-      requestAnimationFrame(() => {
-        const row = rowRefs.current.get(g.key);
-        // Focus follows the selection, so keyboard and screen-reader users keep their place (Feed: J/K move
-        // focus between rows). Not while the phone drawer is open: the list behind it is inert.
-        if (!overlay) row?.querySelector<HTMLElement>("[data-job-link]")?.focus({ preventScroll: true });
-        row?.scrollIntoView({ block: "nearest" });
-      });
+      if (!wide && p.overlayOpen) p.onOpenOverlay(g.lead);
+      // Focus moves once the new row is rendered and marked current (the effect below).
+      focusPending.current = g.key;
     },
     [groups, index, limit, wide, p],
   );
@@ -301,6 +309,8 @@ export function RadarPage(p: Props) {
   };
 
   const [sheet, setSheet] = useState(false);
+  /** Laptops and up: the filter row under the search, opened with Filters. */
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const facet = (key: FacetKey) => counts[key];
   const relax = groups.length === 0 ? suggestRelax(pool, filters, ctx) : [];
 
@@ -342,48 +352,65 @@ export function RadarPage(p: Props) {
   const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
   const changedFromProfile = !sameSet(filters.countries, base.countries) || !sameSet(filters.locations, base.locations);
 
-  return (
-    <div className="space-y-3">
-      <ProfileBar
-        profile={profile}
-        placeFilter={placeBase.countries}
-        everywhere={everywhere}
-        onEverywhere={setEverywhere}
-        changed={changedFromProfile}
-        onEdit={p.onEditProfile}
-        onReset={() => setFilters({ countries: base.countries, locations: base.locations })}
-        onSave={
-          p.onSaveProfile &&
-          (() => {
-            adoptNextProfile();
-            return p.onSaveProfile!({ countries: filters.countries, locations: filters.locations }).then((err) => {
-              if (err) adoptNextProfile(false);
-              return err;
-            });
-          })
-        }
-      />
+  const profileBar = (
+    <ProfileBar
+      profile={profile}
+      placeFilter={placeBase.countries}
+      everywhere={everywhere}
+      onEverywhere={setEverywhere}
+      changed={changedFromProfile}
+      onEdit={p.onEditProfile}
+      onReset={() => setFilters({ countries: base.countries, locations: base.locations })}
+      onSave={
+        p.onSaveProfile &&
+        (() => {
+          adoptNextProfile();
+          return p.onSaveProfile!({ countries: filters.countries, locations: filters.locations }).then((err) => {
+            if (err) adoptNextProfile(false);
+            return err;
+          });
+        })
+      }
+    />
+  );
+  // Laptops and up: one row of views, search, sort and Filters, so the feed starts high and the job's
+  // Apply stays in view. The filters, active chips and your profile line open under it on request.
+  // Phones keep the profile line on top and the filter sheet. A profile that differs needs a decision,
+  // so that line always shows.
+  const profileOutside = !wide || changedFromProfile;
 
-      {/* Summary + search + sort */}
+  return (
+    <div className="flex flex-col gap-3 lg:min-h-0 lg:flex-1">
+      {profileOutside && profileBar}
+
       <Card className="p-3">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap lg:gap-3">
+          <ViewsBar
+            className="order-3 w-full lg:order-none lg:w-auto lg:min-w-0 lg:flex-1"
+            base={base}
+            filters={filters}
+            sort={sort}
+            views={p.prefs.views}
+            counts={{ all: open.length, mine: open.filter(p.isYours).length, new: newCount, strong: strongCount, saved: open.filter((j) => p.user[j.id]?.status === "saved").length }}
+            hideNew={firstScan}
+            onPick={replace}
+            onSave={(name) => p.onSaveView(name, filters, sort)}
+            onRename={p.onRenameView}
+            onDelete={deleteView}
+          />
           <SearchField
             ref={searchRef}
             label="Search jobs"
-            className="min-w-0 flex-1 basis-60"
+            className="order-1 min-w-0 flex-1 basis-40 lg:order-none lg:w-48 lg:flex-none lg:basis-auto xl:w-64"
             value={filters.q}
             onChange={(e) => setFilters({ q: e.target.value })}
             onKeyDown={(e) => e.key === "Escape" && (e.currentTarget.blur(), setFilters({ q: "" }))}
-            placeholder="Search titles, companies, places, keywords"
+            placeholder="Search jobs"
           />
-          <label className="relative inline-flex items-center">
+          {/* Phones sort in the filter sheet, so search and Filters share one row. */}
+          <label className="relative hidden shrink-0 items-center lg:inline-flex">
             <ArrowUpDown className="pointer-events-none absolute left-2.5 size-3.5 text-muted" />
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as Sort)}
-              aria-label="Sort"
-              className="h-9 appearance-none rounded-md border border-line bg-raised pl-8 pr-3 type-small"
-            >
+            <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sort" className="h-9 appearance-none rounded-md border border-line bg-raised pl-8 pr-3 type-small">
               {SORTS.map((s) => (
                 <option key={s.value} value={s.value}>
                   {s.label}
@@ -391,45 +418,37 @@ export function RadarPage(p: Props) {
               ))}
             </select>
           </label>
-          <Button className="lg:hidden" onClick={() => setSheet(true)}>
-            <SlidersHorizontal className="size-4" /> Filters{chips.length ? ` · ${chips.length}` : ""}
+          <Button
+            className="order-2 shrink-0 lg:order-none"
+            aria-expanded={wide ? filtersOpen : undefined}
+            aria-controls={wide ? "radar-filters" : undefined}
+            aria-pressed={chips.length > 0 || undefined}
+            onClick={() => (wide ? setFiltersOpen((o) => !o) : setSheet(true))}
+          >
+            <SlidersHorizontal className="rj-icon" aria-hidden /> Filters{chips.length ? ` · ${chips.length}` : ""}
           </Button>
         </div>
 
-        <ViewsBar
-          base={base}
-          filters={filters}
-          sort={sort}
-          views={p.prefs.views}
-          counts={{ all: open.length, mine: open.filter(p.isYours).length, new: newCount, strong: strongCount, saved: open.filter((j) => p.user[j.id]?.status === "saved").length }}
-          hideNew={firstScan}
-          onPick={replace}
-          onSave={(name) => p.onSaveView(name, filters, sort)}
-          onRename={p.onRenameView}
-          onDelete={deleteView}
-        />
+        {wide && filtersOpen && (
+          <div id="radar-filters" className="mt-3 space-y-2 border-t border-hairline pt-3">
+            {!profileOutside && profileBar}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <FacetMenu label="Date posted" single options={facet("posted")} selected={filters.posted ? [String(filters.posted)] : []} onChange={(v) => setFilters({ posted: (Number(v[0]) || 0) as Filters["posted"] })} />
+              <FacetMenu label="Country" searchable options={facet("countries")} selected={filters.countries} onChange={(v) => setFilters({ countries: v })} />
+              <FacetMenu label="Location" searchable options={facet("locations")} selected={filters.locations} onChange={(v) => setFilters({ locations: v })} />
+              <FacetMenu label="Workplace" options={facet("workplace")} selected={filters.workplace} onChange={(v) => setFilters({ workplace: v as Filters["workplace"] })} />
+              <FacetMenu label="Seniority" options={facet("seniority")} selected={filters.seniority} onChange={(v) => setFilters({ seniority: v as Filters["seniority"] })} />
+              {facet("industries").length > 0 && <FacetMenu label="Industry" options={facet("industries")} selected={filters.industries} onChange={(v) => setFilters({ industries: v })} />}
+              <FacetMenu label="Company" searchable options={facet("companies")} selected={filters.companies} onChange={(v) => setFilters({ companies: v })} />
+              {facet("topics").length > 0 && <FacetMenu label="Keywords" searchable options={facet("topics")} selected={filters.topics} onChange={(v) => setFilters({ topics: v })} />}
+              <FacetMenu label="Match" single options={facet("match")} selected={filters.match === "all" ? [] : [filters.match]} onChange={(v) => setFilters({ match: (v[0] as Filters["match"]) ?? "all" })} />
+              <MoreMenu filters={filters} setFilters={setFilters} ats={facet("ats")} olderCount={olderCount} hiddenCompanies={p.prefs.hiddenCompanies} onUnhide={(c) => p.onHideCompany(c, false)} />
+            </div>
+          </div>
+        )}
 
-        <div className="mt-2 hidden flex-wrap items-center gap-1.5 lg:flex">
-          <FacetMenu label="Date posted" single options={facet("posted")} selected={filters.posted ? [String(filters.posted)] : []} onChange={(v) => setFilters({ posted: (Number(v[0]) || 0) as Filters["posted"] })} />
-          <FacetMenu label="Country" searchable options={facet("countries")} selected={filters.countries} onChange={(v) => setFilters({ countries: v })} />
-          <FacetMenu label="Location" searchable options={facet("locations")} selected={filters.locations} onChange={(v) => setFilters({ locations: v })} />
-          <FacetMenu label="Workplace" options={facet("workplace")} selected={filters.workplace} onChange={(v) => setFilters({ workplace: v as Filters["workplace"] })} />
-          <FacetMenu label="Seniority" options={facet("seniority")} selected={filters.seniority} onChange={(v) => setFilters({ seniority: v as Filters["seniority"] })} />
-          {facet("industries").length > 0 && <FacetMenu label="Industry" options={facet("industries")} selected={filters.industries} onChange={(v) => setFilters({ industries: v })} />}
-          <FacetMenu label="Company" searchable options={facet("companies")} selected={filters.companies} onChange={(v) => setFilters({ companies: v })} />
-          {facet("topics").length > 0 && <FacetMenu label="Topics" searchable options={facet("topics")} selected={filters.topics} onChange={(v) => setFilters({ topics: v })} />}
-          <FacetMenu
-            label="Match"
-            single
-            options={facet("match")}
-            selected={filters.match === "all" ? [] : [filters.match]}
-            onChange={(v) => setFilters({ match: (v[0] as Filters["match"]) ?? "all" })}
-          />
-          <MoreMenu filters={filters} setFilters={setFilters} ats={facet("ats")} olderCount={olderCount} hiddenCompanies={p.prefs.hiddenCompanies} onUnhide={(c) => p.onHideCompany(c, false)} />
-        </div>
-
-        {(chips.length > 0 || olderCount > 0) && (
-          <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-line pt-2">
+        {(chips.length > 0 || olderCount > 0) && (wide ? filtersOpen : true) && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-hairline pt-2">
             {chips.map((c) => (
               // An active filter: pressed; pressing it turns it off.
               <Chip key={c.key} pressed onClick={() => setFilters(c.remove)} aria-label={`Filter: ${c.label}`} title="Remove this filter">
@@ -446,10 +465,6 @@ export function RadarPage(p: Props) {
                 Show older jobs ({olderCount})
               </Button>
             )}
-            <span className="tabular ml-auto type-meta text-muted">
-              {groups.length} {groups.length === 1 ? "role" : "roles"}
-              {visible.length !== groups.length && ` (${visible.length} postings)`}
-            </span>
           </div>
         )}
       </Card>
@@ -500,16 +515,35 @@ export function RadarPage(p: Props) {
           </div>
         </div>
       ) : (
-        <div className="lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-3">
+        <div className="lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:grid-rows-[minmax(0,1fr)] lg:gap-3">
           {/* design/components/Feed: an L1 panel, a summary line, then one list per section. */}
-          <section aria-label="Jobs for you" className="rj-panel rj-feed lg:sticky lg:top-[4.5rem] lg:flex lg:h-[calc(100dvh-5.5rem)] lg:flex-col" data-density={density}>
+          <section aria-label="Jobs for you" className="rj-panel rj-feed lg:flex lg:h-full lg:min-h-0 lg:flex-col" data-density={density}>
             <div className="rj-feed__head">
               <span>
                 {groups.length} {groups.length === 1 ? "job" : "jobs"}
                 {!firstScan && newCount > 0 && ` · ${newCount} new`}
                 {p.meta.runs[0] && ` · checked ${timeAgo(p.meta.runs[0].finishedAt)}`}
               </span>
-              <span>{SORTS.find((x) => x.value === sort)?.label}</span>
+              {/* Laptops show the sort control just above, and keep your profile line in the Filters panel:
+                  this opens it, so what's being matched is one click away. Phones sort in the filter
+                  sheet; this opens it. */}
+              {wide && !profileOutside && (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 underline-offset-2 hover:underline"
+                  aria-expanded={filtersOpen}
+                  aria-controls="radar-filters"
+                  onClick={() => setFiltersOpen((o) => !o)}
+                >
+                  <UserRound className="size-3" aria-hidden /> Your profile
+                </button>
+              )}
+              {!wide && (
+                <button type="button" className="inline-flex items-center gap-1 underline-offset-2 hover:underline" onClick={() => setSheet(true)} aria-label={`Sorted by ${SORTS.find((x) => x.value === sort)?.label}. Change sort`}>
+                  <ArrowUpDown className="size-3" aria-hidden />
+                  {SORTS.find((x) => x.value === sort)?.label}
+                </button>
+              )}
             </div>
             <div ref={listRef} className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
               {feedSections.map((sec, si) => (
@@ -548,7 +582,7 @@ export function RadarPage(p: Props) {
             </div>
           </section>
           {wide && (
-            <Card className="hidden overflow-hidden lg:sticky lg:top-[4.5rem] lg:block lg:h-[calc(100dvh-5.5rem)]">
+            <Card className="hidden overflow-hidden lg:block lg:h-full lg:min-h-0">
               {detailProps ? <JobDetail {...detailProps} /> : <p className="p-6 type-small text-muted">Pick a job to see the details.</p>}
             </Card>
           )}
@@ -557,6 +591,9 @@ export function RadarPage(p: Props) {
 
       {sheet && !wide && (
         <FilterSheet onClose={() => setSheet(false)} count={groups.length} onClear={() => replace(base, sort)}>
+          <SheetSection label="Sort by">
+            <SortOptions sort={sort} onChange={setSort} />
+          </SheetSection>
           <SheetSection label="Date posted">
             <OptionList label="Date posted" single options={facet("posted")} selected={filters.posted ? [String(filters.posted)] : []} onChange={(v) => setFilters({ posted: (Number(v[0]) || 0) as Filters["posted"] })} />
           </SheetSection>
@@ -604,13 +641,14 @@ const BUILT_IN: { id: string; label: string; filters: Partial<Filters>; count: k
   { id: "all", label: "All", filters: {}, count: "all" },
   { id: "mine", label: "My companies", filters: { mine: true }, count: "mine" },
   { id: "new", label: "New", filters: { status: "new" }, count: "new" },
-  { id: "strong", label: "Strong matches", filters: { match: "strong" }, count: "strong" },
+  { id: "strong", label: "Strong", filters: { match: "strong" }, count: "strong" },
   { id: "saved", label: "Saved", filters: { status: "saved" }, count: "saved" },
   { id: "applied", label: "Applied", filters: { status: "applied" }, count: "all" },
 ];
 type ViewCounts = { all: number; mine: number; new: number; strong: number; saved: number };
 
 function ViewsBar(props: {
+  className?: string;
   /** Your profile's filters: the built-in views start from them. */
   base: Filters;
   filters: Filters;
@@ -638,7 +676,7 @@ function ViewsBar(props: {
   const builtIns = BUILT_IN.filter((b) => !(b.id === "new" && props.hideNew));
   const tabValue = builtInActive && !customActive ? builtInActive.id : "";
   return (
-    <div className="mt-3 flex flex-wrap items-end gap-x-4 gap-y-2">
+    <div className={cx("flex flex-wrap items-end gap-x-4 gap-y-2 lg:flex-nowrap", props.className)}>
       {/* design/components/Tabs: views of one list, ink underline. */}
       <Tabs
         label="Radar views"
@@ -802,6 +840,32 @@ function FilterSheet({ children, count, onClose, onClear }: { children: ReactNod
         </footer>
       </div>
     </Dialog>
+  );
+}
+
+/** The sort choices in the phone filter sheet: one always picked, styled like the single-choice filters. */
+function SortOptions({ sort, onChange }: { sort: Sort; onChange: (s: Sort) => void }) {
+  return (
+    <ul>
+      {SORTS.map((s) => {
+        const on = s.value === sort;
+        return (
+          <li key={s.value}>
+            <button
+              type="button"
+              aria-pressed={on}
+              onClick={() => onChange(s.value)}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left type-small hover:bg-inset"
+            >
+              <span className={cx("flex size-4 shrink-0 items-center justify-center rounded-dot border", on ? "border-ink bg-ink text-raised" : "border-control")}>
+                {on && <Check className="size-3" />}
+              </span>
+              {s.label}
+            </button>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

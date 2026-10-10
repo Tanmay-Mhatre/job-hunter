@@ -50,7 +50,8 @@ const { values: args } = parseArgs({
   },
 });
 
-const HEIGHTS: Record<number, number> = { 1280: 800, 390: 844, 375: 812 };
+/** Laptop screens are short: 760px tall is the case the Radar must fit (Apply in view, no page scroll). */
+const HEIGHTS: Record<number, number> = { 1280: 760, 1100: 760, 390: 844, 375: 812 };
 const themes = args.themes.split(",").map((t) => t.trim()).filter(Boolean) as ThemeId[];
 for (const t of themes) if (!(t in THEMES)) fail(`Unknown theme "${t}". Use: ${Object.keys(THEMES).join(", ")}`);
 const widths = args.viewports.split(",").map((w) => Number(w.trim())).filter((w) => w > 0);
@@ -96,22 +97,63 @@ const SCREENS: Screen[] = [
   { id: "radar", what: "Radar, All view (default)", scenario: "demo", hash: "#radar", ready: strong },
   {
     id: "radar-keys",
-    what: "Radar after J, J: focus is on the second row's title (Feed: J/K move focus between rows)",
+    what: "Radar after J/K presses: after every press the current row (aria-current) is the focused one (Feed: J/K move focus)",
     scenario: "demo",
     hash: "#radar",
     ready: strong,
     widths: [1280],
     act: async (page) => {
-      await page.locator("body").click({ position: { x: 1, y: 1 } });
-      await page.keyboard.press("j");
-      await page.keyboard.press("j");
-      // A string, so this file needs no DOM types (tsconfig.scripts.json).
-      const focused = await page.evaluate<string | null>(`document.activeElement?.hasAttribute("data-job-link") ? document.activeElement.textContent : null`);
-      if (!focused) throw new Error("J didn't move focus to a row's title");
+      await page.locator("li.rj-row [data-job-link]").nth(1).click();
+      for (const [i, key] of ["j", "j", "j", "k", "j", "j", "k", "k"].entries()) {
+        await page.keyboard.press(key);
+        // A string, so this file needs no DOM types (tsconfig.scripts.json).
+        const ok = await page.evaluate<boolean>(`(() => { const c = document.querySelector('li.rj-row[aria-current="true"] [data-job-link]'); return !!c && document.activeElement === c; })()`);
+        if (!ok) throw new Error(`after press ${i + 1} (${key.toUpperCase()}) the focused element isn't the current row's title`);
+      }
     },
   },
   { id: "radar-new",what: "Radar, New view (views bar)", scenario: "demo", hash: "#radar", ready: strong, act: clickView(/^New\b/) },
-  { id: "radar-strong", what: "Radar, Strong matches view (views bar)", scenario: "demo", hash: "#radar", ready: strong, act: clickView(/^Strong matches\b/) },
+  { id: "radar-strong", what: "Radar, Strong matches view (views bar)", scenario: "demo", hash: "#radar", ready: strong, act: clickView(/^Strong\b/) },
+  {
+    id: "radar-fit",
+    what: "Radar on a laptop (760px tall): the page doesn't scroll, the feed starts high, Apply is in view",
+    scenario: "demo",
+    hash: "#radar",
+    ready: strong,
+    widths: [1280, 1100],
+    act: async (page) => {
+      const m = await page.evaluate<{ scroll: number; feedTop: number; applyBottom: number; height: number }>(`(() => {
+        const apply = [...document.querySelectorAll("a, button")].find((e) => /^(Apply on|Open careers page)/.test(e.textContent.trim()) && e.offsetParent);
+        return {
+          scroll: document.scrollingElement.scrollHeight - innerHeight,
+          feedTop: Math.round(document.querySelector('section[aria-label="Jobs for you"]').getBoundingClientRect().top),
+          applyBottom: apply ? Math.round(apply.getBoundingClientRect().bottom) : 99999,
+          height: innerHeight,
+        };
+      })()`);
+      const problems = [
+        m.scroll > 1 && `the page scrolls by ${m.scroll}px`,
+        m.feedTop > 300 && `the feed starts at ${m.feedTop}px (over 300)`,
+        m.applyBottom > m.height && `Apply ends at ${m.applyBottom}px, below the ${m.height}px window`,
+      ].filter(Boolean);
+      if (problems.length) throw new Error(problems.join("; "));
+    },
+  },
+  {
+    id: "radar-drawer-other",
+    viewportOnly: true,
+    what: "Phone job drawer for a company that isn't yours: no footer button cuts its label (Add to My companies)",
+    scenario: "demo",
+    hash: "#radar",
+    widths: [375],
+    ready: strong,
+    act: async (page) => {
+      await page.locator("li.rj-row").filter({ hasNot: page.locator(".rj-star") }).first().locator("[data-job-link]").click();
+      await page.getByRole("dialog").waitFor();
+      const cut = await page.evaluate<string[]>(`[...document.querySelectorAll("dialog .rj-drawer__foot a, dialog .rj-drawer__foot button")].filter((b) => b.scrollWidth > b.clientWidth + 1).map((b) => b.textContent.trim() + " (" + b.scrollWidth + "px in " + b.clientWidth + "px)")`);
+      if (cut.length) throw new Error(`footer labels cut off: ${cut.join(", ")}`);
+    },
+  },
   {
     id: "radar-drawer",
     viewportOnly: true,
@@ -352,6 +394,9 @@ async function capture(browser: Browser, baseUrl: string, screen: Screen, theme:
     // Skeletons and spinners: give them a moment to resolve.
     await page.waitForFunction('!document.querySelector(".animate-spin, .animate-pulse")', undefined, { timeout: 5_000 }).catch(() => {});
     if (errors.length) console.warn(`  page errors on ${screen.id}: ${errors.join(" | ")}`);
+    // design/README.md: the page never scrolls sideways (tabs, boards and tables scroll inside themselves).
+    const sideways = await page.evaluate<number>("document.documentElement.scrollWidth - document.documentElement.clientWidth");
+    if (sideways > 1) throw new Error(`the page scrolls sideways by ${sideways}px`);
 
     const file = join(outDir, `${screen.id}-${theme}-${width}.png`);
     await page.screenshot({ path: file, fullPage: !screen.viewportOnly, animations: "disabled", caret: "hide" });
