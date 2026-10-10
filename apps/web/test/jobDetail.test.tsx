@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { JobDetail } from "../src/components/JobDetail";
 import type { Job, Profile } from "../src/lib/data";
@@ -62,11 +62,18 @@ describe("JobDetail", () => {
     expect(apply.className).toContain("rj-btn--primary");
   });
 
-  it("labels the notes field visibly", () => {
+  it("folds the notes field to a button until there's a note, then labels it visibly", () => {
     const { container } = renderDetail(job());
+    expect(screen.queryByLabelText("Notes")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Add a note" }));
     const notes = screen.getByLabelText("Notes");
     expect(notes.tagName).toBe("TEXTAREA");
     expect(container.querySelector(`label[for="${notes.id}"]`)?.textContent).toBe("Notes");
+  });
+
+  it("shows a saved note straight away", () => {
+    render(<JobDetail job={job()} entry={{ note: "Ask Sam for a referral", updatedAt: "", snapshot: { title: "", company: "", url: "", location: "", score: 0 } }} profile={profile} onUpdate={() => {}} />);
+    expect((screen.getByLabelText("Notes") as HTMLTextAreaElement).value).toBe("Ask Sam for a referral");
   });
 
   it("hides Copy description when the job has no description, and shows it while one loads", () => {
@@ -76,7 +83,7 @@ describe("JobDetail", () => {
     // descriptions.json never arrives, so the button stays in its loading state.
     vi.stubGlobal("fetch", () => new Promise(() => {}));
     renderDetail(job({ hasDescription: true }));
-    const copy = screen.getByRole("button", { name: "Loading description…" }) as HTMLButtonElement;
+    const copy = screen.getByRole("button", { name: "Copy description" }) as HTMLButtonElement;
     expect(copy.disabled).toBe(true);
     vi.unstubAllGlobals();
   });

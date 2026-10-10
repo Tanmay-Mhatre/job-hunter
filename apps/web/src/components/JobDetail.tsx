@@ -1,12 +1,14 @@
 import { INDUSTRY_BY_ID } from "@rawjobs/core/catalog/industries";
 import { SENIORITY_LEVELS } from "@rawjobs/core/catalog/seniority";
-import { ArrowLeft, Bookmark, Check, ChevronDown, ChevronUp, CircleCheck, Copy, ExternalLink, Info, LoaderCircle, Plus, RefreshCw, Star, X } from "lucide-react";
+import { ArrowLeft, Bookmark, Check, ChevronDown, ChevronUp, CircleCheck, Copy, ExternalLink, Info, LoaderCircle, Maximize2, Plus, RefreshCw, Star, StickyNote, X } from "lucide-react";
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { copyText } from "../lib/clipboard";
 import { useDescription, type Job, type Profile } from "../lib/data";
 import { formatDate, formatSalary, placeSummary, postedOrSeen, timeAgo } from "../lib/format";
 import { atsLabel, INDEX_MAX_AGE_DAYS } from "../lib/filters";
+import { load, save } from "../lib/storage";
 import { PIPELINE, STATUS_LABEL, type Entry, type Status } from "../lib/userState";
+import { Dialog } from "./Dialog";
 import { Button, buttonClass, Chip, ChipGroup, IconButton, ScoreBadge, scoreBandOf, ScoreBreakdown, scoreParts, SourceTag } from "./primitives";
 import { cx } from "./ui";
 
@@ -37,6 +39,8 @@ export type JobDetailProps = {
   onTrack?: (on: boolean) => Promise<string | null>;
   /** Check an estimated job's company live now. Resolves to an error, or null. */
   onCheck?: () => Promise<string | null>;
+  /** Shown in the full-window reader (Expand): no Expand button, and F closes it. */
+  expanded?: boolean;
 };
 
 const SENIORITY_LABEL = Object.fromEntries(SENIORITY_LEVELS.map((s) => [s.id, s.label]));
@@ -67,6 +71,8 @@ export function JobDetail(p: JobDetailProps) {
   const { job, entry, profile } = p;
   const description = useDescription(job);
   const [copied, setCopied] = useState(false);
+  /** The full-window reader, for reading the whole description in one view. */
+  const [expanded, setExpanded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const salary = formatSalary(job.salary);
@@ -88,16 +94,20 @@ export function JobDetail(p: JobDetailProps) {
   const copyRef = useRef(copyJd);
   copyRef.current = copyJd;
 
-  // C copies the description, like the shortcut shown on the button. Not while typing.
+  const expandRef = useRef(() => (p.expanded ? p.onClose?.() : setExpanded(true)));
+  expandRef.current = () => (p.expanded ? p.onClose?.() : setExpanded(true));
+
+  // C copies the description and F expands it (or closes the reader), like the hints on the buttons. Not while typing.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "c" || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
+      if ((e.key !== "c" && e.key !== "f") || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
       const t = e.target as HTMLElement | null;
       if (t?.closest?.("input, textarea, select, [contenteditable=''], [contenteditable='true']")) return;
       // Not while some other dialog (Settings, the "Did you apply?" prompt) is on top of this job.
       const dialog = [...document.querySelectorAll("dialog[open]")].pop();
       if (dialog && !dialog.contains(rootRef.current)) return;
-      void copyRef.current();
+      if (e.key === "f") expandRef.current();
+      else void copyRef.current();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -120,6 +130,23 @@ export function JobDetail(p: JobDetailProps) {
   ];
   const saved = status === "saved";
 
+  const descriptionSection = (
+    <section className="rj-drawer__section">
+      <h3 className="rj-h">Description</h3>
+      {description === undefined ? (
+        <p className="flex items-center gap-2 type-small text-muted">
+          <LoaderCircle className="size-4 animate-spin" /> Loading…
+        </p>
+      ) : description ? (
+        <Highlighted text={description} terms={job.why.keywords} wide={p.expanded} />
+      ) : (
+        <p className="type-small text-muted">
+          {job.estimated ? "Not scanned yet, so no description." : job.why.gate ? "Not stored for jobs that fail your filters." : "The hiring system didn't include a description."} Open the job page to read it.
+        </p>
+      )}
+    </section>
+  );
+
   return (
     <div ref={rootRef} className="flex h-full min-h-0 flex-col">
       <header className="rj-drawer__head">
@@ -127,7 +154,7 @@ export function JobDetail(p: JobDetailProps) {
           <SourceTag source={source} age={age} isNew={p.isNew} />
           <div className="flex shrink-0 items-center gap-1">
             {p.onClose && (
-              <IconButton label="Back" title="Back (Esc)" aria-keyshortcuts="Escape" size="sm" onClick={p.onClose} className="lg:hidden">
+              <IconButton label="Back" title="Back (Esc)" aria-keyshortcuts="Escape" size="sm" onClick={p.onClose} className={p.expanded ? "hidden" : "lg:hidden"}>
                 <ArrowLeft className="rj-icon" />
               </IconButton>
             )}
@@ -141,8 +168,14 @@ export function JobDetail(p: JobDetailProps) {
                 <ChevronDown className="rj-icon" />
               </IconButton>
             )}
+            {/* Phones already show the job full screen. */}
+            {!p.expanded && (
+              <IconButton label="Expand to full window" shortcut="F" size="sm" onClick={() => setExpanded(true)} className="max-md:hidden">
+                <Maximize2 className="rj-icon" />
+              </IconButton>
+            )}
             {p.onClose && (
-              <IconButton label="Close" title="Close (Esc)" aria-keyshortcuts="Escape" size="sm" onClick={p.onClose} className="hidden lg:inline-flex">
+              <IconButton label="Close" title="Close (Esc)" aria-keyshortcuts="Escape" size="sm" onClick={p.onClose} className={p.expanded ? undefined : "hidden lg:inline-flex"}>
                 <X className="rj-icon" />
               </IconButton>
             )}
@@ -155,119 +188,111 @@ export function JobDetail(p: JobDetailProps) {
         <MetaLine className="rj-drawer__meta" parts={meta} />
       </header>
 
-      <div ref={scrollRef} className="rj-drawer__body min-h-0 flex-1">
-        <WhyItMatches job={job} profile={profile} yours={!!p.yours} />
+      <div ref={scrollRef} className={cx("rj-drawer__body min-h-0 flex-1", p.expanded && "md:grid-cols-[minmax(0,1fr)_20rem] md:gap-x-10")}>
+        {/* Expanded: the description gets the wide column, everything else sits beside it. */}
+        {p.expanded && descriptionSection}
+        <div className={cx("grid min-w-0 grid-cols-1 content-start gap-6", p.expanded && "md:col-start-2 md:row-start-1")}>
+          <WhyItMatches job={job} profile={profile} yours={!!p.yours} />
 
-        {job.estimated && <NotCheckedYet indexGeneratedAt={p.indexGeneratedAt} onCheck={p.onCheck} />}
+          {job.estimated && <NotCheckedYet indexGeneratedAt={p.indexGeneratedAt} onCheck={p.onCheck} />}
 
-        <section className="rj-drawer__section">
-          <h3 className="rj-h">Your status</h3>
-          {/* The one place to set any status; Save in the foot is a shortcut for "Saved". */}
-          <ChipGroup label="Your status">
-            {[...PIPELINE, "dismissed" as const].map((s) => (
-              <Chip key={s} pressed={status === s} onClick={() => p.onUpdate({ status: status === s ? undefined : s })}>
-                {STATUS_LABEL[s]}
-              </Chip>
-            ))}
-          </ChipGroup>
-          <NotesField key={job.id} id={`notes-${job.id}`} note={entry?.note ?? ""} onSave={(note) => p.onUpdate({ note: note || undefined })} />
-        </section>
-
-        {postings && (
           <section className="rj-drawer__section">
-            <h3 className="rj-h">Posted in {postings.length} locations</h3>
-            <ul className="divide-y divide-line rounded-md border border-line">
-              {postings.map((j) => (
-                <li key={j.id} className={cx("flex items-center gap-2 px-3 py-2 type-small", j.id === job.id && "bg-active")}>
-                  <button type="button" className="min-w-0 flex-1 truncate text-left hover:underline" onClick={() => p.onOpenJob?.(j)} aria-current={j.id === job.id || undefined}>
-                    {j.location || "Location not listed"}
-                  </button>
-                  <span className="tabular text-muted">{j.score}</span>
-                  <a href={j.url} target="_blank" rel="noreferrer" onClick={() => p.onApply?.(j)} className="text-muted hover:text-ink" aria-label={`Open the ${j.location} posting`}>
-                    <ExternalLink className="rj-icon" />
-                  </a>
-                </li>
+            <h3 className="rj-h">Your status</h3>
+            {/* The one place to set any status; Save in the foot is a shortcut for "Saved". */}
+            <ChipGroup label="Your status">
+              {[...PIPELINE, "dismissed" as const].map((s) => (
+                <Chip key={s} pressed={status === s} onClick={() => p.onUpdate({ status: status === s ? undefined : s })}>
+                  {STATUS_LABEL[s]}
+                </Chip>
               ))}
-            </ul>
+            </ChipGroup>
+            <NotesField key={job.id} id={`notes-${job.id}`} note={entry?.note ?? ""} onSave={(note) => p.onUpdate({ note: note || undefined })} />
           </section>
-        )}
 
-        <section className="rj-drawer__section">
-          <h3 className="rj-h">Description</h3>
-          {description === undefined ? (
-            <p className="flex items-center gap-2 type-small text-muted">
-              <LoaderCircle className="size-4 animate-spin" /> Loading…
-            </p>
-          ) : description ? (
-            <Highlighted text={description} terms={job.why.keywords} />
-          ) : (
-            <p className="type-small text-muted">
-              {job.estimated ? "Not scanned yet, so no description." : job.why.gate ? "Not stored for jobs that fail your filters." : "The hiring system didn't include a description."} Open the job page to read it.
-            </p>
-          )}
-        </section>
-
-        <section className="rj-drawer__section">
-          <h3 className="rj-h">Details</h3>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 type-small">
-            <dt className="text-muted">Posted</dt>
-            <dd className="text-muted">{job.postedAt ? `${formatDate(job.postedAt)} (${timeAgo(job.postedAt)})` : "Not given by the hiring system"}</dd>
-            <dt className="text-muted">First seen</dt>
-            <dd className="text-muted">{formatDate(job.firstSeen)}</dd>
-            <dt className="text-muted">Last seen</dt>
-            <dd className="text-muted">{timeAgo(job.lastSeen)}</dd>
-            {job.status === "closed" && job.closedAt && (
-              <>
-                <dt className="text-muted">Closed</dt>
-                <dd className="text-muted">{formatDate(job.closedAt)}</dd>
-              </>
-            )}
-            {job.department && (
-              <>
-                <dt className="text-muted">Department</dt>
-                <dd>{job.department}</dd>
-              </>
-            )}
-            {p.industries?.length ? (
-              <>
-                <dt className="text-muted">Industry</dt>
-                <dd>{p.industries.map((i) => INDUSTRY_BY_ID.get(i)?.label ?? i).join(", ")}</dd>
-              </>
-            ) : null}
-            <dt className="text-muted">Hiring system</dt>
-            <dd>{source}</dd>
-          </dl>
-        </section>
-
-        {(p.moreFromCompany?.length || p.onHideCompany) && (
-          <section className="rj-drawer__section">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-              <h3 className="rj-h">More from {job.company}</h3>
-              {p.onHideCompany && (
-                <button type="button" className="type-small text-muted hover:text-danger-text" onClick={() => p.onHideCompany!(!p.companyHidden)}>
-                  {p.companyHidden ? "Show this company again" : "Hide this company"}
-                </button>
-              )}
-            </div>
-            {p.moreFromCompany?.length ? (
+          {postings && (
+            <section className="rj-drawer__section">
+              <h3 className="rj-h">Posted in {postings.length} locations</h3>
               <ul className="divide-y divide-line rounded-md border border-line">
-                {p.moreFromCompany.map((j) => (
-                  <li key={j.id}>
-                    <button type="button" onClick={() => p.onOpenJob?.(j)} className="flex w-full items-center gap-3 px-3 py-2 text-left type-small hover:bg-hover">
-                      <span className="tabular w-7 shrink-0 font-semibold text-muted">{j.score}</span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-medium">{j.title}</span>
-                        <span className="block truncate text-muted">{j.location}</span>
-                      </span>
+                {postings.map((j) => (
+                  <li key={j.id} className={cx("flex items-center gap-2 px-3 py-2 type-small", j.id === job.id && "bg-active")}>
+                    <button type="button" className="min-w-0 flex-1 truncate text-left hover:underline" onClick={() => p.onOpenJob?.(j)} aria-current={j.id === job.id || undefined}>
+                      {j.location || "Location not listed"}
                     </button>
+                    <span className="tabular text-muted">{j.score}</span>
+                    <a href={j.url} target="_blank" rel="noreferrer" onClick={() => p.onApply?.(j)} className="text-muted hover:text-ink" aria-label={`Open the ${j.location} posting`}>
+                      <ExternalLink className="rj-icon" />
+                    </a>
                   </li>
                 ))}
               </ul>
-            ) : (
-              <p className="type-small text-muted">No other matching jobs here right now.</p>
-            )}
+            </section>
+          )}
+
+
+          {!p.expanded && descriptionSection}
+
+          <section className="rj-drawer__section">
+            <h3 className="rj-h">Details</h3>
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 type-small">
+              <dt className="text-muted">Posted</dt>
+              <dd className="text-muted">{job.postedAt ? `${formatDate(job.postedAt)} (${timeAgo(job.postedAt)})` : "Not given by the hiring system"}</dd>
+              <dt className="text-muted">First seen</dt>
+              <dd className="text-muted">{formatDate(job.firstSeen)}</dd>
+              <dt className="text-muted">Last seen</dt>
+              <dd className="text-muted">{timeAgo(job.lastSeen)}</dd>
+              {job.status === "closed" && job.closedAt && (
+                <>
+                  <dt className="text-muted">Closed</dt>
+                  <dd className="text-muted">{formatDate(job.closedAt)}</dd>
+                </>
+              )}
+              {job.department && (
+                <>
+                  <dt className="text-muted">Department</dt>
+                  <dd>{job.department}</dd>
+                </>
+              )}
+              {p.industries?.length ? (
+                <>
+                  <dt className="text-muted">Industry</dt>
+                  <dd>{p.industries.map((i) => INDUSTRY_BY_ID.get(i)?.label ?? i).join(", ")}</dd>
+                </>
+              ) : null}
+              <dt className="text-muted">Hiring system</dt>
+              <dd>{source}</dd>
+            </dl>
           </section>
-        )}
+
+          {(p.moreFromCompany?.length || p.onHideCompany) && (
+            <section className="rj-drawer__section">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <h3 className="rj-h">More from {job.company}</h3>
+                {p.onHideCompany && (
+                  <button type="button" className="type-small text-muted hover:text-danger-text" onClick={() => p.onHideCompany!(!p.companyHidden)}>
+                    {p.companyHidden ? "Show this company again" : "Hide this company"}
+                  </button>
+                )}
+              </div>
+              {p.moreFromCompany?.length ? (
+                <ul className="divide-y divide-line rounded-md border border-line">
+                  {p.moreFromCompany.map((j) => (
+                    <li key={j.id}>
+                      <button type="button" onClick={() => p.onOpenJob?.(j)} className="flex w-full items-center gap-3 px-3 py-2 text-left type-small hover:bg-hover">
+                        <span className="tabular w-7 shrink-0 font-semibold text-muted">{j.score}</span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-medium">{j.title}</span>
+                          <span className="block truncate text-muted">{j.location}</span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="type-small text-muted">No other matching jobs here right now.</p>
+              )}
+            </section>
+          )}
+        </div>
       </div>
 
       <footer className="rj-drawer__foot">
@@ -286,17 +311,26 @@ export function JobDetail(p: JobDetailProps) {
         </Button>
         {p.onTrack && <TrackButton yours={!!p.yours} onTrack={p.onTrack} />}
         {job.hasDescription && (
-          <Button
-            variant="quiet"
-            icon={copied ? <Check className="rj-icon" /> : description === undefined ? <LoaderCircle className="rj-icon animate-spin" /> : <Copy className="rj-icon" />}
+          <IconButton
+            label={copied ? "Copied description" : "Copy description"}
             shortcut={description ? "C" : undefined}
             onClick={() => void copyJd()}
             disabled={!description}
+            aria-live="polite"
+            className="ml-auto"
           >
-            {description === undefined ? "Loading description…" : copied ? "Copied" : "Copy description"}
-          </Button>
+            {copied ? <Check className="rj-icon text-success-text" /> : description === undefined ? <LoaderCircle className="rj-icon animate-spin" /> : <Copy className="rj-icon" />}
+          </IconButton>
         )}
       </footer>
+
+      {expanded && !p.expanded && (
+        <Dialog open onClose={() => setExpanded(false)} label={job.title} className="h-[calc(100dvh-3rem)] sm:max-w-4xl">
+          <div className="h-full w-full overflow-hidden rounded-md border border-line bg-raised shadow-l3">
+            <JobDetail {...p} expanded onClose={() => setExpanded(false)} />
+          </div>
+        </Dialog>
+      )}
     </div>
   );
 }
@@ -372,8 +406,16 @@ function NotCheckedYet({ indexGeneratedAt, onCheck }: { indexGeneratedAt?: strin
   );
 }
 
-/** The score, its band against your threshold, the score bars, then a plain-language checklist of why. */
+/** Whether "Why it matched" shows its bars and checklist; folded by default so the description starts higher. */
+const WHY_OPEN_KEY = "rawjobs.whyOpen";
+
+/** The score and its band against your threshold; unfolds to the score bars and a plain-language checklist of why. */
 function WhyItMatches({ job, profile, yours }: { job: Job; profile: Profile; yours: boolean }) {
+  const [open, setOpen] = useState(() => load<boolean>(WHY_OPEN_KEY, false));
+  const toggle = () => {
+    save(WHY_OPEN_KEY, !open);
+    setOpen(!open);
+  };
   const w = job.why;
   const band = BAND_WORD[scoreBandOf(job.score, profile.min_score)];
   const titleTerm = useMemo(() => profile.titles.include.find((t) => new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(job.title)), [job.title, profile]);
@@ -389,17 +431,27 @@ function WhyItMatches({ job, profile, yours }: { job: Job; profile: Profile; you
       : { ok: w.industry > 0, text: w.industry === 10 ? "In one of your industries" : w.industry === 5 ? "Company's industry not known" : "Not one of your industries" },
   ];
   return (
-    <section className="rj-drawer__section gap-4">
-      <div className="flex items-center gap-4">
-        <ScoreBadge score={job.score} threshold={profile.min_score} estimated={job.estimated} size="lg" />
-        <div className="min-w-0">
+    <section className={cx("rj-drawer__section", open && "gap-4")}>
+      <div className="flex items-center gap-3">
+        <ScoreBadge score={job.score} threshold={profile.min_score} estimated={job.estimated} />
+        <div className="min-w-0 flex-1">
           <h3 className="rj-h">Why it matched</h3>
           <p className="type-small text-muted">
-            {band} match. {job.estimated ? "Estimated from title, place and industry." : `Threshold ${profile.min_score}.`}
+            {band} match. {job.estimated ? "Estimated from title, place and industry." : `Threshold ${profile.min_score}.`}{" "}
+            {!open && (
+              <span className="sr-only">
+                {items.filter((it) => it.ok).length} of {items.length} checks pass.
+              </span>
+            )}
           </p>
         </div>
+        <Button size="sm" variant="quiet" onClick={toggle} aria-expanded={open} aria-controls={`why-${job.id}`} icon={open ? <ChevronUp className="rj-icon" /> : <ChevronDown className="rj-icon" />}>
+          {open ? "Less" : "Details"}
+        </Button>
       </div>
       {w.gate && <p className="type-small text-warning-text">Failed your {w.gate} filter, so the score is 0.</p>}
+      {open && (
+        <div id={`why-${job.id}`} className="grid gap-4">
       <ScoreBreakdown score={job.score} parts={scoreParts(w)} />
       <ul className="space-y-1.5 type-small">
         {items.map((it, i) => (
@@ -413,6 +465,8 @@ function WhyItMatches({ job, profile, yours }: { job: Job; profile: Profile; you
       <p className="type-small text-muted">
         The score is how well the job fits. In Best match, newer jobs rank higher (the boost halves every 3 days){yours ? ", and your companies get +10" : ""}.
       </p>
+        </div>
+      )}
     </section>
   );
 }
@@ -432,6 +486,16 @@ function NotesField({ id, note, onSave }: { id: string; note: string; onSave: (n
   const flushRef = useRef(flush);
   flushRef.current = flush;
   useEffect(() => () => flushRef.current(), []);
+  // Folded to one small button until there's a note, so the description starts higher.
+  const [open, setOpen] = useState(!!note);
+  if (!open)
+    return (
+      <div>
+        <Button size="sm" variant="quiet" icon={<StickyNote className="rj-icon" />} onClick={() => setOpen(true)}>
+          Add a note
+        </Button>
+      </div>
+    );
   return (
     <div className="mt-2 grid gap-1">
       <label htmlFor={id} className="type-label">
@@ -439,6 +503,8 @@ function NotesField({ id, note, onSave }: { id: string; note: string; onSave: (n
       </label>
       <textarea
         id={id}
+        // Opened from "Add a note": straight into typing.
+        autoFocus={!note}
         defaultValue={note}
         onChange={(e) => (pending.current = e.target.value)}
         onBlur={flush}
@@ -451,14 +517,14 @@ function NotesField({ id, note, onSave }: { id: string; note: string; onSave: (n
 }
 
 /** Description text with the user's topic words highlighted. */
-function Highlighted({ text, terms }: { text: string; terms: string[] }) {
+function Highlighted({ text, terms, wide }: { text: string; terms: string[]; wide?: boolean }) {
   const parts = useMemo(() => {
     if (!terms.length) return [text];
     const re = new RegExp(`(?<![\\p{L}\\p{N}])(${terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "[\\s-]+")).join("|")})(?![\\p{L}\\p{N}])`, "giu");
     return text.split(re);
   }, [text, terms]);
   return (
-    <div className="max-w-prose whitespace-pre-wrap type-small leading-6 text-ink">
+    <div className={cx("max-w-prose whitespace-pre-wrap break-words text-ink", wide ? "type-body leading-7" : "type-small leading-6")}>
       {parts.map((part, i) =>
         i % 2 === 1 ? (
           <mark key={i} className="rounded-sm bg-inset px-0.5 text-ink">

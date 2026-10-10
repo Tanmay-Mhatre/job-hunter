@@ -3,18 +3,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CompaniesTab } from "./components/CompaniesTab";
 import { Dialog } from "./components/Dialog";
 import { SetupBanner } from "./components/EmptyState";
-import { checklistItems, ConfigProblemCard, FailingBanner, FirstScanCard, NoMatches, ScanningBar, SetupChecklist, SetupHero } from "./components/Guidance";
+import { checklistItems, ConfigProblemCard, FailingBanner, FirstScanCard, NoMatches, SetupChecklist, SetupHero } from "./components/Guidance";
 import { ApplyPrompt } from "./components/ApplyPrompt";
 import { JobDrawer } from "./components/JobDrawer";
 import { Pipeline } from "./components/Pipeline";
 import { FeedSkeleton } from "./components/radar/FeedSkeleton";
 import { RadarPage } from "./components/radar/RadarPage";
-import { NotifyWhenDone } from "./components/NotifyWhenDone";
+import { NotifyBell, NotifyFailed, notifyLine, telegramReady } from "./components/NotifyWhenDone";
 import { ScanButton, ScanChooser } from "./components/ScanButton";
 import { Settings } from "./components/Settings";
 import { toast, Toaster } from "./components/Toast";
 import { Button, Card, cx, IconButton, Kbd } from "./components/ui";
 import { jobCompanyKey, keyOf, refOfJob, toRow } from "./lib/companies";
+import { telegramStatus, type TelegramStatus } from "./lib/automation";
 import { canRunLocally, useData, useOtherJobs, type Job } from "./lib/data";
 import { usePrefs } from "./lib/prefs";
 import { scanPrefs, useScan } from "./lib/scan";
@@ -120,6 +121,32 @@ export function App() {
   }, [startScan]);
   const closeChooser = useCallback(() => setChoosing(false), []);
   const scanning = scan.phase === "running";
+
+  // ----- Telegram: with it connected, every scan started here sends a message when it finishes -----
+  /** undefined: not asked yet (or can't run scans here) · null: couldn't tell. */
+  const [tg, setTg] = useState<TelegramStatus | null | undefined>(undefined);
+  const refreshTg = useCallback(async () => setTg(await telegramStatus().catch(() => null)), []);
+  // Checked again as each scan starts: it may have been set up in Settings since.
+  useEffect(() => {
+    if (canRunLocally && (scanning || tg === undefined)) void refreshTg();
+  }, [scanning, refreshTg]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [notifyFailed, setNotifyFailed] = useState(false);
+  const notifyAsked = useRef(false);
+  useEffect(() => {
+    if (!scanning) {
+      notifyAsked.current = false;
+      return;
+    }
+    // After the "start" event: the scan clears any earlier request just before it starts.
+    if (notifyAsked.current || scan.notify?.asked || !scan.total || !telegramReady(tg)) return;
+    notifyAsked.current = true;
+    setNotifyFailed(false);
+    void notifyScan().then((ok) => setNotifyFailed(!ok));
+  }, [scanning, scan.total, scan.notify, tg, notifyScan]);
+  // A message that went out is a toast; one that didn't stays on the page (NotifyFailed).
+  useEffect(() => {
+    if (!scanning && scan.notify?.result === "sent") toast({ message: <>Sent the results to Telegram{tg?.bot ? <> ({tg.bot})</> : null}.</> });
+  }, [scanning, scan.notify?.result]); // eslint-disable-line react-hooks/exhaustive-deps
   /** Setup just saved and started the first scan: say how it went when it ends. */
   const announceScan = useRef(false);
   useEffect(() => {
@@ -335,7 +362,29 @@ export function App() {
                     {setupState === "invalid" ? "Fix setup" : progress.started ? "Finish setup" : "Set up radar"} <ArrowRight className="size-3.5" />
                   </Button>
                 )}
-                {canRunLocally && setupState === "configured" && <ScanButton scan={scan} onRequest={requestScan} onChoose={() => setChoosing(true)} onStop={() => void stopScan()} />}
+                {canRunLocally && setupState === "configured" && (
+                  <ScanButton
+                    scan={scan}
+                    onRequest={requestScan}
+                    onChoose={() => setChoosing(true)}
+                    onStop={() => void stopScan()}
+                    notifyLine={notifyLine(tg, scan, notifyFailed)}
+                    notify={(openDetails) => (
+                      <NotifyBell
+                        tg={tg}
+                        scan={scan}
+                        failed={notifyFailed}
+                        onDetails={openDetails}
+                        onSaved={() => setup.refresh()}
+                        onConnected={() => {
+                          void refreshTg();
+                          void notifyScan().then((ok) => setNotifyFailed(!ok));
+                          notifyAsked.current = true;
+                        }}
+                      />
+                    )}
+                  />
+                )}
                 <span className="hidden sm:contents">
                   <IconButton label="Keyboard shortcuts (?)" onClick={() => setShowKeys((v) => !v)}>
                     <Keyboard className="size-4" />
@@ -401,9 +450,8 @@ export function App() {
               </h1>
             )}
             {state.kind === "error" && <ErrorState message={state.message} onRetry={() => void reload()} />}
-            {/* A scan in progress, on every tab: progress, Stop, and (long scans) a Telegram message when it's done. */}
-            {state.kind !== "empty" && <ScanningBar scan={scan} onStop={() => void stopScan()} />}
-            <NotifyWhenDone scan={scan} onNotify={notifyScan} onSaved={() => setup.refresh()} />
+            {/* A scan in progress shows in the header (Scan now becomes its status); a Telegram message that failed shows here. */}
+            <NotifyFailed scan={scan} />
 
             {tab === "radar" && (
               <>
@@ -627,6 +675,7 @@ function ShortcutHelp({ open, onClose }: { open: boolean; onClose: () => void })
     [["A"], "Mark as applied"],
     [["X"], "Not interested"],
     [["C"], "Copy description"],
+    [["F"], "Expand job to full window"],
     [["/"], "Search"],
     [["1", "4"], "Switch section"],
     [["Esc"], "Close"],
