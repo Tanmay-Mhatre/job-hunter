@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { companyIndustries } from "./catalog/industries";
 import { companyKey, connectors } from "./connectors";
 import { companyWords } from "./employers";
 import { isPlaceholderBoard } from "./text";
@@ -8,7 +9,7 @@ import type { DirectoryCompany } from "./suggest";
 
 /**
  * What a scan fetches, besides your own companies (always all of them):
- *   mine: directory companies in your industries
+ *   mine: directory companies in your industries (from lists or from their job titles)
  *   all:  every company in the directory we can read
  * The directory is only the list of companies and their boards; the jobs are always fetched live.
  */
@@ -58,7 +59,7 @@ export function scopeCompanies(config: Config, directory: readonly DirectoryEntr
   const best = new Map<string, DirectoryEntry>();
   for (const c of directory) {
     if (c.status !== "live" || !readable(c) || muted.has(c.key) || yours.has(c.key)) continue;
-    if (scope === "mine" && !c.tags?.some((t) => wanted.has(t))) continue;
+    if (scope === "mine" && !companyIndustries(c).some((t) => wanted.has(t))) continue;
     if (c.origin !== "user" && isPlaceholderBoard(c.name)) continue;
     const name = nameKey(c.name) || c.key;
     if (yourNames.has(name)) continue;

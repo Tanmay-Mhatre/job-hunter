@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { INDUSTRIES, industriesForLabel, industriesFromText, industriesFromTitles } from "../src/catalog/industries";
+import { companyIndustries, INDUSTRIES, INDUSTRY_GROUPS, industriesForLabel, industriesFromText, industriesFromTitles, industryCounts } from "../src/catalog/industries";
 
 describe("industry taxonomy", () => {
   it("has unique ids and resolvable `requires`", () => {
@@ -49,6 +49,51 @@ describe("industriesFromText", () => {
     expect(found[0]).toBe("brokerage");
     expect(found).toContain("crypto");
     expect(found).not.toContain("payments");
+  });
+});
+
+describe("the industry catalog", () => {
+  it("puts every industry in a group, with a unique id and a way to tag companies", () => {
+    const groups = new Set(INDUSTRY_GROUPS.map((g) => g.id));
+    expect(new Set(INDUSTRIES.map((i) => i.id)).size).toBe(INDUSTRIES.length);
+    for (const i of INDUSTRIES) {
+      expect(groups.has(i.group), i.id).toBe(true);
+      expect(i.fromTitles || !!i.aliases?.length, i.id).toBe(true);
+      expect(i.terms.length, i.id).toBeGreaterThan(0);
+    }
+    for (const g of INDUSTRY_GROUPS) expect(INDUSTRIES.some((i) => i.group === g.id), g.id).toBe(true);
+  });
+
+  it("covers industries beyond finance", () => {
+    for (const id of ["saas", "biotech", "climate", "hardware", "consulting", "government", "retail", "manufacturing", "legal", "nonprofit"])
+      expect(INDUSTRIES.some((i) => i.id === id), id).toBe(true);
+  });
+});
+
+describe("resume matching ignores everyday words", () => {
+  it("doesn't call a SaaS engineer crypto, gaming, insurance or logistics", () => {
+    const resume = `Senior engineer at a B2B SaaS company. Built JWT token auth and an API token service; shipped an AI
+      assistant and an SDK. Game-changing launch. Processed claims data, property listings and fleet dashboards.
+      Moved our SaaS billing to usage-based pricing. Mentored students.`;
+    const found = industriesFromText(resume);
+    expect(found).toContain("saas");
+    for (const id of ["crypto", "crypto-exchange", "gaming", "insurtech", "proptech", "logistics", "ai", "devtools", "edtech"]) expect(found, id).not.toContain(id);
+  });
+
+  it("still tags companies from the same words in job titles", () => {
+    const pad = (n: number) => Array.from({ length: n }, (_, i) => `Software Engineer ${i}`);
+    expect(industriesFromTitles(["Claims Adjuster", "Senior Claims Specialist", ...pad(10)])).toContain("insurtech");
+    expect(industriesFromTitles(["Game Designer", "Senior Game Producer", ...pad(10)])).toContain("gaming");
+  });
+});
+
+describe("industryCounts", () => {
+  it("counts list and title tags once per company, listing every industry", () => {
+    const counts = industryCounts([{ tags: ["crypto"], title_tags: ["crypto", "ai"] }, { title_tags: ["ai"] }, {}]);
+    expect(counts.crypto).toBe(1);
+    expect(counts.ai).toBe(2);
+    expect(counts.biotech).toBe(0);
+    expect(companyIndustries({ tags: ["crypto"], title_tags: ["crypto", "ai"] })).toEqual(["crypto", "ai"]);
   });
 });
 

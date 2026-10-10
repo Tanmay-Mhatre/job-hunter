@@ -1,4 +1,4 @@
-import { INDUSTRIES } from "@rawjobs/core/catalog/industries";
+import { INDUSTRIES, INDUSTRY_GROUPS } from "@rawjobs/core/catalog/industries";
 import { isPlaceholderBoard } from "@rawjobs/core/text";
 import { ChevronDown, CloudDownload, ExternalLink, Link2, LoaderCircle, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -237,13 +237,15 @@ function Browse({
               ))}
             </optgroup>
           )}
-          <optgroup label={mine.length ? "Other industries" : "Industries"}>
-            {INDUSTRIES.filter((i) => !mine.includes(i.id)).map((i) => (
-              <option key={i.id} value={i.id}>
-                {i.label}
-              </option>
-            ))}
-          </optgroup>
+          {INDUSTRY_GROUPS.map((g) => (
+            <optgroup key={g.id} label={g.label}>
+              {INDUSTRIES.filter((i) => i.group === g.id && !mine.includes(i.id)).map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.label}
+                </option>
+              ))}
+            </optgroup>
+          ))}
         </Select>
         {hiring > 0 && (
           <label className="inline-flex items-center gap-2 type-small text-muted">

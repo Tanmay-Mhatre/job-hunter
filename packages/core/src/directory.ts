@@ -48,6 +48,14 @@ export function directoryStatus(dataDir: string): DirectoryStatus {
   };
 }
 
+/**
+ * Live companies to scan per industry, as the directory build counted them; null for a directory
+ * built before it counted (so an industry it didn't know isn't mistaken for an empty one).
+ */
+export function directoryIndustryCounts(dataDir: string): Record<string, number> | null {
+  return readJson<{ industries?: Record<string, number> }>(join(catalogDir(dataDir), "directory.json"))?.industries ?? null;
+}
+
 /** Days since the local copy was downloaded (Infinity when there is none). */
 export function directoryAgeDays(dataDir: string, now = Date.now()): number {
   const updated = directoryStatus(dataDir).local?.updated_at;

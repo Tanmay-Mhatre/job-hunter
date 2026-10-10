@@ -1,12 +1,13 @@
 import { matchesTerm } from "@rawjobs/core/text";
 import { COUNTRIES, countryTerms, groupPlaces, REGIONS, searchPlaces } from "@rawjobs/core/catalog/places";
-import { INDUSTRY_BY_ID } from "@rawjobs/core/catalog/industries";
+import { FEW_COMPANIES, INDUSTRIES, INDUSTRY_BY_ID, INDUSTRY_GROUPS as GROUPS } from "@rawjobs/core/catalog/industries";
 import { allTitles, COMMON_EXCLUDES, ROLE_FAMILIES, SENIORITY, type RoleFamily } from "@rawjobs/core/catalog/roles";
 import { Check, ChevronDown, Plus, Search, X } from "lucide-react";
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Combobox, type ComboItem } from "../components/Combobox";
 import { ToggleChips } from "../components/ToggleChips";
 import { Button, cx, Toggle } from "../components/ui";
+import { useIndustryCounts } from "../lib/data";
 import { displayPlace } from "../lib/format";
 import type { Suggestions } from "../lib/suggest";
 import { inferFamily, type Draft } from "../lib/setup";
@@ -602,12 +603,8 @@ export function LocationsStep({ draft, update, suggest }: StepProps) {
 
 // ---------- Industries ----------
 
-// Broadest first, so someone outside finance doesn't open on a list of trading niches.
-const INDUSTRY_GROUPS: { label: string; ids: string[] }[] = [
-  { label: "Tech & other", ids: ["ai", "devtools", "cybersecurity", "ecommerce", "gaming", "media", "mobility", "travel", "healthtech", "edtech", "proptech"] },
-  { label: "Payments & banking", ids: ["payments", "digital-bank", "banking", "lending", "fintech", "regtech", "insurtech"] },
-  { label: "Trading, crypto & investing", ids: ["crypto-exchange", "crypto", "brokerage", "trading-tech", "market-making", "digital-assets", "tokenization", "wealth"] },
-];
+// The catalog's groups (broadest first), each with its industries in catalog order.
+const INDUSTRY_GROUPS = GROUPS.map((g) => ({ label: g.label, ids: INDUSTRIES.filter((i) => i.group === g.id).map((i) => i.id) }));
 export const industryLabel = (id: string) => INDUSTRY_BY_ID.get(id)?.label ?? id;
 
 /** Industries that fit the resume or the chosen roles and topics, for ordering the groups. */
@@ -630,6 +627,9 @@ export function IndustriesStep({ draft, update, suggest }: StepProps) {
   // Topics the picked industries suggest; topics are added in Settings.
   const topics = [...new Set(draft.industries.flatMap((id) => INDUSTRY_BY_ID.get(id)?.topics ?? []))].filter((t) => !(t in draft.keywords));
   const [showAll, setShowAll] = useState(false);
+  // Industries the directory has few companies in: say so, so picking one doesn't promise a big scan.
+  const counts = useIndustryCounts();
+  const few = (id: string) => (counts && id in counts && counts[id]! < FEW_COMPANIES ? "few companies" : undefined);
   // Groups that fit you come first (stable otherwise); the rest wait behind "Show all industries".
   const relevant = relevantIndustries(draft, fromResume);
   const groups = INDUSTRY_GROUPS.map((g) => ({ ...g, hits: g.ids.filter((id) => relevant.has(id)).length }))
@@ -653,6 +653,7 @@ export function IndustriesStep({ draft, update, suggest }: StepProps) {
             selected={draft.industries.filter((id) => fromResume.includes(id))}
             onChange={(next) => update({ industries: [...draft.industries.filter((id) => !fromResume.includes(id)), ...next] })}
             format={industryLabel}
+            note={few}
           />
         </div>
       )}
@@ -662,7 +663,7 @@ export function IndustriesStep({ draft, update, suggest }: StepProps) {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search industries, e.g. forex, neobank, payments…"
+          placeholder="Search industries, e.g. biotech, SaaS, energy…"
           aria-label="Search industries"
           className="h-9 w-full rounded-md border border-line bg-raised pl-9 pr-3 type-small placeholder:text-muted"
         />
@@ -680,6 +681,7 @@ export function IndustriesStep({ draft, update, suggest }: StepProps) {
               // Picked ones stay listed even when the search hides them, so `next` is the whole group's selection.
               onChange={(next) => update({ industries: [...draft.industries.filter((id) => !g.ids.includes(id)), ...next] })}
               format={industryLabel}
+              note={few}
             />
           </Field>
         );
