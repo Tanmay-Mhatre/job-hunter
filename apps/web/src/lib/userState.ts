@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Job } from "./data";
+import type { Reason } from "./notForMe";
 import type { Prefs } from "./prefs";
 import { load, save } from "./storage";
 
@@ -20,6 +21,8 @@ export const STATUS_LABEL: Record<Status, string> = {
 export type Entry = {
   status?: Status;
   note?: string;
+  /** Why it's Not interested, when you said (one tap, optional). Only kept while the status is "dismissed". */
+  reason?: Reason;
   updatedAt: string;
   /** Copy of the job's basics, so the pipeline survives the job leaving jobs.json. */
   snapshot: { title: string; company: string; url: string; location: string; score: number };
@@ -46,7 +49,7 @@ export function useUserState() {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  const update = useCallback((job: JobLike, patch: Partial<Pick<Entry, "status" | "note">>) => {
+  const update = useCallback((job: JobLike, patch: Partial<Pick<Entry, "status" | "note" | "reason">>) => {
     setState((s) => {
       const prev = s[job.id];
       const next: Entry = {
@@ -55,6 +58,8 @@ export function useUserState() {
         updatedAt: new Date().toISOString(),
         snapshot: { title: job.title, company: job.company, url: job.url, location: job.location, score: job.score },
       };
+      // A reason belongs to Not interested: moving the job anywhere else drops it.
+      if (next.status !== "dismissed") delete next.reason;
       if (!next.status && !next.note) {
         const { [job.id]: _, ...rest } = s;
         return rest;

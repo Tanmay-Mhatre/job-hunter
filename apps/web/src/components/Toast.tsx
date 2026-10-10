@@ -15,6 +15,11 @@ export type ToastInput = {
   onAction?: () => void;
   /** ms; default 5000. */
   duration?: number;
+  /**
+   * "popover": a light L2 surface (the menu's) instead of the inverted toast, for a toast that holds
+   * chips, like the Not interested reasons. Same timing, pausing, Esc and live region.
+   */
+  surface?: "popover";
 };
 type ToastItem = ToastInput & { id: number; closing?: boolean };
 
@@ -59,8 +64,12 @@ export function Toaster() {
 function ToastRow({ item }: { item: ToastItem }) {
   const [paused, setPaused] = useState(false);
   const left = useRef(item.duration ?? 5000);
+  const wasPaused = useRef(false);
   useEffect(() => {
+    if (paused) wasPaused.current = true;
     if (paused || item.closing) return;
+    // Back from hover or focus: leave time to read whatever changed meanwhile.
+    if (wasPaused.current) left.current = Math.max(left.current, 3000);
     const started = Date.now();
     const timer = setTimeout(() => dismissToast(item.id), left.current);
     return () => {
@@ -78,7 +87,7 @@ function ToastRow({ item }: { item: ToastItem }) {
 
   return (
     <div
-      className="rj-toast pointer-events-auto"
+      className={item.surface === "popover" ? "rj-menu pointer-events-auto flex w-full max-w-md items-start gap-2 p-3 type-small text-ink" : "rj-toast pointer-events-auto"}
       data-state={item.closing ? "closing" : undefined}
       onAnimationEnd={() => item.closing && removeToast(item.id)}
       onMouseEnter={() => setPaused(true)}
@@ -87,7 +96,7 @@ function ToastRow({ item }: { item: ToastItem }) {
       onBlur={() => setPaused(false)}
       onKeyDown={(e: KeyboardEvent) => e.key === "Escape" && dismissToast(item.id)}
     >
-      <span className="min-w-0 flex-1">{item.message}</span>
+      <div className="min-w-0 flex-1">{item.message}</div>
       {item.actionLabel && item.onAction && (
         <button
           type="button"
